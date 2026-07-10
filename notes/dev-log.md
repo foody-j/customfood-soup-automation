@@ -14,7 +14,10 @@
   나중에 MQTT로 교체 시 UI 수정 불필요.
 - 대시보드 컴포넌트 5종: StatusCard, TemperatureChart, StageTimeline, AiDetectionCard, AlertPanel.
 
-### 다음 할 일
+- 대시보드 목 데이터 구동 확인 완료(사용자 검증).
+
+### 다음 할 일 (다음 세션 시작점)
+- [ ] **GitHub 원격 저장소 연결 + push** ← 다음 최우선 (gh CLI 로그인 필요)
+- [ ] MQTT 파이프라인 미리 뚫기: Mosquitto 로컬 브로커 + 가짜 Jetson 발행자(Python) → 대시보드 mqtt 모드 전환
 - [ ] 실제 레시피별 목표 온도/시간 값 채우기 (지도교수 확인)
-- [ ] Pi에 Mosquitto 설치 + WebSocket 리스너 설정
-- [ ] Jetson 발행자 스크립트(paho-mqtt) 프로토타입
+- [ ] Jetson 발행자에 실제 AI 추론 결과 연결
