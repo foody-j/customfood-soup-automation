@@ -17,7 +17,7 @@
 - 대시보드 목 데이터 구동 확인 완료(사용자 검증).
 
 ### 다음 할 일 (다음 세션 시작점)
-- [ ] **GitHub 원격 저장소 연결 + push** ← 다음 최우선 (gh CLI 로그인 필요)
-- [ ] MQTT 파이프라인 미리 뚫기: Mosquitto 로컬 브로커 + 가짜 Jetson 발행자(Python) → 대시보드 mqtt 모드 전환
+- [x] **GitHub 원격 연결 + push 완료** — github.com/foody-j/customfood-soup-automation (private), SSH 키(ed25519) 인증
+- [ ] MQTT 파이프라인 미리 뚫기: Mosquitto 로컬 브로커 + 가짜 Jetson 발행자(Python) → 대시보드 mqtt 모드 전환 ← 다음 최우선
 - [ ] 실제 레시피별 목표 온도/시간 값 채우기 (지도교수 확인)
 - [ ] Jetson 발행자에 실제 AI 추론 결과 연결
