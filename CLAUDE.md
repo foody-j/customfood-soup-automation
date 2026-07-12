@@ -58,3 +58,5 @@ Discord 봇이 무인(headless)으로 실행하는 에이전트는 아래를 반
    - `notes/dev-log.md` 갱신 여부 (과제 관리 규칙 1번은 무인 작업에도 적용됨)
 5. 무인 실행 환경에서는 git/node/npm이 이미 PATH에 있다 (`~/.local/bin` 심볼릭 링크).
    `export PATH=...` 없이 바로 사용하면 된다.
+6. 작업이 끝나면 `git switch main`으로 체크아웃을 main으로 되돌려 놓는다
+   (작업 브랜치는 삭제하지 말고 남겨둔다 — 사람이 검토 후 머지/삭제).
