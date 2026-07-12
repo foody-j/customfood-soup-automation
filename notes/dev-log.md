@@ -21,3 +21,12 @@
 - [ ] MQTT 파이프라인 미리 뚫기: Mosquitto 로컬 브로커 + 가짜 Jetson 발행자(Python) → 대시보드 mqtt 모드 전환 ← 다음 최우선
 - [ ] 실제 레시피별 목표 온도/시간 값 채우기 (지도교수 확인)
 - [ ] Jetson 발행자에 실제 AI 추론 결과 연결
+
+## 2026-07-12 — 원격 AI 무인 작업 인프라 설정
+
+- Discord 봇(discord-ai-orchestrator) 경유 무인 에이전트에 **코드 수정 권한** 부여:
+  `.claude/settings.json` 권한 사전 승인 + 워크스페이스 trust 설정.
+- 안전장치: pre-commit hook — 무인 실행(`AI_AGENT_RUNNER=1`)의 main 직접 커밋 차단.
+  무인 작업은 `ai/<작업명>` 브랜치에만 커밋, push 금지, 사람이 diff 검토 후 머지.
+- CLAUDE.md에 '원격 AI 작업 규칙' 절 추가. git/node/npm을 ~/.local/bin에 심볼릭 링크
+  (headless PATH 문제 해결).
