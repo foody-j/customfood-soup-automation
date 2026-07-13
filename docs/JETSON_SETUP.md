@@ -33,7 +33,9 @@ git clone git@github.com:foody-j/customfood-soup-automation.git ~/customfood-sou
 cd ~/customfood-soup-automation
 git log --oneline -3                              # 최신 커밋 보이면 성공
 ```
-> 이후 업데이트는 `git pull`. Jetson은 **읽기(클론/풀)만** — 커밋/푸시는 dev 머신에서(무인 규칙과 동일).
+> 이후 업데이트는 `git pull`. Jetson에서 생성한 데이터(벤치 결과, 노트 갱신 등)는 **Jetson에서 직접
+> 커밋/푸시해도 된다** (2026-07-13 정책 변경, `notes/decisions.md` 참고). 단 **작업 전 `git pull` 먼저** —
+> dev 머신과 히스토리가 갈리지 않게 한다. 무인(headless) 에이전트의 push 금지 규칙은 그대로 유지.
 
 ## 1. 버전·상태 확인
 ```bash
@@ -49,10 +51,11 @@ jtop                                   # 전력·온도·GPU 사용률 실시간
 
 ## 3. 전력 모드 최대로 (Super = MAXN SUPER)
 ```bash
-sudo nvpmodel -q                 # 현재 모드 + 사용 가능 모드 목록 확인
-# 목록에서 "MAXN SUPER"(제약 없음) 인덱스를 찾아 지정. Orin Nano Super 보통 0.
-sudo nvpmodel -m 0               # ← nvpmodel -q 결과의 MAXN SUPER 인덱스로
+grep POWER_MODEL /etc/nvpmodel.conf   # 모드 ID↔이름 목록 (sudo 불필요)
+# 이 보드(JetPack 6.2.2) 실측: ID 0=15W, 1=25W, 2=MAXN_SUPER ← "보통 0" 아님!
+sudo nvpmodel -m 2               # MAXN_SUPER
 sudo jetson_clocks               # 클럭 최대 고정 (벤치 시 권장)
+nvpmodel -q                      # 적용 확인 (MAXN_SUPER 표시돼야 함)
 ```
 > 벤치마크 수치는 전력모드에 따라 크게 달라진다. **측정 전 반드시 최대 모드 + jetson_clocks**.
 
@@ -63,15 +66,26 @@ python3 -m venv ~/cf-venv --system-site-packages
 source ~/cf-venv/bin/activate
 pip install -U pip
 ```
+> `ensurepip is not available` 에러가 나면(`python3.10-venv` 미설치) sudo 없이 우회 가능:
+> ```bash
+> python3 -m venv --without-pip --system-site-packages ~/cf-venv
+> curl -sSL https://bootstrap.pypa.io/get-pip.py | ~/cf-venv/bin/python3
+> ```
 
 ## 5. PyTorch / torchvision (Jetson 전용 wheel)
 ⚠️ **pytorch.org 일반 wheel은 x86이라 안 됨.** JetPack 6(cu126) 전용 인덱스 사용:
 ```bash
-pip install --index-url https://pypi.jetson-ai-lab.dev/jp6/cu126 torch torchvision
+# ⚠️ 구 도메인 pypi.jetson-ai-lab.dev 는 DNS가 죽어 있음(2026-07 확인) → .io 사용
+pip install --index-url https://pypi.jetson-ai-lab.io/jp6/cu126 torch torchvision
 ```
-그 외 벤치 의존성:
+torch 2.11(jp6/cu126) 기준 추가 의존성 (2026-07-13 실측):
 ```bash
-pip install onnx numpy
+pip install nvidia-cudss-cu12    # torch import 시 libcudss.so.0 요구
+pip install onnx numpy onnxscript  # onnxscript: torch 2.11 ONNX export(dynamo)가 요구
+```
+`libcudss.so.0` 은 pip 설치만으로는 로더가 못 찾으므로 activate 스크립트 끝에 추가:
+```bash
+echo 'export LD_LIBRARY_PATH="$VIRTUAL_ENV/lib/python3.10/site-packages/nvidia/cu12/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"' >> ~/cf-venv/bin/activate
 ```
 
 ## 6. 검증
@@ -102,11 +116,15 @@ python3 jetson/bench/benchmark.py          # 결과 → notes/data/bench/summary
 | 증상 | 원인 / 조치 |
 |------|------|
 | `torch.cuda.is_available()` == False | wheel이 JetPack 버전과 불일치. jp6/cu126 인덱스 재확인, 기존 torch 제거 후 재설치 |
+| `pypi.jetson-ai-lab.dev` 접속 불가 | 구 도메인 DNS 사망 → `pypi.jetson-ai-lab.io` 사용 |
+| `ImportError: libcudss.so.0` | `pip install nvidia-cudss-cu12` + LD_LIBRARY_PATH에 `site-packages/nvidia/cu12/lib` 추가 (§5) |
+| export 시 `No module named 'onnxscript'` | torch 2.11부터 ONNX export가 dynamo 경로 → `pip install onnxscript` |
+| ONNX export 중 프로세스가 조용히 죽음 | OOM 추정(8GB) → `--models`로 모델을 나눠 실행 |
 | `import tensorrt` 실패 | venv를 `--system-site-packages`로 안 만듦 → 재생성 |
 | 벤치 중 클럭/전력 요동 | `sudo jetson_clocks` 먼저, jtop로 throttling(온도) 확인 |
 | trtexec not found | `/usr/src/tensorrt/bin/trtexec` 절대경로 사용 |
 | 발열로 스로틀링 | 방열판/팬 확인, jtop 온도 모니터링 |
 
 ## 참고
-- PyTorch for Jetson (jetson-ai-lab 인덱스) — https://pypi.jetson-ai-lab.dev/jp6/cu126
+- PyTorch for Jetson (jetson-ai-lab 인덱스) — https://pypi.jetson-ai-lab.io/jp6/cu126
 - NVIDIA JetPack 6.2 릴리즈노트 — https://docs.nvidia.com/jetson/archives/jetpack-archived/jetpack-62/release-notes/
