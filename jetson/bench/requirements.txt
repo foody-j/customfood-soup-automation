@@ -1,0 +1,8 @@
+# Jetson 벤치마크 의존성.
+# ⚠️ torch/torchvision은 여기서 설치하지 말 것 — Jetson 전용 wheel을 써야 한다.
+#    docs/JETSON_SETUP.md §5 참고:
+#    pip install --index-url https://pypi.jetson-ai-lab.dev/jp6/cu126 torch torchvision
+#
+# 아래는 일반 pip로 설치 가능한 것들. TensorRT/trtexec는 JetPack에 이미 포함.
+onnx
+numpy

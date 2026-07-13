@@ -22,3 +22,12 @@ npm-debug.log*
 
 # 대용량 원시 데이터(수집 영상/이미지 등)는 git에 올리지 않음 — notes/data/README.md 참고
 notes/data/raw/
+
+# 벤치마크가 export하는 ONNX (재생성 가능, 커밋 불필요)
+notes/data/bench/onnx/
+
+# Python
+__pycache__/
+*.pyc
+cf-venv/
+

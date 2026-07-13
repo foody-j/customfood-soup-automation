@@ -2,6 +2,22 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-07-13 — Jetson 사전작업: 셋업 문서 + 엣지 벤치마크 하네스
+
+- **환경 확정**: Jetson Orin Nano **Super**, JetPack 6.2.2 / L4T 36.5 / CUDA 12.6 · TensorRT 10.3 · cuDNN 9.3 · Python 3.10. Claude Code 설치됨. **센서는 아직 없음.**
+- **`docs/JETSON_SETUP.md`** 작성 — 0)GitHub clone(SSH) → 1)버전확인 → 2)jtop → 3)전력 MAXN SUPER+jetson_clocks → 4)venv(--system-site-packages) → 5)PyTorch(jetson-ai-lab jp6/cu126) → 6)검증 → 7)trtexec → 8)트러블슈팅.
+- **`jetson/bench/` 엣지 벤치마크 하네스**(센서 불필요, 랜덤텐서 → **성능만** 측정): 3차 조사가 남긴 "검증된 Jetson 지연·전력 수치 없음" 공백 메우기.
+  - `models.py`: MobileNetV3-Small·EfficientNet-B0(도네스 분류) + ThermalCNN·ThermalSeqTCN(열화상 2D-CNN+1D TCN) + ONNX export.
+  - `benchmark.py`: ONNX→`trtexec`(fp16/int8) 지연·FPS 파싱 + `tegrastats` 전력·온도 샘플러 → `notes/data/bench/summary.md`.
+  - 접근: torch2trt 회피, **JetPack 기본 trtexec만** 사용(의존성 최소).
+- 검증(dev 머신): `py_compile` 통과 + trtexec/tegrastats 파싱 정규식 샘플 단위검증 통과. (실제 실행은 Jetson에서.)
+
+### 다음 할 일 (다음 세션 시작점)
+- [ ] **Jetson에서 실행**: `git pull` → `docs/JETSON_SETUP.md`로 툴체인 → `jetson/bench/benchmark.py` → `summary.md` 확인.
+- [ ] 벤치 결과로 **모델 아키텍처 확정**(백본·정밀도).
+- [ ] **MQTT 발행자 스켈레톤**(우선순위 3) — 가짜 센서값으로 cooking/status 발행 → 대시보드 mqtt 모드.
+- [ ] GT 정의 확정(관능 기준·PoC 메뉴).
+
 ## 2026-07-12 — 대시보드 전면 재설계 + 데이터 계약 갱신(doneness)
 
 - **데이터 계약을 새 도네스 설계로 동기화**(3문서): `docs/data-schema.md`, `shared/schema.json`,
