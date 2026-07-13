@@ -1,51 +1,78 @@
+import { useMemo } from 'react';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 
-export default function TemperatureChart({ history, target }) {
+// 중심온도 추이 — 단일 시리즈(범례 불필요). 크로스헤어 툴팁·목표 기준선.
+// theme prop이 바뀌면 CSS 토큰을 다시 읽어 색을 맞춘다(단일 색 출처).
+function useThemeColors(theme) {
+  return useMemo(() => {
+    const s = getComputedStyle(document.documentElement);
+    const v = (n, f) => (s.getPropertyValue(n).trim() || f);
+    return {
+      line: v('--accent', '#e0602a'),
+      grid: v('--line', '#2c313b'),
+      axis: v('--ink-faint', '#8a92a0'),
+      target: v('--s-over', '#d9571f'),
+      surface: v('--surface', '#191c22'),
+      ink: v('--ink', '#e7e9ed'),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [theme]);
+}
+
+const fmtTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+export default function TemperatureChart({ history, target, theme }) {
+  const c = useThemeColors(theme);
+
   return (
-    <div className="card chart-card">
-      <div className="card-title">온도 추이</div>
+    <section className="card chart-card" aria-label="중심온도 추이">
+      <div className="card-head">
+        <span className="cap">중심온도 추이<span className="tile-src mono">최근 {history.length}s</span></span>
+      </div>
       <div className="chart-wrap">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={history} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a333d" />
+          <AreaChart data={history} margin={{ top: 10, right: 14, bottom: 4, left: -10 }}>
+            <defs>
+              <linearGradient id="tempFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={c.line} stopOpacity={0.28} />
+                <stop offset="100%" stopColor={c.line} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke={c.grid} strokeDasharray="2 4" vertical={false} />
             <XAxis
-              dataKey="elapsed"
-              stroke="#7a8894"
-              tick={{ fontSize: 11 }}
-              tickFormatter={(s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`}
-              minTickGap={24}
+              dataKey="elapsed" stroke={c.grid} tick={{ fontSize: 11, fill: c.axis }}
+              tickFormatter={fmtTime} minTickGap={30} tickLine={false}
             />
             <YAxis
-              stroke="#7a8894"
-              tick={{ fontSize: 11 }}
-              domain={[0, 110]}
-              ticks={[0, 25, 50, 75, 100]}
-              unit="℃"
-              width={44}
+              stroke={c.grid} tick={{ fontSize: 11, fill: c.axis }} tickLine={false}
+              domain={[0, 110]} ticks={[0, 25, 50, 75, 100]} width={40} unit="℃"
             />
             <Tooltip
-              contentStyle={{ background: '#161c22', border: '1px solid #2a333d', borderRadius: 8, color: '#e6edf3' }}
-              labelFormatter={(s) => `경과 ${Math.floor(s / 60)}분 ${s % 60}초`}
-              formatter={(v) => [`${v}℃`, '온도']}
+              cursor={{ stroke: c.axis, strokeDasharray: '3 3' }}
+              contentStyle={{
+                background: c.surface, border: `1px solid ${c.grid}`,
+                borderRadius: 10, color: c.ink, fontSize: 12, boxShadow: '0 6px 20px rgba(0,0,0,.25)',
+              }}
+              labelFormatter={(s) => `경과 ${fmtTime(s)}`}
+              formatter={(v) => [`${v}℃`, '중심온도']}
             />
             {target != null && (
-              <ReferenceLine y={target} stroke="#f0883e" strokeDasharray="4 4"
-                label={{ value: `목표 ${target}℃`, fill: '#f0883e', fontSize: 11, position: 'insideTopRight' }} />
+              <ReferenceLine
+                y={target} stroke={c.target} strokeDasharray="5 4"
+                label={{ value: `목표 ${target}℃`, fill: c.target, fontSize: 11, position: 'insideTopRight' }}
+              />
             )}
-            <Line
-              type="monotone"
-              dataKey="temp"
-              stroke="#ff6b3d"
-              strokeWidth={2.5}
-              dot={false}
-              isAnimationActive={false}
+            <Area
+              type="monotone" dataKey="temp" stroke={c.line} strokeWidth={2}
+              fill="url(#tempFill)" dot={false} isAnimationActive={false}
+              activeDot={{ r: 4, fill: c.line, stroke: c.surface, strokeWidth: 2 }}
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </section>
   );
 }

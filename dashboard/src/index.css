@@ -1,34 +1,71 @@
+/* ── 디자인 토큰 (architecture.html과 동일 계열: 써모그래피 램프 + 그래파이트) ── */
 :root {
-  --bg: #0f141a;
-  --panel: #161c22;
-  --panel-2: #1b232b;
-  --border: #2a333d;
-  --text: #e6edf3;
-  --text-dim: #8b98a5;
-  --heat: #ff6b3d;
-  --heat-soft: #f0883e;
-  --ok: #3fb950;
-  --warn: #f0883e;
-  --danger: #f85149;
-  --accent: #4f9cf9;
-
-  font-family: system-ui, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
-  color-scheme: dark;
-  color: var(--text);
-  background: var(--bg);
-  -webkit-font-smoothing: antialiased;
+  /* 기본값 = 다크(모니터링 대시보드 기본). data-theme으로 명시 전환. */
+  --bg: #0e1014;
+  --surface: #171a20;
+  --surface-2: #1e222b;
+  --surface-3: #262b35;
+  --ink: #e7e9ed;
+  --ink-soft: #9ba2af;
+  --ink-faint: #6b7280;
+  --line: #2b303a;
+  --accent: #f0803c;
+  --accent-soft: rgba(240, 128, 60, .15);
+  --cool: #46b2cc;
+  --cool-soft: rgba(70, 178, 204, .14);
+  --s-raw: #5b8ae0;   --s-raw-bg: rgba(91, 138, 224, .16);
+  --s-done: #3fb57d;  --s-done-bg: rgba(63, 181, 125, .16);
+  --s-over: #f0803c;  --s-over-bg: rgba(240, 128, 60, .16);
+  --warn: #e0ae3e;    --warn-bg: rgba(224, 174, 62, .14);
+  --crit: #e5644a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .32), 0 10px 30px rgba(0, 0, 0, .34);
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, "Noto Sans KR", monospace;
+  --r: 16px; --r-sm: 10px;
+}
+:root[data-theme="light"] {
+  --bg: #eef0f3;
+  --surface: #ffffff;
+  --surface-2: #f5f6f9;
+  --surface-3: #eaecf1;
+  --ink: #191c22;
+  --ink-soft: #5a6270;
+  --ink-faint: #8a92a0;
+  --line: #dce0e7;
+  --accent: #e0602a;
+  --accent-soft: rgba(224, 96, 42, .12);
+  --cool: #2a87a8;
+  --cool-soft: rgba(42, 135, 168, .12);
+  --s-raw: #3d6fc7;   --s-raw-bg: rgba(61, 111, 199, .12);
+  --s-done: #2e9c68;  --s-done-bg: rgba(46, 156, 104, .13);
+  --s-over: #d9571f;  --s-over-bg: rgba(217, 87, 31, .13);
+  --warn: #b8860b;    --warn-bg: rgba(184, 134, 11, .12);
+  --crit: #cc3b2c;
+  --shadow: 0 1px 2px rgba(20, 25, 35, .05), 0 8px 24px rgba(20, 25, 35, .07);
 }
 
 * { box-sizing: border-box; }
-
+html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
   background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  letter-spacing: -.003em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
-
-#root {
-  min-height: 100svh;
-}
-
-h1, h2, h3 { margin: 0; font-weight: 600; }
+h1, h2, h3 { margin: 0; letter-spacing: -.02em; line-height: 1.15; }
 p { margin: 0; }
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+/* 공통 유틸 */
+.mono { font-family: var(--font-mono); }
+.num { font-variant-numeric: tabular-nums; }
+.cap {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  letter-spacing: .11em; text-transform: uppercase; color: var(--ink-faint);
+}

@@ -31,7 +31,7 @@ function createSource() {
   }
 }
 
-const HISTORY_LEN = 60; // 온도 차트에 유지할 최근 데이터 포인트 수
+const HISTORY_LEN = 120; // 온도 차트에 유지할 최근 데이터 포인트 수
 
 // 대시보드가 쓰는 유일한 데이터 훅.
 // 반환: { current, history, connected }
@@ -49,14 +49,21 @@ export function useCookingData() {
       setConnected(true);
       setCurrent(data);
       setHistory((prev) => {
-        const point = { elapsed: data.elapsed_sec, temp: data.temperature_c };
-        const next = [...prev, point];
+        const point = {
+          elapsed: data.elapsed_sec,
+          temp: data.center_temp_c,
+          doneness: data.doneness,
+        };
+        // 사이클이 되감기면(경과시간 급감) 히스토리 초기화
+        const reset = prev.length > 0 && point.elapsed < prev[prev.length - 1].elapsed;
+        const base = reset ? [] : prev;
+        const next = [...base, point];
         return next.length > HISTORY_LEN ? next.slice(-HISTORY_LEN) : next;
       });
     });
 
     return () => {
-      unsubscribe && unsubscribe();
+      if (unsubscribe) unsubscribe();
       setConnected(false);
     };
   }, []);

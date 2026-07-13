@@ -1,22 +1,30 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CookingStatus",
-  "description": "cooking/status MQTT 토픽 페이로드. docs/data-schema.md 참고.",
+  "description": "cooking/status MQTT 토픽 페이로드. docs/data-schema.md 참고. 핵심 출력은 doneness(조리 완료 판정).",
   "type": "object",
-  "required": ["timestamp", "stage", "temperature_c", "elapsed_sec", "ai_detection", "alerts"],
+  "required": ["timestamp", "stage", "doneness", "doneness_confidence", "center_temp_c", "elapsed_sec", "alerts"],
   "properties": {
     "timestamp": { "type": "string", "format": "date-time" },
     "recipe_id": { "type": "string" },
-    "stage": { "type": "string", "enum": ["ingredient_add", "heating", "boiling", "done"] },
-    "temperature_c": { "type": "number" },
+    "stage": { "type": "string", "enum": ["ingredient_add", "heating", "cooking"] },
+    "doneness": { "type": "string", "enum": ["undercooked", "done", "overcooked"] },
+    "doneness_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "center_temp_c": { "type": "number" },
     "target_temp_c": { "type": "number" },
     "elapsed_sec": { "type": "integer", "minimum": 0 },
-    "ai_detection": {
+    "boil_intensity": { "type": "number", "minimum": 0, "maximum": 1 },
+    "thermal": {
       "type": "object",
-      "required": ["boil_state", "confidence"],
+      "description": "MLX90640 32x24 열배열. frame은 768개 온도값(행 우선).",
+      "required": ["w", "h", "frame"],
       "properties": {
-        "boil_state": { "type": "string", "enum": ["none", "simmer", "rolling_boil"] },
-        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        "w": { "type": "integer", "const": 32 },
+        "h": { "type": "integer", "const": 24 },
+        "unit": { "type": "string", "enum": ["C"] },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "frame": { "type": "array", "items": { "type": "number" }, "minItems": 768, "maxItems": 768 }
       }
     },
     "alerts": {
@@ -26,14 +34,17 @@
   },
   "examples": [
     {
-      "timestamp": "2026-07-10T14:30:00Z",
+      "timestamp": "2026-07-12T14:30:00Z",
       "recipe_id": "kimchi_jjigae_v1",
-      "stage": "boiling",
-      "temperature_c": 98.5,
+      "stage": "cooking",
+      "doneness": "done",
+      "doneness_confidence": 0.93,
+      "center_temp_c": 98.5,
       "target_temp_c": 100.0,
       "elapsed_sec": 620,
-      "ai_detection": { "boil_state": "rolling_boil", "confidence": 0.94 },
-      "alerts": ["overflow_risk"]
+      "boil_intensity": 0.82,
+      "thermal": { "w": 32, "h": 24, "unit": "C", "min": 74.2, "max": 101.6, "frame": [74.2, 75.0, 76.1] },
+      "alerts": ["past_done"]
     }
   ]
 }

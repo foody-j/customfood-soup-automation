@@ -2,6 +2,23 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-07-12 — 대시보드 전면 재설계 + 데이터 계약 갱신(doneness)
+
+- **데이터 계약을 새 도네스 설계로 동기화**(3문서): `docs/data-schema.md`, `shared/schema.json`,
+  `dashboard/src/data/schema.js`. 핵심 출력 `boil_state` → **`doneness`(undercooked/done/overcooked, 순서형)**.
+  필드 추가: `doneness_confidence`, `center_temp_c`(구 temperature_c), `boil_intensity`,
+  `thermal`(MLX90640 32×24 배열). `stage` enum 정리(ingredient_add/heating/cooking).
+- **대시보드 현대적 재구축**(architecture.html과 동일 디자인 시스템: 써모그래피 램프+그래파이트, 라이트/다크 토글):
+  - 신규: `DonenessHero`(순서형 3단계 히어로), `StatTiles`(중심온도·경과·끓음강도·공정),
+    `ThermalHeatmap`(32×24 인페르노 캔버스+셀 호버), `PotView`(목=캔버스 솥 시뮬/실장치=MJPEG `<img>`).
+  - 갱신: `TemperatureChart`(단일시리즈 area+크로스헤어, 테마색 토큰 연동), `StageTimeline`, `AlertPanel`.
+  - 제거: `StatusCard`, `AiDetectionCard`(→ Hero/StatTiles로 대체).
+- 색: dataviz 검증기로 도네스 3색 CVD 확인(분리도 ΔE 25+, 상태색은 항상 라벨 동반). 열화상은 지각균일 인페르노(무지개 금지 준수).
+- 검증: `npm run build` 통과, mock 데이터 계약 런타임 체크 통과(thermal 768개·doneness·컬러맵), preview 서버 서빙 확인.
+  ※ 브라우저 부재로 픽셀 단위 시각 확인은 미실시 — 실제로 열어볼 것.
+- 실장치 전환: `VITE_DATA_SOURCE=mqtt`(useCookingData) + `VITE_POT_MJPEG_URL`(PotView)만 설정하면 UI 수정 없이 전환.
+
+
 ## 2026-07-12 — 방법론 자료조사 + 문제 재정의
 
 - **문제 재정의**: "끓음/넘침 정도" → **"조리 완료(doneness) 판정"** 으로 목표 변경.
