@@ -475,13 +475,13 @@
       <div class="q"><div class="qh">해상도</div><p>32×24 열배열이 완료 vs 과조리(둘 다 끓는점 이후)를 가를 만큼 표면 열패턴을 담나? 아니면 그 경계는 RGB(거품·탁도)에만 있나.</p></div>
       <div class="q"><div class="qh">융합</div><p>비정합 이종 센서에서 early vs late 실측 비교 — 정합 없는 우리 구성에서도 late가 이기나.</p></div>
       <div class="q"><div class="qh">라벨</div><p>완료/과조리 경계 앵커가 최소 몇 장 필요한가. 순수 약지도로 어디까지 커버되나.</p></div>
-      <div class="q"><div class="qh">엣지</div><p>실제 Jetson Orin Nano 지연·전력. (조사에선 검증된 실시간 수치가 없음 → 직접 벤치.)</p></div>
+      <div class="q" style="border-style:solid;border-color:color-mix(in srgb,var(--s-done) 45%,transparent);background:var(--s-done-bg)"><div class="qh" style="color:var(--s-done)">엣지 ✓ 해결 (2026-07-13)</div><p>Jetson Orin Nano Super 실측(MAXN SUPER): EfficientNet-B0 <b>487 FPS</b>·MobileNetV3-Small 1,160 FPS, 열화상 브랜치 11,000+ FPS, 전력 7~8W·≤55℃. <b>실시간 목표(5~10fps) 대비 수십~수백 배 여유</b> → 백본은 속도 아닌 <b>정확도 기준</b>으로, 입력 해상도도 키울 여유 있음. (<span class="mono">notes/data/bench/summary.md</span>)</p></div>
     </div>
   </section>
 
   <footer>
     근거 문서 · <a href="research-methodology.md">research-methodology.md</a> · <a href="research-methodology-2-soup-specific.md">…-2-soup-specific.md</a> · <a href="research-methodology-3-open-questions.md">…-3-open-questions.md</a> · <a href="gt-definition-design.md">gt-definition-design.md</a><br>
-    customfood-soup-automation · 2026-07-12 · 딥리서치 3라운드(교차검증 완료) 종합
+    customfood-soup-automation · 2026-07-13 · 딥리서치 3라운드 + Jetson 엣지 벤치 실측
   </footer>
 
 </div>
