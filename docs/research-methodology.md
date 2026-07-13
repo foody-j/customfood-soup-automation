@@ -94,6 +94,8 @@
 - **시간구간(접근 C) + RGB+thermal 멀티모달** → **CVAT**. 시간구간 라벨 + 센서퓨전 + SAM2 보간이 결정적. (센서퓨전 최상위는 Supervisely/Encord/CVAT[S20].)
 - **팁**: MLX90614 온도·시간으로 **약지도(weak) 라벨 자동 생성** → 수작업량 대폭 절감.
 
+> 🔄 **정정 (3차 조사 이후, 2026-07-12)**: 모델이 **whole-frame 3단계 분류(OnionBot식)** 로 확정되면서 위 "CVAT 필수" 근거가 약해짐. 실제 라벨링은 **프레임당 단계 1개**(bbox·픽셀·조밀 시간구간 아님)라 CVAT의 강점(SAM2·다객체·시간구간)이 거의 안 쓰임. 또 단계 라벨은 **RGB 타임라인에 한 번만** 붙이면 동기화된 thermal에 그대로 적용 → "멀티모달 어노테이션" 부담도 낮음. **결론: 도구가 핵심이 아니라 온도·시간 약지도 스크립트가 본체이고 GUI는 검수용.** whole-frame 분류 검수는 **Label Studio 또는 CVAT(무난, 큰 차이 없음)**, 거품 탐지(bbox) 보조신호를 넣을 때만 그 부분을 **Roboflow**. → CVAT는 "무난한 기본값"이지 유일 정답 아님. 상세: `research-methodology-3-open-questions.md` §4, `gt-definition-design.md` §4.
+
 ---
 
 ## 7. 이 과제 권장 로드맵 (정답 미정 대응)
@@ -103,7 +105,7 @@
 3. **thermal 추가**: RGB-T 4채널 early fusion[S11]로 성능 이득 검증. 가열 체커보드 캘리브[S14].
 4. **접근 C 승격(선택)**: 프레임 분류가 불안정하면 TSM 또는 MS-TCN/ASFormer로 단계 세그멘테이션. 어노테이션은 CVAT.
 5. **다시점**: 탑뷰 주(主), oblique 보조. late fusion.
-6. **어노테이션**: CVAT + 온도/시간 약지도.
+6. **어노테이션**: 온도/시간 약지도 스크립트(본체) + GUI는 검수용(Label Studio 또는 CVAT, 무난한 쪽). 거품 bbox 넣을 때만 Roboflow. (§6 정정 참고 — CVAT 필수 아님.)
 
 ---
 
