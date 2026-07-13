@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>국·탕 조리 완료 판정 — 시스템 구현 청사진</title>
+<style>
+  :root{
+    --bg:#EDEFF2; --surface:#FFFFFF; --surface-2:#F5F6F9; --surface-3:#EAECF1;
+    --ink:#191C22; --ink-soft:#5A6270; --ink-faint:#8A92A0; --line:#D7DBE2;
+    --accent:#E0602A; --accent-soft:rgba(224,96,42,.12);
+    --cool:#2A87A8; --cool-soft:rgba(42,135,168,.12);
+    --s-raw:#3D6FC7; --s-raw-bg:rgba(61,111,199,.13);
+    --s-done:#2E9C68; --s-done-bg:rgba(46,156,104,.14);
+    --s-over:#D9571F; --s-over-bg:rgba(217,87,31,.14);
+    --warn:#C88A16;
+    --shadow:0 1px 2px rgba(20,25,35,.05),0 6px 20px rgba(20,25,35,.06);
+    --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR","Apple SD Gothic Neo",sans-serif;
+    --font-mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,"Noto Sans KR",monospace;
+    --r:14px; --r-sm:9px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#101216; --surface:#191C22; --surface-2:#20242D; --surface-3:#272C36;
+      --ink:#E7E9ED; --ink-soft:#9BA2AF; --ink-faint:#6B7280; --line:#2C313B;
+      --accent:#F0803C; --accent-soft:rgba(240,128,60,.15);
+      --cool:#46B2CC; --cool-soft:rgba(70,178,204,.15);
+      --s-raw:#5B8AE0; --s-raw-bg:rgba(91,138,224,.16);
+      --s-done:#3FB57D; --s-done-bg:rgba(63,181,125,.16);
+      --s-over:#F0803C; --s-over-bg:rgba(240,128,60,.16);
+      --warn:#E0AE3E;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 26px rgba(0,0,0,.34);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#EDEFF2; --surface:#FFFFFF; --surface-2:#F5F6F9; --surface-3:#EAECF1;
+    --ink:#191C22; --ink-soft:#5A6270; --ink-faint:#8A92A0; --line:#D7DBE2;
+    --accent:#E0602A; --accent-soft:rgba(224,96,42,.12);
+    --cool:#2A87A8; --cool-soft:rgba(42,135,168,.12);
+    --s-raw:#3D6FC7; --s-raw-bg:rgba(61,111,199,.13);
+    --s-done:#2E9C68; --s-done-bg:rgba(46,156,104,.14);
+    --s-over:#D9571F; --s-over-bg:rgba(217,87,31,.14);
+    --warn:#C88A16;
+    --shadow:0 1px 2px rgba(20,25,35,.05),0 6px 20px rgba(20,25,35,.06);
+  }
+  :root[data-theme="dark"]{
+    --bg:#101216; --surface:#191C22; --surface-2:#20242D; --surface-3:#272C36;
+    --ink:#E7E9ED; --ink-soft:#9BA2AF; --ink-faint:#6B7280; --line:#2C313B;
+    --accent:#F0803C; --accent-soft:rgba(240,128,60,.15);
+    --cool:#46B2CC; --cool-soft:rgba(70,178,204,.15);
+    --s-raw:#5B8AE0; --s-raw-bg:rgba(91,138,224,.16);
+    --s-done:#3FB57D; --s-done-bg:rgba(63,181,125,.16);
+    --s-over:#F0803C; --s-over-bg:rgba(240,128,60,.16);
+    --warn:#E0AE3E;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 26px rgba(0,0,0,.34);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans);
+    line-height:1.6;font-size:16px;letter-spacing:-.005em;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  .wrap{max-width:940px;margin:0 auto;padding:0 22px 96px}
+  .eyebrow{
+    font-family:var(--font-mono);font-size:11.5px;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);
+  }
+  h1,h2,h3{text-wrap:balance;letter-spacing:-.02em;line-height:1.18;margin:0}
+  h1{font-size:clamp(28px,4.4vw,42px);font-weight:800}
+  h2{font-size:clamp(21px,3vw,27px);font-weight:750}
+  h3{font-size:17px;font-weight:700}
+  p{margin:0}
+  a{color:var(--accent)}
+  .mono{font-family:var(--font-mono)}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---- header ---- */
+  header{padding:64px 0 20px}
+  header .kick{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+  header .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+  header .sub{margin-top:18px;max-width:60ch;color:var(--ink-soft);font-size:17px}
+  .meta{
+    display:flex;flex-wrap:wrap;gap:8px;margin-top:26px;
+  }
+  .chip{
+    font-family:var(--font-mono);font-size:12px;color:var(--ink-soft);
+    background:var(--surface);border:1px solid var(--line);border-radius:999px;
+    padding:6px 12px;display:inline-flex;align-items:center;gap:7px;
+  }
+  .chip b{color:var(--ink);font-weight:650}
+
+  section{margin-top:56px;scroll-margin-top:20px}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+  .sec-head .idx{font-family:var(--font-mono);font-size:13px;color:var(--ink-faint);font-weight:600}
+  .lead{color:var(--ink-soft);margin-top:6px;max-width:66ch}
+
+  /* ---- architecture diagram ---- */
+  .diagram{
+    margin-top:26px;background:
+      linear-gradient(var(--surface-2),var(--surface-2)) padding-box;
+    border:1px solid var(--line);border-radius:var(--r);padding:22px;box-shadow:var(--shadow);
+    overflow-x:auto;
+  }
+  .flow{min-width:660px;display:flex;flex-direction:column;gap:0}
+  .band-label{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-faint);margin:0 0 9px 2px;display:flex;align-items:center;gap:8px;
+  }
+  .band-label .tag{color:var(--cool)}
+  .row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .node{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);
+    padding:12px 13px;min-height:74px;display:flex;flex-direction:column;gap:3px;position:relative;
+  }
+  .node .t{font-weight:700;font-size:14px;line-height:1.3}
+  .node .d{font-size:12px;color:var(--ink-soft);line-height:1.4}
+  .node .kbd{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint)}
+  .node.sensor{border-top:3px solid var(--cool)}
+  .node.branch{border-top:3px solid var(--accent)}
+  .node .pin{
+    position:absolute;top:10px;right:11px;font-family:var(--font-mono);font-size:10px;
+    color:var(--ink-faint);letter-spacing:.05em;
+  }
+  .arrows{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;height:26px}
+  .arrows span{justify-self:center;align-self:center;color:var(--ink-faint);font-size:15px;line-height:1}
+  .arrow-mono{height:26px;display:flex;align-items:center;justify-content:center;color:var(--ink-faint)}
+  .fuse{
+    background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 32%,transparent);
+    border-radius:var(--r-sm);padding:14px 16px;display:flex;flex-wrap:wrap;
+    align-items:center;justify-content:center;gap:8px 14px;text-align:center;
+  }
+  .fuse .t{font-weight:750;font-size:15px}
+  .fuse .d{font-size:12.5px;color:var(--ink-soft);font-family:var(--font-mono)}
+  .head-node{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);
+    padding:13px 16px;text-align:center
+  }
+  .head-node .t{font-weight:750}
+  .head-node .d{font-size:12.5px;color:var(--ink-soft);margin-top:2px}
+  .stages{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+  .stage{border-radius:var(--r-sm);padding:13px 14px;border:1px solid var(--line)}
+  .stage .lab{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+  .stage .kr{font-weight:800;font-size:19px;margin-top:2px}
+  .stage .en{font-size:12px;color:var(--ink-soft);font-family:var(--font-mono)}
+  .stage.raw{background:var(--s-raw-bg);border-color:color-mix(in srgb,var(--s-raw) 30%,transparent)}
+  .stage.raw .lab,.stage.raw .kr{color:var(--s-raw)}
+  .stage.done{background:var(--s-done-bg);border-color:color-mix(in srgb,var(--s-done) 30%,transparent)}
+  .stage.done .lab,.stage.done .kr{color:var(--s-done)}
+  .stage.over{background:var(--s-over-bg);border-color:color-mix(in srgb,var(--s-over) 30%,transparent)}
+  .stage.over .lab,.stage.over .kr{color:var(--s-over)}
+  .sink{
+    margin-top:14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:center;
+    font-size:13.5px;color:var(--ink-soft)
+  }
+  .sink .pill{
+    background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 13px;
+    font-weight:650;color:var(--ink)
+  }
+  .sink .mq{font-family:var(--font-mono);font-size:12px;color:var(--cool)}
+
+  /* ---- generic cards ---- */
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:22px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+  .card{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+    padding:18px;box-shadow:var(--shadow)
+  }
+  .card .cap{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--cool);font-weight:600}
+  .card h3{margin:9px 0 6px}
+  .card p{font-size:14px;color:var(--ink-soft)}
+  .card .src{margin-top:11px;font-family:var(--font-mono);font-size:11px;color:var(--ink-faint)}
+  .primary-badge{
+    display:inline-block;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.08em;
+    color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:2px 7px;margin-left:8px;vertical-align:middle
+  }
+
+  /* ---- pipeline (labeling) ---- */
+  .pipe{display:flex;flex-direction:column;gap:0;margin-top:22px}
+  .step{display:grid;grid-template-columns:34px 1fr;gap:14px;align-items:start}
+  .step .rail{display:flex;flex-direction:column;align-items:center;gap:0;height:100%}
+  .step .bullet{
+    width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:none;
+    font-family:var(--font-mono);font-weight:700;font-size:13px;
+    background:var(--surface);border:1px solid var(--line);color:var(--accent)
+  }
+  .step .line{width:2px;flex:1;background:var(--line);margin:2px 0;min-height:14px}
+  .step:last-child .line{display:none}
+  .step .body{padding-bottom:18px}
+  .step .body h3{font-size:15.5px}
+  .step .body p{font-size:14px;color:var(--ink-soft);margin-top:4px}
+  .tag-auto{color:var(--s-done);font-family:var(--font-mono);font-size:11px;font-weight:600}
+  .tag-manual{color:var(--warn);font-family:var(--font-mono);font-size:11px;font-weight:600}
+
+  /* ---- roadmap ---- */
+  .road{margin-top:22px;display:flex;flex-direction:column;gap:10px}
+  .phase{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+    padding:15px 18px;display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;box-shadow:var(--shadow)
+  }
+  .phase .p{font-family:var(--font-mono);font-weight:700;color:var(--accent);font-size:13px;white-space:nowrap}
+  .phase .txt h3{font-size:15px}
+  .phase .txt p{font-size:13px;color:var(--ink-soft);margin-top:3px}
+  .state{font-family:var(--font-mono);font-size:11px;font-weight:650;padding:5px 10px;border-radius:999px;white-space:nowrap}
+  .state.blocked{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent)}
+  .state.ready{color:var(--s-done);background:var(--s-done-bg)}
+  .state.wait{color:var(--ink-faint);background:var(--surface-3)}
+
+  /* ---- open questions ---- */
+  .qs{margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .q{background:var(--surface-2);border:1px dashed var(--line);border-radius:var(--r-sm);padding:14px 16px}
+  .q .qh{font-family:var(--font-mono);font-size:11px;color:var(--warn);font-weight:700;letter-spacing:.06em}
+  .q p{font-size:13.5px;color:var(--ink-soft);margin-top:6px}
+
+  .callout{
+    margin-top:22px;background:var(--cool-soft);border:1px solid color-mix(in srgb,var(--cool) 30%,transparent);
+    border-radius:var(--r);padding:16px 18px;font-size:14.5px
+  }
+  .callout b{color:var(--cool)}
+
+  footer{margin-top:64px;padding-top:22px;border-top:1px solid var(--line);color:var(--ink-faint);font-size:12.5px;font-family:var(--font-mono)}
+  footer a{color:var(--ink-soft);text-decoration:none;border-bottom:1px solid var(--line)}
+
+  @media (max-width:680px){
+    .grid-3,.grid-2,.qs{grid-template-columns:1fr}
+    .phase{grid-template-columns:1fr;gap:8px}
+    .phase .state{justify-self:start}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .reveal{opacity:0;transform:translateY(8px);animation:rise .5s cubic-bezier(.2,.7,.3,1) forwards}
+    @keyframes rise{to{opacity:1;transform:none}}
+  }
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="reveal">
+    <div class="kick"><span class="dot"></span><span class="eyebrow">구현 청사진 · v1 (조사 3라운드 종합)</span></div>
+    <h1>국·탕 조리 완료 판정 시스템<br>어떻게 만들 것인가</h1>
+    <p class="sub">비전 2뷰 + 저해상 열배열 + 중심온도를 Jetson Orin Nano에서 융합해, 국물+건더기 요리의 <b>미완·완료·과조리</b>를 판정한다. 아래는 세 차례 방법론 조사에서 확정된 구조와, 하드웨어가 도착하면 밟을 순서다.</p>
+    <div class="meta">
+      <span class="chip"><b>과제</b> 단국대 커스텀푸드</span>
+      <span class="chip"><b>엣지</b> Jetson Orin Nano</span>
+      <span class="chip"><b>전송</b> MQTT</span>
+      <span class="chip"><b>표시</b> Raspberry Pi 5 대시보드</span>
+      <span class="chip"><b>정답</b> 3단계 · ordinal</span>
+    </div>
+  </header>
+
+  <!-- ============ 1. ARCHITECTURE ============ -->
+  <section>
+    <div class="sec-head"><span class="idx">01</span><h2>전체 파이프라인</h2></div>
+    <p class="lead">네 개의 센서가 각자 브랜치로 특징을 뽑고, <b>픽셀 정합이 안 되는 이종 신호</b>라 <b>late fusion</b>으로 합친다. 온도 시계열만 게이트로 신뢰도를 조절해 섞고, 마지막에 순서형(ordinal) 헤드가 3단계를 낸다.</p>
+
+    <div class="diagram">
+      <div class="flow">
+
+        <p class="band-label"><span class="tag">INPUT</span> 센서 · 원신호</p>
+        <div class="row">
+          <div class="node sensor"><span class="pin">CAM·1</span><span class="t">RGB 탑뷰</span><span class="d">국물 표면·거품·증기·수위</span></div>
+          <div class="node sensor"><span class="pin">CAM·2</span><span class="t">RGB 비스듬</span><span class="d">건더기 부피·무름·층</span></div>
+          <div class="node sensor"><span class="pin">I²C</span><span class="t">MLX90640</span><span class="d">32×24 열배열 · 표면 온도분포</span></div>
+          <div class="node sensor"><span class="pin">I²C</span><span class="t">MLX90614</span><span class="d">단일점 중심온도 · FOV 5°</span></div>
+        </div>
+
+        <div class="arrows"><span>↓</span><span>↓</span><span>↓</span><span>↓</span></div>
+
+        <p class="band-label"><span class="tag">EDGE</span> Jetson Orin Nano · 브랜치별 특징 추출</p>
+        <div class="row">
+          <div class="node branch"><span class="t">CNN 브랜치</span><span class="d">경량 백본<br>(MobileNet / EfficientNet-lite)</span></div>
+          <div class="node branch"><span class="t">CNN 브랜치</span><span class="d">경량 백본<br>(뷰별 개별 인코더)</span></div>
+          <div class="node branch"><span class="t">2D-CNN + 1D TCN</span><span class="d">열배열을 '이미지'로<br>시간축 동역학 학습</span></div>
+          <div class="node branch"><span class="t">온도 시계열</span><span class="d">스칼라 시퀀스<br>1Hz hold-last</span></div>
+        </div>
+
+        <div class="arrows"><span>↘</span><span>↓</span><span>↙</span><span>⤸</span></div>
+
+        <p class="band-label"><span class="tag">FUSE</span> 융합</p>
+        <div class="fuse">
+          <span class="t">Late (decision) fusion</span>
+          <span class="d">비전·열배열 특징 결합</span>
+          <span class="t" style="color:var(--cool)">＋ Gated cross-attention</span>
+          <span class="d">온도 vs 시각 신뢰도 자동 조절</span>
+        </div>
+
+        <div class="arrow-mono">↓</div>
+
+        <p class="band-label"><span class="tag">HEAD</span> 출력</p>
+        <div class="head-node">
+          <span class="t">Ordinal 분류 헤드 — CORN</span>
+          <span class="d">미완 &lt; 완료 &lt; 과조리 순서를 보존하는 순위일관 분류</span>
+        </div>
+
+        <div class="stages">
+          <div class="stage raw"><span class="lab">Stage 0</span><span class="kr">미완</span><span class="en">undercooked</span></div>
+          <div class="stage done"><span class="lab">Stage 1 · 목표</span><span class="kr">완료</span><span class="en">done → 배식 알림</span></div>
+          <div class="stage over"><span class="lab">Stage 2</span><span class="kr">과조리</span><span class="en">overcooked</span></div>
+        </div>
+
+        <div class="sink">
+          <span class="pill">3단계 + 신뢰도 + 중심온도</span>
+          <span class="mq">──▶ MQTT · cooking/status ──▶</span>
+          <span class="pill">Pi 5 대시보드</span>
+        </div>
+
+      </div>
+    </div>
+    <div class="callout">
+      <b>왜 late fusion인가?</b> 두 카메라와 열배열은 서로 다른 물리량을 보고 픽셀 정합이 안 된다. early(채널 스택) 융합의 이점은 정합이 전제라 우리 구성엔 안 맞음 → 브랜치별로 뽑아 뒤에서 합치는 late가 안전한 기본값. (온도만 gated attention으로 예외 처리)
+    </div>
+  </section>
+
+  <!-- ============ 2. SIGNALS ============ -->
+  <section>
+    <div class="sec-head"><span class="idx">02</span><h2>무엇을 보고 판단하나 — 색이 아닌 신호</h2></div>
+    <p class="lead">튀김과 달리 국/탕은 <b>표면 색 변화가 약하다.</b> 그래서 색 대신, 문헌이 "색 없이도 학습된다"고 검증한 세 가지 시각 신호 + 온도를 쓴다.</p>
+    <div class="grid-3">
+      <div class="card">
+        <span class="cap">탑뷰 · RGB</span>
+        <h3>끓음 / 거품 동역학</h3>
+        <p>거품 크기·개수·병합 패턴을 시간축으로 읽어 가열 상태를 추정. YOLO로 "끓음"을 이산 클래스로 탐지(recall 0.996).</p>
+        <p class="src">Nature 2021 · BubbleID · Sensors 2023</p>
+      </div>
+      <div class="card">
+        <span class="cap">탑/비스듬 · RGB</span>
+        <h3>국물 탁도 / 우러남</h3>
+        <p>이미지→분류→회귀로 국물 농도를 <b>연속값</b>으로 추정. 색이 약해도 탁도는 변별력 있음.</p>
+        <p class="src">Turbidivision 2024 (YOLOv8-cls + WLS 회귀)</p>
+      </div>
+      <div class="card">
+        <span class="cap">비스듬 · RGB</span>
+        <h3>건더기 무름<span class="primary-badge">핵심 템플릿</span></h3>
+        <p>프레임 전체(whole-frame) 분류로 "무를 때까지 익음"을 판정. 색 피처를 안 씀 — 우리 3단계 분류의 직접 원형.</p>
+        <p class="src">OnionBot 2020 (레시피당 2~4천장)</p>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <span class="cap">MLX90640 · 열배열</span>
+        <h3>표면 온도분포 · 핫스팟</h3>
+        <p>32×24를 스칼라가 아니라 <b>이미지로 직접</b> 딥러닝에 투입(2D-CNN+1D TCN). &lt;10k 파라미터로도 동작 → Jetson엔 여유. 끓는 위치·불균일을 단서로.</p>
+        <p class="src">Vandersteegen CVPRW 2020 · TADAR MobiHoc 2024</p>
+      </div>
+      <div class="card">
+        <span class="cap">MLX90614 · 단일점</span>
+        <h3>중심온도 시계열</h3>
+        <p>솥 중심 온도를 1Hz로. <b>약지도 라벨의 기준</b>이자 융합 게이트 입력. 시간과 함께 조리 진행의 뼈대 신호.</p>
+        <p class="src">AquaFusionNet 2025 (gated cross-attention)</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. DATA / LABELING ============ -->
+  <section>
+    <div class="sec-head"><span class="idx">03</span><h2>정답(GT)과 라벨링 파이프라인</h2></div>
+    <p class="lead">"완료"의 정답을 사람이 일일이 찍지 않는다. <b>온도·시간 약지도 스크립트가 본체</b>로 대량 자동 라벨을 만들고, 사람은 검수와 경계만 손본다.</p>
+    <div class="pipe">
+      <div class="step">
+        <div class="rail"><div class="bullet">A</div><div class="line"></div></div>
+        <div class="body">
+          <h3>동기 수집 <span class="tag-auto">자동</span></h3>
+          <p>RGB 2뷰 + 열배열 + 중심온도를 공통 타임스탬프로 저장. 조리 시작~<b>과조리까지</b> 촬영(안 그러면 과조리 라벨이 안 생김).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="rail"><div class="bullet">B</div><div class="line"></div></div>
+        <div class="body">
+          <h3>약지도 자동 라벨 <span class="tag-auto">자동 · 스크립트</span></h3>
+          <p>중심온도+시간+색을 클러스터링(도미 논문 방식) → 프레임에 <b>미완/완료/과조리</b> 자동 부착. 라벨의 대부분을 여기서 생성.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="rail"><div class="bullet">C</div><div class="line"></div></div>
+        <div class="body">
+          <h3>완료↔과조리 경계 앵커 <span class="tag-manual">수작업 · 소량 필수</span></h3>
+          <p>둘 다 끓는점 이후라 온도만으로 못 가른다. 이 경계만 사람이 소량 직접 라벨해 클러스터를 보정.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="rail"><div class="bullet">D</div></div>
+        <div class="body">
+          <h3>GUI 검수 <span class="tag-auto">조연</span></h3>
+          <p>whole-frame 분류라 무거운 툴 불필요. <b>Label Studio 또는 CVAT</b>(무료, 편한 쪽)로 검수. 거품 bbox를 넣을 때만 <b>Roboflow</b>. → CVAT는 기본값이지 유일 정답 아님.</p>
+        </div>
+      </div>
+    </div>
+    <div class="callout">
+      <b>소량 데이터 대비책</b> — 전이학습(MobileNet, 1 epoch로 급수렴) + 자기지도 보조손실(오차 4~27%↓) + 온도·시간 약지도. 과제라 데이터가 적은 걸 이 세 겹으로 메운다.
+    </div>
+  </section>
+
+  <!-- ============ 4. ROADMAP ============ -->
+  <section>
+    <div class="sec-head"><span class="idx">04</span><h2>구현 순서</h2></div>
+    <p class="lead">순서가 중요하다. GT 정의가 데이터 스키마·모델 클래스를 결정하므로 앞단이고, 코드/수집은 하드웨어에 막혀 있다.</p>
+    <div class="road">
+      <div class="phase">
+        <span class="p">STEP 1</span>
+        <div class="txt"><h3>GT 정의 확정</h3><p>관능평가 기준(지도교수) · PoC 시작 메뉴 1종 결정.</p></div>
+        <span class="state blocked">결정 필요</span>
+      </div>
+      <div class="phase">
+        <span class="p">STEP 2</span>
+        <div class="txt"><h3>모델 아키텍처 설계 문서</h3><p>위 파이프라인을 구조도·텐서 shape·손실함수까지 확정. (지금 착수 가능)</p></div>
+        <span class="state ready">지금 가능</span>
+      </div>
+      <div class="phase">
+        <span class="p">STEP 3</span>
+        <div class="txt"><h3>동기 로깅 스크립트</h3><p>4센서 공통 타임스탬프 수집기 + 가열 체커보드 캘리브(RGB↔thermal).</p></div>
+        <span class="state wait">HW 대기</span>
+      </div>
+      <div class="phase">
+        <span class="p">STEP 4</span>
+        <div class="txt"><h3>데이터 수집 → 약지도 라벨 → PoC 학습</h3><p>단일 메뉴부터. whole-frame 분류 + 온도 융합, TensorRT 배포.</p></div>
+        <span class="state wait">HW 대기</span>
+      </div>
+      <div class="phase">
+        <span class="p">STEP 5</span>
+        <div class="txt"><h3>스키마 재정의 + 대시보드 연결</h3><p>"끓음"→"조리 완료 단계"로 3문서 동기화, MQTT mqtt 모드 전환.</p></div>
+        <span class="state wait">GT·HW 대기</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 5. OPEN Q ============ -->
+  <section>
+    <div class="sec-head"><span class="idx">05</span><h2>실측으로만 풀리는 것</h2></div>
+    <p class="lead">조사로 답이 안 나오고, 하드웨어로 실험해야 확정되는 열린 질문들.</p>
+    <div class="qs">
+      <div class="q"><div class="qh">해상도</div><p>32×24 열배열이 완료 vs 과조리(둘 다 끓는점 이후)를 가를 만큼 표면 열패턴을 담나? 아니면 그 경계는 RGB(거품·탁도)에만 있나.</p></div>
+      <div class="q"><div class="qh">융합</div><p>비정합 이종 센서에서 early vs late 실측 비교 — 정합 없는 우리 구성에서도 late가 이기나.</p></div>
+      <div class="q"><div class="qh">라벨</div><p>완료/과조리 경계 앵커가 최소 몇 장 필요한가. 순수 약지도로 어디까지 커버되나.</p></div>
+      <div class="q"><div class="qh">엣지</div><p>실제 Jetson Orin Nano 지연·전력. (조사에선 검증된 실시간 수치가 없음 → 직접 벤치.)</p></div>
+    </div>
+  </section>
+
+  <footer>
+    근거 문서 · <a href="research-methodology.md">research-methodology.md</a> · <a href="research-methodology-2-soup-specific.md">…-2-soup-specific.md</a> · <a href="research-methodology-3-open-questions.md">…-3-open-questions.md</a> · <a href="gt-definition-design.md">gt-definition-design.md</a><br>
+    customfood-soup-automation · 2026-07-12 · 딥리서치 3라운드(교차검증 완료) 종합
+  </footer>
+
+</div>
+<script>
+  // reveal-on-load for sections (progressive, reduced-motion aware)
+  if (matchMedia('(prefers-reduced-motion: no-preference)').matches){
+    document.querySelectorAll('section').forEach(function(s,i){
+      s.classList.add('reveal'); s.style.animationDelay=(0.04*i)+'s';
+    });
+  }
+</script>
+</body>
+</html>
