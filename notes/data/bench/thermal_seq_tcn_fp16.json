@@ -1,0 +1,20 @@
+{
+  "model": "thermal_seq_tcn",
+  "precision": "fp16",
+  "input_shape": [
+    1,
+    16,
+    1,
+    24,
+    32
+  ],
+  "trtexec_rc": 0,
+  "latency_mean_ms": 0.12006,
+  "latency_median_ms": 0.119873,
+  "latency_p95_ms": 0.122559,
+  "throughput_fps": 6878.26,
+  "power_mean_mw": 7528,
+  "power_max_mw": 8715,
+  "temp_max_c": 53.437,
+  "samples": 80
+}

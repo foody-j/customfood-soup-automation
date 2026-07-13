@@ -1,0 +1,19 @@
+{
+  "model": "thermal_cnn",
+  "precision": "fp16",
+  "input_shape": [
+    1,
+    1,
+    24,
+    32
+  ],
+  "trtexec_rc": 0,
+  "latency_mean_ms": 0.0561284,
+  "latency_median_ms": 0.0559082,
+  "latency_p95_ms": 0.0578613,
+  "throughput_fps": 11687.8,
+  "power_mean_mw": 6993,
+  "power_max_mw": 7392,
+  "temp_max_c": 53.781,
+  "samples": 53
+}

@@ -1,0 +1,19 @@
+{
+  "model": "mobilenet_v3_small",
+  "precision": "int8",
+  "input_shape": [
+    1,
+    3,
+    224,
+    224
+  ],
+  "trtexec_rc": 0,
+  "latency_mean_ms": 0.840204,
+  "latency_median_ms": 0.840088,
+  "latency_p95_ms": 0.84436,
+  "throughput_fps": 1184.61,
+  "power_mean_mw": 7266,
+  "power_max_mw": 10679,
+  "temp_max_c": 52.781,
+  "samples": 1457
+}

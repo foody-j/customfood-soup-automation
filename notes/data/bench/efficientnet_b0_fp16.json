@@ -1,0 +1,19 @@
+{
+  "model": "efficientnet_b0",
+  "precision": "fp16",
+  "input_shape": [
+    1,
+    3,
+    224,
+    224
+  ],
+  "trtexec_rc": 0,
+  "latency_mean_ms": 2.04641,
+  "latency_median_ms": 2.04553,
+  "latency_p95_ms": 2.05786,
+  "throughput_fps": 487.457,
+  "power_mean_mw": 7717,
+  "power_max_mw": 11491,
+  "temp_max_c": 52.937,
+  "samples": 869
+}

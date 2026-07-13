@@ -107,3 +107,25 @@
   무인 작업은 `ai/<작업명>` 브랜치에만 커밋, push 금지, 사람이 diff 검토 후 머지.
 - CLAUDE.md에 '원격 AI 작업 규칙' 절 추가. git/node/npm을 ~/.local/bin에 심볼릭 링크
   (headless PATH 문제 해결).
+
+## 2026-07-13 — Jetson 실기기 셋업 + 엣지 벤치마크 실측 (Jetson에서 작업)
+
+- **Jetson Orin Nano Super 소프트웨어 스택 셋업 완료** (JetPack 6.2.2 / CUDA 12.6 / TensorRT 10.3).
+  venv `~/cf-venv`(--system-site-packages) + torch 2.11.0 / torchvision 0.26.0 / onnx / onnxscript.
+- 셋업 중 만난 문제와 해결 (JETSON_SETUP.md 문서와 달랐던 부분):
+  - `pypi.jetson-ai-lab.dev` DNS 사망 → **`.io` 도메인**(`https://pypi.jetson-ai-lab.io/jp6/cu126`)으로 설치.
+  - `python3.10-venv` 미설치 → `--without-pip`로 venv 생성 후 get-pip.py 부트스트랩(sudo 불필요).
+  - torch 2.11 import 시 `libcudss.so.0` 없음 → PyPI `nvidia-cudss-cu12` 설치 +
+    activate 스크립트에 LD_LIBRARY_PATH(`site-packages/nvidia/cu12/lib`) 추가로 해결. `cuda True` 확인.
+  - torch 2.11의 ONNX export(dynamo 기본)가 `onnxscript` 요구 → 추가 설치.
+  - **이 보드의 nvpmodel 인덱스: 0=15W, 1=25W, 2=MAXN_SUPER** (문서의 "보통 0" 아님) → `-m 2` 적용.
+  - efficientnet_b0 export 중 프로세스 1회 소리 없이 사망(OOM 추정) → 모델 나눠 재실행으로 해결.
+- **벤치마크 실측 완료** (MAXN_SUPER + jetson_clocks, 4모델 × fp16/int8) → `notes/data/bench/summary.md`.
+  핵심 수치(평균지연/FPS): mobilenet_v3_small fp16 0.86ms/1160, efficientnet_b0 fp16 2.05ms/487,
+  thermal_cnn fp16 0.056ms/11688, thermal_seq_tcn fp16 0.12ms/6878. 전력 7.0~8.2W, 최대온도 ≤54.6℃.
+- **결론: 어떤 조합을 골라도 실시간 목표(5~10 FPS) 대비 수십~수백 배 여유.** 도네스 백본은
+  EfficientNet-B0도 충분(487 FPS)하므로 백본 선택은 속도가 아니라 **정확도 기준**으로 하면 됨.
+  INT8 이득은 efficientnet에서만 유의미(2.05→1.60ms), 나머지는 fp16으로 충분.
+- **정책 변경(D-005):** Jetson에서도 직접 커밋/푸시 허용(사용자 승인). "Jetson 읽기 전용" 규칙은
+  히스토리 분기 방지용 컨벤션이었으나 실측 데이터 반영엔 비효율 → JETSON_SETUP.md 갱신,
+  이번 결과(JSON 8개 + summary + 노트)는 Jetson에서 바로 커밋·푸시함.
