@@ -21,9 +21,13 @@
   ⚠️ 검증된 Jetson 엣지 실시간 수치는 없음(직접 벤치 필요), 국/탕 직접 논문도 없음(도메인 외삽).
 - **GT 설계안** 작성 → `docs/gt-definition-design.md` (3단계 정의, 하이브리드 GT, 도미 vs 국/탕 차이 명시).
 
+- **3차 딥리서치(미해결 질문)** 완료 → `docs/research-methodology-3-open-questions.md`.
+  MLX90640 32×24 = **스칼라 아닌 '이미지'로 직접 DL** (2D-CNN+1D TCN, <10k 파라미터, Jetson 여유).
+  RGB 2뷰와 **late fusion**(비정합 이종센서). 3단계 출력은 **ordinal CORN**. 완료=시간경계(유사도 peak).
+  ⚠️ 온도·시간 약지도만으론 완료/과조리 못 가름 → **소량 수작업 앵커 필요**. 열배열 실제 기여·early/late는 실측으로만.
+
 ### 다음 할 일 (다음 세션 시작점)
-- [진행중] **미해결질문 3차 딥리서치** ← MLX90640 32×24 열배열 활용법 등 §미해결 4개 집중.
-- [ ] **모델 아키텍처 설계 문서** (TODO) — 조사 종합해 네트워크 구조도(입력→백본→융합→3단계 출력) 확정.
+- [ ] **모델 아키텍처 설계 문서** (TODO) — 3차까지 종합해 구조도 확정: RGB 2뷰 branch + MLX90640 (2D-CNN+TCN) branch → late fusion → ordinal(CORN) 3단계. 온도(MLX90614) gated fusion.
 - [ ] **GT 정의 실험 설계 확정** (TODO) — 결정 2개: (1) 관능평가 기준(지도교수), (2) PoC 시작 메뉴 1종.
 - [ ] 하드웨어 도착 후: 동기 로깅 스크립트 → 데이터 수집 → schema 3문서 재정의.
 - [ ] GT 확정 후 `docs/data-schema.md` / `shared/schema.json` / `dashboard/src/data/schema.js`를
