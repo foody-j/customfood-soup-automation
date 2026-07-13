@@ -312,9 +312,52 @@
     </div>
   </section>
 
-  <!-- ============ 2. SIGNALS ============ -->
+  <!-- ============ 2. NETWORK / DEPLOY ============ -->
   <section>
-    <div class="sec-head"><span class="idx">02</span><h2>무엇을 보고 판단하나 — 색이 아닌 신호</h2></div>
+    <div class="sec-head"><span class="idx">02</span><h2>물리 배치 · 네트워크</h2></div>
+    <p class="lead">기기가 셋(Jetson·Pi·로봇)이고 Jetson의 랜포트는 <b>1개뿐</b> → 직결 대신 <b>기가비트 스위치</b>로 묶는다. 셋 다 MQTT로 대화하고, 무거운 솥 영상만 별도 경로로 뺀다.</p>
+
+    <div class="diagram">
+      <div class="flow" style="min-width:560px">
+        <p class="band-label"><span class="tag">LAN</span> 스위치 중심 · 기기당 케이블 1개 (총 3개)</p>
+        <div class="row" style="grid-template-columns:repeat(3,1fr)">
+          <div class="node branch"><span class="pin">.2</span><span class="t">Jetson Orin Nano</span><span class="d">센서+AI 추론 · 발행(publish)</span></div>
+          <div class="node sensor"><span class="pin">.1</span><span class="t">Raspberry Pi 5</span><span class="d">Mosquitto 브로커 + 대시보드</span></div>
+          <div class="node" style="border-top:3px solid var(--ink-faint)"><span class="pin">.3</span><span class="t">로봇 <span style="color:var(--ink-faint);font-weight:500">(외주)</span></span><span class="d">완료 신호 구독 → 동작</span></div>
+        </div>
+        <div class="arrow-mono">╰──── 각자 랜선 1개 ────╯</div>
+        <div class="fuse" style="background:var(--cool-soft);border-color:color-mix(in srgb,var(--cool) 32%,transparent)">
+          <span class="t" style="color:var(--cool)">기가비트 스위치 (비관리형)</span>
+          <span class="d">인터넷·NTP 필요하면 공유기로 대체</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <span class="cap">경로 ① · MQTT</span>
+        <h3>판정 데이터</h3>
+        <p>단계·중심온도·신뢰도 JSON. 브로커는 <b>Pi(Mosquitto)</b>. Jetson 발행 → Pi·로봇 구독. 로봇 담당사엔 브로커 IP+토픽+스키마만 전달.</p>
+      </div>
+      <div class="card">
+        <span class="cap">경로 ① · MQTT</span>
+        <h3>열화상 32×24</h3>
+        <p>영상 아님 — 768개 숫자배열을 MQTT로 보내 대시보드 JS가 <b>히트맵</b>으로 렌더. 가볍고 우아.</p>
+      </div>
+      <div class="card">
+        <span class="cap">경로 ② · MJPEG HTTP</span>
+        <h3>솥 RGB 영상</h3>
+        <p>조리는 느려 저(低)fps로 충분. Jetson의 작은 HTTP 서버 → 대시보드 <span class="mono">&lt;img&gt;</span>. RTSP/WebRTC는 오버킬.</p>
+      </div>
+    </div>
+    <div class="callout">
+      <b>왜 케이블이 3개(Jetson은 1개)?</b> Jetson 랜포트가 1개라 Pi·로봇 2개를 직접 못 뽑는다 → Jetson은 스위치로 1개만, 스위치가 Pi·로봇으로 분배. &nbsp;·&nbsp; <b>⏱ 시간동기 주의:</b> 타임스탬프 정합이 중요한데 스위치만 쓰면 인터넷이 없어 NTP 불가 → 공유기(인터넷)로 NTP를 쓰거나 로컬 시간서버를 둔다.
+    </div>
+  </section>
+
+  <!-- ============ 3. SIGNALS ============ -->
+  <section>
+    <div class="sec-head"><span class="idx">03</span><h2>무엇을 보고 판단하나 — 색이 아닌 신호</h2></div>
     <p class="lead">튀김과 달리 국/탕은 <b>표면 색 변화가 약하다.</b> 그래서 색 대신, 문헌이 "색 없이도 학습된다"고 검증한 세 가지 시각 신호 + 온도를 쓴다.</p>
     <div class="grid-3">
       <div class="card">
@@ -354,7 +397,7 @@
 
   <!-- ============ 3. DATA / LABELING ============ -->
   <section>
-    <div class="sec-head"><span class="idx">03</span><h2>정답(GT)과 라벨링 파이프라인</h2></div>
+    <div class="sec-head"><span class="idx">04</span><h2>정답(GT)과 라벨링 파이프라인</h2></div>
     <p class="lead">"완료"의 정답을 사람이 일일이 찍지 않는다. <b>온도·시간 약지도 스크립트가 본체</b>로 대량 자동 라벨을 만들고, 사람은 검수와 경계만 손본다.</p>
     <div class="pipe">
       <div class="step">
@@ -393,7 +436,7 @@
 
   <!-- ============ 4. ROADMAP ============ -->
   <section>
-    <div class="sec-head"><span class="idx">04</span><h2>구현 순서</h2></div>
+    <div class="sec-head"><span class="idx">05</span><h2>구현 순서</h2></div>
     <p class="lead">순서가 중요하다. GT 정의가 데이터 스키마·모델 클래스를 결정하므로 앞단이고, 코드/수집은 하드웨어에 막혀 있다.</p>
     <div class="road">
       <div class="phase">
@@ -426,7 +469,7 @@
 
   <!-- ============ 5. OPEN Q ============ -->
   <section>
-    <div class="sec-head"><span class="idx">05</span><h2>실측으로만 풀리는 것</h2></div>
+    <div class="sec-head"><span class="idx">06</span><h2>실측으로만 풀리는 것</h2></div>
     <p class="lead">조사로 답이 안 나오고, 하드웨어로 실험해야 확정되는 열린 질문들.</p>
     <div class="qs">
       <div class="q"><div class="qh">해상도</div><p>32×24 열배열이 완료 vs 과조리(둘 다 끓는점 이후)를 가를 만큼 표면 열패턴을 담나? 아니면 그 경계는 RGB(거품·탁도)에만 있나.</p></div>

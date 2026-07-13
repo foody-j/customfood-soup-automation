@@ -20,6 +20,18 @@
   온도+비전 = gated cross-attention(AquaFusionNet), 소량데이터 = 전이학습+SSL+약지도.
   ⚠️ 검증된 Jetson 엣지 실시간 수치는 없음(직접 벤치 필요), 국/탕 직접 논문도 없음(도메인 외삽).
 - **GT 설계안** 작성 → `docs/gt-definition-design.md` (3단계 정의, 하이브리드 GT, 도미 vs 국/탕 차이 명시).
+- **구조 시각화** → `docs/architecture.html` (파이프라인·신호·라벨링·로드맵 한 장).
+
+## 2026-07-12 — 네트워크·배치 결정 (Jetson·Pi·로봇)
+
+- **기기 3개 확정**: Jetson(센서+AI/발행), Pi(브로커+대시보드), **로봇(외주, MQTT 구독→동작)**.
+- **물리 연결 = 기가비트 스위치**. Jetson 랜포트가 1개뿐이라 직결 불가 → 셋을 스위치에 각 1개씩(총 케이블 3개, Jetson에서 나오는 건 1개). 인터넷/NTP 필요하면 스위치 대신 공유기.
+- **통신 = 전부 MQTT**, 브로커는 Pi(Mosquitto). 로봇 담당사엔 브로커 IP+토픽+`shared/schema.json`만 전달.
+- **데이터 경로 분리**:
+  - ① MQTT: 단계·중심온도·신뢰도 + **열화상 32×24는 숫자배열로 전송 → 대시보드에서 히트맵 렌더**(영상 아님).
+  - ② **MJPEG(HTTP)**: 솥 RGB 영상. 조리가 느려 저fps로 충분, Jetson 소형 HTTP 서버 → 대시보드 `<img>`. RTSP/WebRTC는 오버킬.
+- ⏱ **시간동기 이슈**: 타임스탬프 정합 중요 → 스위치만이면 인터넷 없어 NTP 불가. 공유기로 NTP 쓰거나 로컬 시간서버 둘 것.
+- 반영: `README.md` 시스템 구성 다이어그램, `docs/architecture.html` §02(신설).
 
 - **3차 딥리서치(미해결 질문)** 완료 → `docs/research-methodology-3-open-questions.md`.
   MLX90640 32×24 = **스칼라 아닌 '이미지'로 직접 DL** (2D-CNN+1D TCN, <10k 파라미터, Jetson 여유).
