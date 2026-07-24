@@ -2,6 +2,18 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-07-24 — Raspberry Pi 5 셋업 문서 작성
+
+- **`docs/PI5_SETUP.md`** 작성 — Pi 5 = 런타임 노드(Mosquitto 브로커 + 대시보드 서빙).
+  0)repo clone → 1)OS·고정IP → 2)Mosquitto(리스너 **1883/TCP** + **9001/websockets** 둘 다, `allow_anonymous`) →
+  3)Node20·대시보드 빌드(`.env.production`: `VITE_DATA_SOURCE=mqtt`, `VITE_MQTT_URL=ws://<Pi>:9001`, `VITE_POT_MJPEG_URL`) →
+  4)정적 서빙 systemd(soup-dashboard) → 5)키오스크(선택) → 6)NTP(스위치만이면 불가 → 공유기/로컬 chrony) →
+  7)ufw → 8)운영 전 브로커 인증 → 9)점검 체크리스트 → 10)트러블슈팅.
+- 실제 코드값 반영: 대시보드 MQTT 소스는 **MQTT-over-WebSocket(9001)**, env 기본값 `mock`/`ws://raspberrypi.local:9001`
+  (`dashboard/src/data/useCookingData.js`), 영상은 `VITE_POT_MJPEG_URL`(`PotView.jsx`).
+- 참고: 이 개발용 노트북엔 **자동 백업/동기화 스케줄 없음**(crontab·systemd timer·syncthing 전부 미설정 확인).
+  노트북 처분 시 git 밖 데이터(gitignore된 raw, SSH키 등)는 수동 백업 필요.
+
 ## 2026-07-14 — 연구추진실적 문서 작성(1차년도 1단계)
 
 - **`연구추진실적.md`** 작성 — 과제 양식(`연구추진실적.png`)의 두 표를 채움.
