@@ -79,4 +79,14 @@
 - **이유:** 실시간 조리 트래픽은 로컬 유선이라야 지연·안정성 확보(WiFi로 MJPEG 흘리면 끊김). 스위치 단독은
   인터넷·DHCP·NTP·Tailscale 불가 → 타임스탬프 정합/원격백업이 막힘. 공유기 업링크로 해결.
 - **대안:** 스위치 단독(인터넷·NTP 불가), 전부 WiFi(실시간 영상 불안정), 로컬 NTP 서버만 운영(원격백업 불가).
+## D-010 · 도네스 모델 아키텍처 확정
+- **결정:** RGB 2뷰(EfficientNet-B0 ×2, 뷰별 독립) + MLX90640 열배열(2D-CNN+1D TCN+수작업 공간피처)
+  **late fusion** + MLX90614 온도 스칼라 **gated fusion** → **CORN ordinal 3단계** 헤드 +
+  boil_intensity 보조 헤드. 배포는 전 branch **TensorRT fp16**, 추론 1 Hz. 상세: `docs/model-architecture.md`.
+- **이유:** 벤치 실측(487 FPS)으로 속도가 비제약임이 확인돼 백본을 정확도 기준으로 선택 가능.
+  RGB↔32×24 열배열은 픽셀 정합이 안 되므로 early stacking 배제(조사 3차). 완료↔과조리는 온도 포화
+  구간이라 gated fusion으로 시각 신호에 자동 이양. INT8은 efficientnet에서만 이득이라 캘리브레이션
+  비용 대비 채택 안 함.
+- **대안:** MobileNetV3-Small 백본(전력 필요 시 폴백), early fusion+guided SR(LapGSR — ablation A2에서
+  이길 때만), TSM/MS-TCN 시계열 승격(프레임 분류 불안정 시), INT8 양자화(전력 부족 시).
 - **날짜:** 2026-07-24
