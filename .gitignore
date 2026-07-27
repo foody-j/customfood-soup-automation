@@ -31,3 +31,7 @@ __pycache__/
 *.pyc
 cf-venv/
 
+
+
+# 3D 모델(26MB) — repo 제외, 디스크엔 유지
+cam-adaptor/FG12-4CH/FG12_4CH_3DModel.stp
