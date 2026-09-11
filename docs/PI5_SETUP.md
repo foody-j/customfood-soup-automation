@@ -1,8 +1,13 @@
-# Raspberry Pi 5 셋업 (Mosquitto 브로커 + 대시보드)
+# Raspberry Pi 5 셋업 (관리 서버 + Mosquitto 브로커 + 대시보드)
 
-Pi 5는 배포(런타임) 노드로, 두 가지를 담당한다.
+Pi 5는 **장비 관리 PC 겸 배포 런타임 노드**로, 세 가지를 담당한다.
+- **관리 서버** (`pi-server/`, FastAPI, 포트 8100) — Jetson 수집 서비스 상태 감시,
+  촬영 시작/중지, 실험 설정·조작 이력. **Jetson이 꺼져 있어도 동작한다.** ← 5절
 - **Mosquitto MQTT 브로커** — Jetson(발행) · 로봇(구독) · 대시보드(구독)가 붙는 중앙 허브
 - **React 대시보드** — 조리 상태 실시간 시각화 (브라우저 키오스크로 상시 표출)
+
+> 모니터는 **Pi에 직결**한다(D-011 — D-008 헤드리스 개정). 장비 옆에서 즉시 조작할
+> 화면이 필요하고, 그 화면은 Jetson이 꺼진 상태에서도 떠 있어야 하기 때문.
 
 > 통신 구조: Jetson·로봇은 표준 MQTT(**1883/TCP**)로, 브라우저 대시보드는
 > **MQTT-over-WebSocket(9001)** 으로 같은 브로커에 붙는다. 그래서 리스너를 **둘 다** 연다.
@@ -168,12 +173,58 @@ sudo systemctl status soup-dashboard --no-pager
 
 ---
 
-## 5. (선택) 키오스크 자동 표출
+## 5. Pi 관리 서버 (FastAPI) 설치 · 상시 실행
 
-Pi에 모니터를 붙여 부팅 시 대시보드를 전체화면으로 띄우려면 Chromium 키오스크:
+Jetson 상태 감시와 촬영 제어를 담당한다. **Jetson·카메라가 없어도 모의 모드로 바로 뜬다.**
+자세한 설계·API는 `pi-server/README.md`, Jetson 쪽 계약은 `docs/pi-jetson-api.md`.
 
 ```bash
-sudo apt-get install -y chromium-browser unclutter
+cd ~/customfood-soup-automation/pi-server
+python3 -m venv .venv                       # Debian 12/13은 시스템 pip 설치가 막혀 있어 venv 필수
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m pytest -q               # (선택) 테스트 14개
+```
+
+수동 실행으로 먼저 확인:
+
+```bash
+SOUP_JETSON_MODE=mock SOUP_POWER_MODE=mock .venv/bin/python -m app.main
+# 브라우저에서 http://localhost:8100 — "모의 모드" 배지가 보이면 정상
+```
+
+systemd 등록(부팅 시 자동 실행, 실패 시 재시작):
+
+```bash
+sudo cp systemd/soup-pi-server.service /etc/systemd/system/
+sudo cp systemd/soup-pi-server.env /etc/default/soup-pi-server
+sudo nano /etc/default/soup-pi-server      # SOUP_JETSON_URL, SOUP_JETSON_MODE 등 수정
+sudo systemctl daemon-reload
+sudo systemctl enable --now soup-pi-server
+systemctl status soup-pi-server --no-pager
+```
+
+> **서비스 파일의 `User=` · `WorkingDirectory=` · `ExecStart=` 경로**가 실제 계정/경로와
+> 맞는지 확인할 것(기본값은 `yj-rpi`).
+
+**실제 Jetson 연결로 전환** — `/etc/default/soup-pi-server`에서:
+
+```dotenv
+SOUP_JETSON_MODE=http
+SOUP_JETSON_URL=http://192.168.0.51:8000
+SOUP_JETSON_PROBE_PORT=22        # 수집 서비스가 죽어도 열려 있는 포트(호스트 생존 확인용)
+```
+
+Jetson 수집 서비스는 아직 구현 전이므로, 전환하면 화면이 `무응답`/`수집 서비스 중단`으로
+표시된다 — **정상 동작이다**(관리 화면 자체는 계속 뜬다).
+
+---
+
+## 6. (권장) 키오스크 자동 표출 — 관리 화면
+
+Pi 직결 모니터에 부팅 시 **관리 화면**을 전체화면으로 띄운다(D-011).
+
+```bash
+sudo apt-get install -y chromium unclutter
 ```
 
 자동 로그인 데스크톱 세션에서 자동 실행(`~/.config/autostart/soup-kiosk.desktop`):
@@ -182,15 +233,17 @@ sudo apt-get install -y chromium-browser unclutter
 [Desktop Entry]
 Type=Application
 Name=Soup Kiosk
-Exec=chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:3000
+Exec=chromium --kiosk --noerrdialogs --disable-infobars http://localhost:8100
 X-GNOME-Autostart-enabled=true
 ```
 
-> 헤드리스(모니터 없음)로 운영하고 다른 PC/태블릿에서 볼 거면 이 절은 건너뛴다.
+> 조리 대시보드를 띄우려면 주소를 `http://localhost:3000`으로 바꾼다. 둘 다 필요하면
+> 탭 2개(`--kiosk` 대신 창 모드)나 별도 모니터를 쓴다.
+> 패키지 이름은 Bookworm 이후 `chromium-browser` → `chromium`으로 바뀌었다.
 
 ---
 
-## 6. 시간 동기화 (NTP) — 중요
+## 7. 시간 동기화 (NTP) — 중요
 
 타임스탬프 정합이 중요한데(센서·영상 로그 대조), **기가비트 스위치만 쓰면 인터넷이 없어 NTP 불가**.
 택1:
@@ -207,7 +260,7 @@ X-GNOME-Autostart-enabled=true
 
 ---
 
-## 7. 방화벽 · 접속 정리
+## 8. 방화벽 · 접속 정리
 
 로컬망 안이면 방화벽 없이도 되지만, ufw를 쓴다면 포트 개방:
 
@@ -215,14 +268,15 @@ X-GNOME-Autostart-enabled=true
 sudo apt-get install -y ufw
 sudo ufw allow 1883/tcp     # MQTT
 sudo ufw allow 9001/tcp     # MQTT WebSocket
-sudo ufw allow 3000/tcp     # 대시보드
+sudo ufw allow 3000/tcp     # 조리 대시보드
+sudo ufw allow 8100/tcp     # Pi 관리 서버
 # (로컬 NTP 쓰면) sudo ufw allow 123/udp
 sudo ufw enable
 ```
 
 ---
 
-## 8. (운영 전) 브로커 인증 추가 — 개발 후 권장
+## 9. (운영 전) 브로커 인증 추가 — 개발 후 권장
 
 개발이 끝나면 `allow_anonymous true`를 끄고 사용자/비밀번호를 건다:
 
@@ -236,24 +290,32 @@ sudo systemctl restart mosquitto
 
 ---
 
-## 9. 최종 점검 체크리스트
+## 10. 최종 점검 체크리스트
 
+- [ ] `systemctl status soup-pi-server` = running, `curl localhost:8100/api/health` = `{"ok":true}`
+- [ ] **Jetson 전원을 끈 상태에서** `http://<PiIP>:8100` 접속 → 화면이 뜨고 상태가
+      `무응답`/`전원 꺼짐`으로 표시되는지 (관리 화면 독립 동작 확인)
 - [ ] `systemctl status mosquitto` = running, `netstat`에 1883·9001 LISTEN
 - [ ] `mosquitto_sub`/`mosquitto_pub` 왕복 확인
 - [ ] Jetson에서 Pi 브로커로 발행 → `mosquitto_sub -h <PiIP> -t 'soup/#' -v` 로 수신 확인
 - [ ] 다른 PC 브라우저에서 `http://<PiIP>:3000` 접속, 대시보드가 **mqtt 실데이터**로 갱신되는지
 - [ ] `timedatectl` 시간 동기화 상태 확인
-- [ ] 재부팅 후 mosquitto·soup-dashboard 자동 기동 확인
+- [ ] 재부팅 후 soup-pi-server·mosquitto·soup-dashboard 자동 기동 확인
 
 ---
 
-## 10. 트러블슈팅
+## 11. 트러블슈팅
 
 | 증상 | 확인 |
 |------|------|
+| 관리 화면이 안 뜸 | `systemctl status soup-pi-server`, `journalctl -u soup-pi-server -e` |
+| 관리 화면에 "모의 모드" 배지 | `/etc/default/soup-pi-server`의 `SOUP_JETSON_MODE=http` 확인 후 재시작 |
+| Jetson이 계속 `수집 서비스 중단` | 호스트는 살아 있고 수집 서비스만 죽은 상태 — Jetson에서 서비스 재시작. (수집 서비스 구현 전에는 정상) |
+| Jetson이 계속 `무응답` | IP·랜선·스위치 확인. `SOUP_JETSON_PROBE_PORT`(기본 22)가 Jetson에서 열려 있는지 |
+| 전원 버튼이 비활성 | 정상 — 전원 회로 미구성(`SOUP_POWER_MODE=unsupported`). 플랜 6단계에서 활성화 |
 | 대시보드가 안 뜸 | `systemctl status soup-dashboard`, `journalctl -u soup-dashboard -e` |
 | 대시보드가 mock으로 보임 | `.env.production`의 `VITE_DATA_SOURCE=mqtt` 확인 후 **재빌드**(`npm run build`) 필요 |
 | 브라우저가 브로커 못 붙음 | `VITE_MQTT_URL`이 `ws://`(WebSocket 9001)인지, TCP 1883 아닌지 확인 |
 | Jetson이 발행 안 됨 | Jetson→Pi IP·포트(1883) 방화벽/네트워크, `mosquitto_sub`로 브로커 수신 먼저 확인 |
 | 영상 안 나옴 | `VITE_POT_MJPEG_URL`이 Jetson MJPEG 실제 주소인지, Jetson HTTP 서버 동작 여부 |
-| 시간 어긋남 | `timedatectl` — 스위치만이면 NTP 불가(6절 A/B) |
+| 시간 어긋남 | `timedatectl` — 스위치만이면 NTP 불가(7절 A/B) |

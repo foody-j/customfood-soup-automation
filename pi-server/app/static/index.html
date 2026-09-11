@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>실험장치 관리 — Pi 관리 서버</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <h1 id="site-name">실험장치 관리</h1>
+        <p class="subtitle">Raspberry Pi 관리 서버 · Jetson 수집 서비스 감시/제어</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <span id="mock-badge" class="badge badge-mock hidden">모의 모드</span>
+      <span id="server-badge" class="conn-badge off"><i class="conn-dot"></i><span id="server-badge-text">관리 서버 연결 확인 중</span></span>
+    </div>
+  </header>
+
+  <!-- ── Jetson 상태 ───────────────────────────────────────────────────── -->
+  <section class="card hero">
+    <div class="hero-main">
+      <div class="hero-status">
+        <span id="status-dot" class="status-dot"></span>
+        <div>
+          <div id="status-label" class="status-label">확인 중</div>
+          <div id="status-reason" class="status-reason">—</div>
+        </div>
+      </div>
+      <button id="btn-refresh" class="btn">지금 확인</button>
+    </div>
+    <dl class="kv">
+      <div><dt>연결</dt><dd id="link-state">—</dd></div>
+      <div><dt>대상</dt><dd id="link-target" class="mono">—</dd></div>
+      <div><dt>마지막 정상 응답</dt><dd id="link-lastok">—</dd></div>
+      <div><dt>전원</dt><dd id="power-state">—</dd></div>
+    </dl>
+    <p id="stale-warning" class="warning hidden">상태값이 낡았습니다 — 아래 수치는 갱신이 멈춘 마지막 값입니다.</p>
+  </section>
+
+  <div class="grid">
+    <!-- ── 촬영 제어 ───────────────────────────────────────────────────── -->
+    <section class="card">
+      <h2>촬영</h2>
+      <div id="session-box" class="session-box">
+        <div class="session-none">진행 중인 세션 없음</div>
+      </div>
+      <div class="form">
+        <label>실험 이름
+          <input id="in-name" type="text" placeholder="예: 된장국 3차" value="실험" />
+        </label>
+        <label>메모
+          <input id="in-note" type="text" placeholder="조건·변경점 등" />
+        </label>
+      </div>
+      <div class="btn-row">
+        <button id="btn-start" class="btn btn-primary">촬영 시작</button>
+        <button id="btn-stop" class="btn">촬영 중지</button>
+      </div>
+      <p id="capture-msg" class="msg hidden"></p>
+    </section>
+
+    <!-- ── 장치 ────────────────────────────────────────────────────────── -->
+    <section class="card">
+      <h2>장치 · 저장소</h2>
+      <div id="storage-box" class="storage">—</div>
+      <ul id="sensor-list" class="sensor-list"><li class="muted">보고 없음</li></ul>
+    </section>
+
+    <!-- ── 실험 설정 ───────────────────────────────────────────────────── -->
+    <section class="card">
+      <h2>실험 설정</h2>
+      <p class="hint">Jetson이 해석하는 값입니다. 관리 서버는 보관·전달만 합니다.</p>
+      <div class="form">
+        <label>활성 센서 (쉼표 구분)
+          <input id="cfg-sensors" type="text" placeholder="cam_rgb_0, thermal_0" />
+        </label>
+        <div class="form-row">
+          <label>FPS <input id="cfg-fps" type="number" step="0.1" min="0" placeholder="10" /></label>
+          <label>해상도 <input id="cfg-resolution" type="text" placeholder="1920x1536" /></label>
+        </div>
+        <div class="form-row">
+          <label>노출 <input id="cfg-exposure" type="text" placeholder="auto / 8ms" /></label>
+          <label>조명 <input id="cfg-lighting" type="text" placeholder="flash / continuous" /></label>
+        </div>
+        <label>비고 <input id="cfg-note" type="text" /></label>
+      </div>
+      <div class="btn-row">
+        <button id="btn-save-config" class="btn">설정 저장</button>
+        <span id="config-msg" class="msg inline hidden"></span>
+      </div>
+    </section>
+
+    <!-- ── 전원 제어 ───────────────────────────────────────────────────── -->
+    <section class="card">
+      <h2>Jetson 전원</h2>
+      <p id="power-note" class="hint">—</p>
+      <div class="btn-row">
+        <button id="btn-power-on" class="btn">켜기</button>
+        <button id="btn-power-shutdown" class="btn">정상 종료</button>
+        <button id="btn-power-force" class="btn btn-danger">강제 차단</button>
+      </div>
+      <p id="power-msg" class="msg hidden"></p>
+    </section>
+  </div>
+
+  <!-- ── 모의 장치 조작 (모의 모드에서만) ─────────────────────────────── -->
+  <section id="mock-card" class="card mock-card hidden">
+    <h2>모의 장치 조작</h2>
+    <p class="hint">
+      실물 Jetson이 아닌 <b>모의 장치</b>를 조작합니다. 상태 전이(부팅 중·서비스 다운·통신 단절)를
+      실제로 만들어 화면과 감시 동작을 확인하기 위한 것입니다.
+    </p>
+    <div class="btn-row">
+      <button id="btn-mock-on" class="btn">모의 Jetson 켜기</button>
+      <button id="btn-mock-off" class="btn">모의 Jetson 끄기</button>
+      <button id="btn-mock-cut" class="btn">네트워크 끊기</button>
+      <button id="btn-mock-join" class="btn">네트워크 복구</button>
+    </div>
+  </section>
+
+  <!-- ── 이벤트 ──────────────────────────────────────────────────────── -->
+  <section class="card">
+    <div class="card-head">
+      <h2>최근 이벤트</h2>
+      <span class="hint">오류·조작 이력은 디스크에 남습니다(브라우저를 닫아도 계속 기록).</span>
+    </div>
+    <table class="events">
+      <thead><tr><th>시각</th><th>구분</th><th>내용</th></tr></thead>
+      <tbody id="event-rows"><tr><td colspan="3" class="muted">불러오는 중…</td></tr></tbody>
+    </table>
+  </section>
+
+  <footer class="foot">
+    <span id="foot-time">—</span>
+    <span>·</span>
+    <a href="/docs">API 문서</a>
+  </footer>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

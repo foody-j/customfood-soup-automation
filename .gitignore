@@ -30,6 +30,11 @@ notes/data/bench/onnx/
 __pycache__/
 *.pyc
 cf-venv/
+.venv/
+.pytest_cache/
+
+# Pi 관리 서버 런타임 데이터(SQLite 세션·이벤트 이력) — 기기별 로컬 상태
+pi-server/data/
 
 
 

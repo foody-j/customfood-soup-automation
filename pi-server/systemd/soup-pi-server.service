@@ -1,0 +1,39 @@
+; Pi 관리 서버 — 부팅 시 자동 실행, 실패 시 재시작.
+;
+; 설치:
+;   sudo cp systemd/soup-pi-server.service /etc/systemd/system/
+;   sudo cp systemd/soup-pi-server.env /etc/default/soup-pi-server   # 값 수정 후
+;   sudo systemctl daemon-reload && sudo systemctl enable --now soup-pi-server
+;
+; 사용자/경로가 다르면 User=, WorkingDirectory=, ExecStart= 세 줄을 함께 고칠 것.
+
+[Unit]
+Description=Soup Pi 관리 서버 (FastAPI) — Jetson 상태 감시·촬영 제어
+Documentation=file:///home/yj-rpi/customfood-soup-automation/pi-server/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=yj-rpi
+WorkingDirectory=/home/yj-rpi/customfood-soup-automation/pi-server
+EnvironmentFile=-/etc/default/soup-pi-server
+ExecStart=/home/yj-rpi/customfood-soup-automation/pi-server/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8100
+; Jetson이 꺼져 있어도 관리 서버는 계속 살아 있어야 한다 → 무조건 재시작
+Restart=always
+RestartSec=3
+; 오작동으로 재시작 폭주해도 로그가 터지지 않게
+StartLimitIntervalSec=60
+StartLimitBurst=10
+KillSignal=SIGINT
+TimeoutStopSec=15
+
+; 최소 권한 (전원 제어 GPIO를 붙일 때 PrivateDevices=yes는 풀어야 할 수 있음)
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/yj-rpi/customfood-soup-automation/pi-server/data
+
+[Install]
+WantedBy=multi-user.target

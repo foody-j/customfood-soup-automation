@@ -12,15 +12,16 @@
           랜선1개 ┌──────┘         │        └──────┐ 랜선1개
    ┌────────────────┐    ┌────────────────┐    ┌──────────────┐
    │ Jetson Orin    │    │ Raspberry Pi 5 │    │ 로봇 (외주)   │
-   │ 센서+AI · 발행  │    │ Mosquitto+대시 │    │ 완료신호 구독 │
-   └────────────────┘    └────────────────┘    └──────────────┘
-   ① MQTT: 단계·중심온도·신뢰도 · 열화상 32×24(숫자배열→히트맵)
+   │ 센서·수집 · AI  │    │ 관리서버+브로커 │    │ 완료신호 구독 │
+   └────────────────┘    └───────┬────────┘    └──────────────┘
+   ① MQTT: 단계·중심온도·신뢰도 · 열화상 32×24(숫자배열→히트맵)   │ 모니터 직결(D-011)
    ② MJPEG(HTTP): 솥 RGB 영상 (Jetson → 대시보드 <img>, 저fps)
+   ③ HTTP API: 촬영 제어·상태 조회 (Pi → Jetson, docs/pi-jetson-api.md)
 ```
 
 - **기기 3개, 스위치 중심** — Jetson 랜포트가 1개뿐이라 직결 불가 → 셋(Jetson·Pi·로봇)을 **기가비트 스위치**에 각 1개씩 연결(총 케이블 3개). 인터넷/NTP 시간동기가 필요하면 스위치 대신 공유기.
-- **Jetson Orin Nano** — 비전 기반 조리 완료(doneness) 인식 AI 추론 담당. 결과를 MQTT로 **발행**.
-- **Raspberry Pi 5** — Mosquitto 브로커 호스팅 + React 대시보드로 데이터 **소비/시각화**.
+- **Jetson Orin Nano** — 카메라·센서 수집과 원본 저장, 비전 기반 조리 완료(doneness) 인식 AI 추론. 결과를 MQTT로 **발행**.
+- **Raspberry Pi 5** — **장비 관리 PC**(모니터 직결). ① 상시 실행되는 **관리 서버**(`pi-server/`, FastAPI)가 Jetson 상태를 감시하고 촬영을 제어하며, ② Mosquitto 브로커 호스팅 + React 대시보드로 조리 데이터를 **소비/시각화**한다. **Jetson이 꺼져 있어도 관리 화면은 동작한다.**
 - **로봇(외주)** — MQTT로 완료 신호 **구독** 후 동작. 담당사엔 브로커 IP + 토픽 + `shared/schema.json`만 전달(내부 구현은 그쪽).
 - **통신 ① (데이터)** — MQTT. 브라우저는 MQTT-over-WebSocket으로 브로커에 직접 구독 → 별도 백엔드 불필요. 열화상(32×24)도 영상이 아니라 숫자배열로 MQTT 전송 후 대시보드에서 히트맵 렌더.
 - **통신 ② (영상)** — 솥 RGB 화면은 MQTT가 아니라 **MJPEG HTTP 스트림**(저fps). 조리는 느려 저fps로 충분, RTSP/WebRTC는 오버킬.
@@ -33,14 +34,16 @@ customfood-soup-automation/
 ├── README.md              # 이 문서
 ├── CLAUDE.md              # 에이전트/기여자용 작업 규칙 (필독)
 ├── docs/
-│   └── data-schema.md     # 공유 데이터 계약 (Jetson ↔ 대시보드)
+│   ├── data-schema.md     # 공유 데이터 계약 (Jetson ↔ 대시보드, MQTT)
+│   └── pi-jetson-api.md   # 제어 API 계약 (Pi 관리 서버 ↔ Jetson 수집 서비스)
 ├── shared/
 │   └── schema.json        # 데이터 계약 예시 페이로드 (기계용)
 ├── notes/                 # 과제 관리: 개발 노트 · 의사결정 · 수집 데이터
 │   ├── dev-log.md
 │   ├── decisions.md
 │   └── data/
-└── dashboard/             # React + Vite 대시보드
+├── pi-server/             # Pi 관리 서버 (Python + FastAPI) + 관리 화면 + systemd
+└── dashboard/             # React + Vite 조리 대시보드
 ```
 
 ## 현재 진행 단계
@@ -66,11 +69,25 @@ npm run dev      # 개발 서버 (http://localhost:5173)
 npm run build    # 배포 빌드 (Pi 배포용)
 ```
 
+## Pi 관리 서버 실행법
+
+하드웨어 없이도(모의 Jetson) 바로 뜬다. 자세한 내용은 `pi-server/README.md`.
+
+```bash
+cd pi-server
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+SOUP_JETSON_MODE=mock SOUP_POWER_MODE=mock .venv/bin/python -m app.main
+# http://localhost:8100  (API 문서 /docs)
+```
+
 ## 로드맵
 
 - [x] 저장소 뼈대 + 공유 데이터 계약 정의
 - [x] React+Vite 대시보드 (목 데이터 구동)
+- [x] **Pi 관리 서버 1차** — 모의 Jetson 대상 상태 감시·촬영 제어·이벤트 기록·관리 화면 (플랜 2단계)
+- [ ] Jetson 수집 서비스 구현 (`docs/pi-jetson-api.md` 계약) → `SOUP_JETSON_MODE=http` 전환
+- [ ] Orbbec Gemini 2 수집·저장·미리보기 (플랜 3단계)
 - [ ] Pi에 Mosquitto 설치 + WebSocket 리스너(9001)
 - [ ] `useCookingData.js`를 mqtt.js 구독으로 교체
-- [ ] Jetson 발행자 스크립트 (Python paho-mqtt)
-- [ ] AI 비전 모델(끓음 상태 분류) 연동
+- [ ] Jetson 전원 제어 회로 + GPIO 어댑터 (플랜 6단계)
+- [ ] AI 비전 모델(doneness) 연동 (플랜 8단계)
