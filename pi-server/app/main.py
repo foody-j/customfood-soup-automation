@@ -25,6 +25,7 @@ from .capture import CaptureService
 from .config import STATIC_DIR, Settings
 from .db import Database
 from .jetson import create_jetson_client
+from .logging_setup import configure_logging
 from .models import EventLevel
 from .monitor import JetsonMonitor
 from .power import create_power_controller
@@ -35,9 +36,17 @@ log = logging.getLogger(__name__)
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
+    # ★ 여기서 호출해야 systemd(uvicorn)로 띄울 때도 로그가 살아 있다 ★
+    configure_logging(settings)
 
     @contextlib.asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        # 기동 시 한 번 보존 정책 적용 — 꺼져 있던 동안 기간이 지난 기록을 정리한다
+        removed = app.state.db.prune_events(
+            settings.event_retention, settings.event_retention_days
+        )
+        if removed:
+            log.info("보존 정책으로 이벤트 %d건 정리", removed)
         app.state.db.log_event(
             level=EventLevel.INFO,
             source="pi",
@@ -136,12 +145,17 @@ def _print_urls(settings: Settings) -> None:
 def main() -> None:
     import uvicorn
 
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
-    )
-    settings = Settings.from_env()
+    settings = Settings.from_env()  # 로깅은 create_app()에서 설정된다
     _print_urls(settings)
-    uvicorn.run("app.main:app", host=settings.host, port=settings.port, reload=False)
+    # log_config=None: uvicorn이 자기 로깅 설정을 덮어쓰지 않게 한다.
+    # (기본값이면 접속 로그만 포맷이 다르고 SOUP_LOG_FILE에도 안 남는다)
+    uvicorn.run(
+        "app.main:app",
+        host=settings.host,
+        port=settings.port,
+        reload=False,
+        log_config=None,
+    )
 
 
 if __name__ == "__main__":

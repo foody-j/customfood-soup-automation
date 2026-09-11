@@ -93,6 +93,37 @@ Pi가 프로브로 **알 수 있는 사실**은 두 가지뿐이다.
 
 ---
 
+## 로그 — 어디에 쌓이고, 얼마나 남고, 어떻게 꺼내나
+
+기록은 **성격이 다른 세 가지**로 나뉜다. 섞어서 생각하면 필요할 때 못 찾는다.
+
+| 무엇 | 어디에 | 보존 | 꺼내는 법 |
+|---|---|---|---|
+| **서비스 로그**<br>(프로그램이 어떻게 돌았나) | journald<br>(+ 선택적으로 회전 파일) | journald 기본 정책<br>파일은 `5MB × 4개` | `journalctl -u soup-pi-server -f`<br>`journalctl -u soup-pi-server --since today` |
+| **운영 이력**<br>(장비에 무슨 일이 있었나) | SQLite `events` 테이블 | **5000건 또는 90일**<br>(먼저 걸리는 쪽) | 관리 화면 하단 · `GET /api/events`<br>**내보내기: CSV / JSONL** |
+| **수집 원본·매니페스트**<br>(무엇을 찍었나) | **Jetson 로컬**<br>`<session>/manifest.jsonl` | 수동 관리(D-006) | Jetson에서 직접. Pi로 오지 않는다 |
+
+### 반드시 알아둘 것
+
+- **이벤트는 보존 기간이 지나면 사라진다.** 실험 구간이 끝나면 관리 화면의
+  `내보내기: CSV`로 받아 두는 것이 안전하다. 과제 보고서에 그대로 붙일 수 있게
+  시간 오름차순 + Excel용 BOM으로 내보낸다.
+  ```bash
+  curl -OJ "http://localhost:8100/api/events/export?format=csv"          # 전체
+  curl -OJ "http://localhost:8100/api/events/export?format=csv&days=7"   # 최근 7일
+  ```
+- **로깅 설정은 `create_app()`에서 한다.** `main()`에만 두면 systemd가
+  `uvicorn app.main:app`으로 띄울 때 설정이 실행되지 않아 **배포 환경에서만 로그가
+  사라진다.** 개발 실행에서는 멀쩡해 보이므로 알아채기 어렵다 — 회귀 방지 테스트가 있다
+  (`test_logging_is_configured_by_create_app`).
+- 접속 로그(uvicorn)도 같은 포맷·같은 목적지로 합쳐 둔다. 갈라져 있으면 장애 시각을
+  맞춰 보기 어렵다.
+- journald가 디스크를 얼마나 쓸지 제한하려면(선택):
+  ```bash
+  sudo sed -i 's/^#\?SystemMaxUse=.*/SystemMaxUse=200M/' /etc/systemd/journald.conf
+  sudo systemctl restart systemd-journald
+  ```
+
 ## 설정 (환경변수)
 
 전체 목록과 기본값은 `systemd/soup-pi-server.env` 참고. 자주 쓰는 것:
@@ -108,6 +139,10 @@ Pi가 프로브로 **알 수 있는 사실**은 두 가지뿐이다.
 | `SOUP_LINK_LOST_CONFIRM` | `20` | 무응답 확정까지 대기(초) |
 | `SOUP_PORT` | `8100` | 서버 포트 |
 | `SOUP_DB_PATH` | `data/pi-server.db` | SQLite 경로 |
+| `SOUP_LOG_LEVEL` | `INFO` | 로그 레벨 |
+| `SOUP_LOG_FILE` | (없음) | 지정하면 회전 파일로도 기록 |
+| `SOUP_LOG_MAX_MB` · `SOUP_LOG_BACKUPS` | `5` · `3` | 파일 회전 크기·개수 |
+| `SOUP_EVENT_RETENTION` · `_DAYS` | `5000` · `90` | 이벤트 보존(건수·기간) |
 
 ## 상시 실행 (systemd)
 

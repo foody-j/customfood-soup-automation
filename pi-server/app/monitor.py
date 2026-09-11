@@ -161,8 +161,12 @@ class JetsonMonitor:
                 log.exception("세션 재동기화 실패")
 
         self._probe_count += 1
-        if self._probe_count % 500 == 0:
-            self._db.prune_events(self._settings.event_retention)
+        if self._probe_count % 500 == 0:  # 기본 주기(2초)로 약 17분마다
+            removed = self._db.prune_events(
+                self._settings.event_retention, self._settings.event_retention_days
+            )
+            if removed:
+                log.info("보존 정책으로 이벤트 %d건 정리", removed)
 
         return self.link_info(now)
 

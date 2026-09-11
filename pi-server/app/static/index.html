@@ -128,7 +128,11 @@
   <section class="card">
     <div class="card-head">
       <h2>최근 이벤트</h2>
-      <span class="hint">오류·조작 이력은 디스크에 남습니다(브라우저를 닫아도 계속 기록).</span>
+      <span class="hint">
+        오류·조작 이력은 디스크에 남습니다(브라우저를 닫아도 계속 기록).
+        내보내기: <a href="/api/events/export?format=csv" download>CSV</a> ·
+        <a href="/api/events/export?format=jsonl" download>JSONL</a>
+      </span>
     </div>
     <table class="events">
       <thead><tr><th>시각</th><th>구분</th><th>내용</th></tr></thead>

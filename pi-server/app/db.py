@@ -13,11 +13,12 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Iterable
 
 from .models import ACTIVE_SESSION_STATES, CaptureState, EventLevel
-from .util import utcnow_iso
+from .util import iso, utcnow, utcnow_iso
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
@@ -141,8 +142,14 @@ class Database:
             {**dict(row), "detail": _loads(row["detail"]) or None} for row in rows
         ]
 
-    def prune_events(self, keep: int) -> int:
-        """오래된 이벤트 정리. Pi의 SD/SSD 수명을 위해 무한히 쌓지 않는다."""
+    def prune_events(self, keep: int, older_than_days: int | None = None) -> int:
+        """오래된 이벤트 정리 — **건수와 기간을 둘 다** 적용한다.
+
+        건수만 제한하면 조용한 기간엔 몇 년 전 기록이 남고, 기간만 제한하면 장애가
+        폭주할 때 디스크가 부푼다. 둘 중 먼저 걸리는 쪽이 이긴다.
+        반환값은 지운 행 수.
+        """
+        removed = 0
         with self._lock:
             cur = self._conn.execute(
                 "DELETE FROM events WHERE id <= ("
@@ -150,8 +157,26 @@ class Database:
                 ")",
                 (max(1, keep),),
             )
+            removed += cur.rowcount or 0
+            if older_than_days and older_than_days > 0:
+                cutoff = iso(utcnow() - timedelta(days=older_than_days))
+                cur = self._conn.execute("DELETE FROM events WHERE ts < ?", (cutoff,))
+                removed += cur.rowcount or 0
             self._conn.commit()
-            return cur.rowcount or 0
+        return removed
+
+    def export_events(self, *, days: int | None = None, limit: int = 100_000) -> list[dict[str, Any]]:
+        """내보내기용 조회 — **시간 오름차순**(보고서에 그대로 붙일 수 있게)."""
+        sql = "SELECT * FROM events"
+        params: list[Any] = []
+        if days and days > 0:
+            sql += " WHERE ts >= ?"
+            params.append(iso(utcnow() - timedelta(days=days)))
+        sql += " ORDER BY id ASC LIMIT ?"
+        params.append(max(1, limit))
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return [{**dict(row), "detail": _loads(row["detail"]) or None} for row in rows]
 
     # ── 세션 ───────────────────────────────────────────────────────────────
     def create_session(

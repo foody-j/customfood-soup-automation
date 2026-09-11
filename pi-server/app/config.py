@@ -66,7 +66,19 @@ class Settings:
 
     # ── 저장소 ─────────────────────────────────────────────────────────────
     db_path: Path = DEFAULT_DB_PATH
+    #: 이벤트 보존 — 건수와 일수 **둘 다** 적용한다(먼저 걸리는 쪽이 이긴다).
+    #: 건수만 두면 조용한 기간엔 몇 년 전 기록이 남고, 일수만 두면 장애가 폭주할 때
+    #: 디스크가 부풀기 때문.
     event_retention: int = 5000
+    event_retention_days: int = 90
+
+    # ── 로깅 ───────────────────────────────────────────────────────────────
+    log_level: str = "INFO"
+    #: 비우면 표준출력만 사용한다(systemd면 journald가 회전·보존을 맡는다).
+    #: 경로를 주면 크기 기반 회전 파일로도 남긴다 — 최대 log_max_mb × (log_backups+1).
+    log_file: Path | None = None
+    log_max_mb: float = 5.0
+    log_backups: int = 3
 
     # ── 모의 Jetson 동작 파라미터 ───────────────────────────────────────────
     mock_powered_on_boot: bool = True  # 관리 서버 기동 시 모의 Jetson이 켜져 있는지
@@ -110,6 +122,11 @@ class Settings:
             power_mode=_env_str("SOUP_POWER_MODE", POWER_UNSUPPORTED),
             db_path=Path(db_path) if db_path else DEFAULT_DB_PATH,
             event_retention=_env_int("SOUP_EVENT_RETENTION", 5000),
+            event_retention_days=_env_int("SOUP_EVENT_RETENTION_DAYS", 90),
+            log_level=_env_str("SOUP_LOG_LEVEL", "INFO"),
+            log_file=Path(log_file) if (log_file := os.environ.get("SOUP_LOG_FILE")) else None,
+            log_max_mb=_env_float("SOUP_LOG_MAX_MB", 5.0),
+            log_backups=_env_int("SOUP_LOG_BACKUPS", 3),
             mock_powered_on_boot=_env_str("SOUP_MOCK_POWERED", "1") not in ("0", "false", "no"),
             mock_boot_host_sec=_env_float("SOUP_MOCK_BOOT_HOST", 3.0),
             mock_boot_api_sec=_env_float("SOUP_MOCK_BOOT_API", 8.0),

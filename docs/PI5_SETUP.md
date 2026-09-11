@@ -206,6 +206,23 @@ systemctl status soup-pi-server --no-pager
 > **서비스 파일의 `User=` · `WorkingDirectory=` · `ExecStart=` 경로**가 실제 계정/경로와
 > 맞는지 확인할 것(기본값은 `yj-rpi`).
 
+**로그 확인** — 서비스 로그는 journald로 간다:
+
+```bash
+journalctl -u soup-pi-server -f              # 실시간
+journalctl -u soup-pi-server --since today   # 오늘치
+```
+
+장비 운영 이력(촬영·오류·조작)은 서비스 로그가 아니라 **SQLite에 따로** 쌓이고
+관리 화면 하단에 보인다. **보존 기간(기본 5000건/90일)이 지나면 사라지므로,
+실험이 끝나면 내보내 둘 것**:
+
+```bash
+curl -OJ "http://localhost:8100/api/events/export?format=csv"
+```
+
+자세한 로그 정책은 `pi-server/README.md`의 "로그" 절 참고.
+
 **실제 Jetson 연결로 전환** — `/etc/default/soup-pi-server`에서:
 
 ```dotenv

@@ -223,6 +223,71 @@ def test_config_roundtrip_and_snapshot_into_session(client):
     assert "config.updated" in codes(client)
 
 
+def test_logging_is_configured_by_create_app(client_factory, tmp_path):
+    """systemd는 main()을 거치지 않고 uvicorn으로 앱을 불러온다.
+
+    로깅 설정이 main()에만 있으면 배포 환경에서 앱 로그가 사라진다 — 그 회귀를 막는다.
+    """
+    import logging
+
+    from app.logging_setup import reset_for_tests
+
+    reset_for_tests()
+    log_path = tmp_path / "logs" / "server.log"
+    client = client_factory(log_file=log_path, log_level="INFO")
+
+    root = logging.getLogger()
+    assert root.handlers, "create_app()이 루트 로거를 설정해야 한다"
+    logging.getLogger("app.test").info("테스트 로그 한 줄")
+    refresh(client)
+
+    assert log_path.exists(), "SOUP_LOG_FILE을 주면 파일로도 남아야 한다"
+    assert "테스트 로그 한 줄" in log_path.read_text(encoding="utf-8")
+    reset_for_tests()
+
+
+def test_event_export_csv_and_jsonl(client):
+    refresh(client)
+    client.post("/api/capture/start", json={"name": "내보내기 시험"})
+
+    csv_res = client.get("/api/events/export", params={"format": "csv"})
+    assert csv_res.status_code == 200
+    assert "attachment" in csv_res.headers["content-disposition"]
+    body = csv_res.content.decode("utf-8-sig")
+    assert body.startswith("id,ts,level,source,code,message,session_id,detail")
+    assert "내보내기 시험" in body
+
+    jsonl_res = client.get("/api/events/export", params={"format": "jsonl"})
+    assert jsonl_res.status_code == 200
+    lines = [line for line in jsonl_res.text.splitlines() if line.strip()]
+    assert all("code" in __import__("json").loads(line) for line in lines)
+
+
+def test_event_retention_applies_count_and_age(client, tmp_path):
+    """보존 정책은 건수·기간 둘 다 적용돼야 한다."""
+    from datetime import timedelta
+
+    from app.util import iso, utcnow
+
+    db = client.app.state.db
+    old_ts = iso(utcnow() - timedelta(days=200))
+    with db._lock:  # 오래된 기록을 직접 심는다(시간을 되돌릴 수 없으므로)
+        db._conn.execute(
+            "INSERT INTO events (ts, level, source, code, message) VALUES (?,?,?,?,?)",
+            (old_ts, "info", "pi", "test.old", "200일 전 기록"),
+        )
+        db._conn.commit()
+    assert any(e["code"] == "test.old" for e in db.list_events(limit=500))
+
+    db.prune_events(5000, 90)  # 기간(90일)에 걸려야 한다
+    assert not any(e["code"] == "test.old" for e in db.list_events(limit=500))
+
+    for i in range(30):  # 건수 제한도 동작하는지
+        db.log_event(level="info", source="pi", code=f"test.bulk{i}", message="채우기")
+    db.prune_events(10, 90)
+    assert len(db.list_events(limit=500)) <= 10
+
+
 def test_events_persist_across_server_restart(client_factory, tmp_path):
     first = client_factory()
     refresh(first)

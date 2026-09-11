@@ -6,9 +6,12 @@
 
 from __future__ import annotations
 
+import csv
+import io
+import json
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Query, Request
+from fastapi import APIRouter, Body, HTTPException, Query, Request, Response
 
 from .capture import CaptureConflict, CaptureService, CaptureUnavailable, SessionNotFound
 from .config import Settings
@@ -149,6 +152,46 @@ async def get_session(request: Request, session_id: str) -> SessionInfo:
 # ─────────────────────────────────────────────────────────────────────────────
 # 이벤트(오류·조작 이력)
 # ─────────────────────────────────────────────────────────────────────────────
+@router.get("/events/export")
+async def export_events(
+    request: Request,
+    format: str = Query("csv", pattern="^(csv|jsonl)$"),
+    days: int | None = Query(None, ge=1, le=3650, description="비우면 보관 중인 전체"),
+) -> Response:
+    """이벤트 이력 내보내기 — 과제 보고서·분석에 그대로 붙일 수 있는 형태.
+
+    보존 정책이 돌면 오래된 기록은 사라지므로, 실험 구간이 끝나면 내보내 두는 것이
+    안전하다. CSV는 Excel에서 한글이 깨지지 않도록 BOM을 붙인다.
+    """
+    rows = _db(request).export_events(days=days)
+    stamp = utcnow().strftime("%Y%m%d-%H%M%S")
+
+    if format == "jsonl":
+        body = "\n".join(json.dumps(row, ensure_ascii=False) for row in rows)
+        return Response(
+            content=body,
+            media_type="application/x-ndjson",
+            headers={"Content-Disposition": f'attachment; filename="events-{stamp}.jsonl"'},
+        )
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["id", "ts", "level", "source", "code", "message", "session_id", "detail"])
+    for row in rows:
+        writer.writerow(
+            [
+                row["id"], row["ts"], row["level"], row["source"], row["code"],
+                row["message"], row["session_id"] or "",
+                json.dumps(row["detail"], ensure_ascii=False) if row["detail"] else "",
+            ]
+        )
+    return Response(
+        content="﻿" + buffer.getvalue(),  # Excel용 BOM
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="events-{stamp}.csv"'},
+    )
+
+
 @router.get("/events", response_model=list[EventInfo])
 async def list_events(
     request: Request,
