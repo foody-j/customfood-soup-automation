@@ -102,6 +102,37 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 app = create_app()
 
 
+def _lan_ip() -> str | None:
+    """이 기기의 LAN IP. 실제로 패킷을 보내지는 않는다(라우팅 테이블만 조회)."""
+    import socket
+
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("192.168.0.1", 9))  # 연결 없는 UDP — 전송 없음
+            return sock.getsockname()[0]
+    except OSError:
+        return None
+
+
+def _print_urls(settings: Settings) -> None:
+    """접속 주소를 명시적으로 안내한다.
+
+    uvicorn은 `http://0.0.0.0:8100`이라고 출력하는데, 이건 "모든 인터페이스에
+    바인딩했다"는 뜻이지 브라우저가 접속할 주소가 아니다. 그대로 주소창에 넣으면
+    무한 로딩/백지가 된다 — 실제로 겪은 함정이라 여기서 바로잡아 준다.
+    """
+    port = settings.port
+    lines = [f"  이 Pi에서            http://localhost:{port}"]
+    ip = _lan_ip()
+    if ip:
+        lines.append(f"  같은 네트워크 다른 기기  http://{ip}:{port}")
+    print("\n관리 화면 주소")
+    print("\n".join(lines))
+    if settings.host == "0.0.0.0":  # noqa: S104 - 로컬망 전용 서버, 의도된 바인딩
+        print("  (아래 uvicorn이 찍는 0.0.0.0 은 바인딩 주소일 뿐 — 주소창에 넣지 말 것)")
+    print(f"  모드: jetson={settings.jetson_mode}, power={settings.power_mode}\n")
+
+
 def main() -> None:
     import uvicorn
 
@@ -109,6 +140,7 @@ def main() -> None:
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
     settings = Settings.from_env()
+    _print_urls(settings)
     uvicorn.run("app.main:app", host=settings.host, port=settings.port, reload=False)
 
 

@@ -308,6 +308,7 @@ sudo systemctl restart mosquitto
 
 | 증상 | 확인 |
 |------|------|
+| 관리 화면이 백지·무한 로딩 | **주소창이 `0.0.0.0:8100`이 아닌지 확인.** uvicorn이 찍는 `0.0.0.0`은 바인딩 주소라 접속 불가 → `localhost:8100`(Pi 자신) 또는 `<PiIP>:8100`(다른 기기) |
 | 관리 화면이 안 뜸 | `systemctl status soup-pi-server`, `journalctl -u soup-pi-server -e` |
 | 관리 화면에 "모의 모드" 배지 | `/etc/default/soup-pi-server`의 `SOUP_JETSON_MODE=http` 확인 후 재시작 |
 | Jetson이 계속 `수집 서비스 중단` | 호스트는 살아 있고 수집 서비스만 죽은 상태 — Jetson에서 서비스 재시작. (수집 서비스 구현 전에는 정상) |
