@@ -198,3 +198,28 @@
   접촉식 피에조를 솥에 부착(SNR 좋으나 내열·장착·세척 문제), I2S MEMS(JetPack 6 DTB 병합이
   카메라 오버레이와 충돌 위험).
 - **날짜:** 2026-09-11
+
+## D-020 · GMSL 카메라 캡처는 OpenCV가 아니라 V4L2 ioctl 직접 호출
+- **결정:** ISX031F 어댑터는 `cv2.VideoCapture` 대신 ctypes로 V4L2(mmap 스트리밍)를 직접 쓴다
+  (`jetson/collector/app/sensors/v4l2dev.py`). 구조체 크기·오프셋은 aarch64 커널 헤더로 검증.
+- **이유:** 2026-09-12 실측에서 OpenCV V4L2 백엔드는 링크가 끊긴 카메라에서도 `ok=True`로 전부 0인
+  프레임을 100fps로 돌려주고 `POS_MSEC`=0, 노출·게인=−1을 반환했다 → 유효성·누락·시각의 근거가 없다.
+  직접 DQBUF하면 `v4l2_buffer.sequence`(하드웨어 순번 → 누락 감지 근거), monotonic 타임스탬프
+  (`device_ts.clock=host_monotonic`), `V4L2_BUF_FLAG_ERROR`를 얻는다. 연구용 기록의 "누락을 근거 없이 0으로
+  단정하지 않는다" 요구를 만족하려면 이 정보가 필수다.
+- **대안:** OpenCV(정보 부족), GStreamer `v4l2src`(타임스탬프는 있으나 시퀀스·플래그 접근 불편, 파이프라인 의존),
+  `python-v4l2` 패키지(미설치·유지보수 정체).
+- **날짜:** 2026-09-12
+
+## D-021 · 세션 저장 레이아웃 — 프레임 파일 + 배열 레코드 + JSONL 인덱스, 버린 샘플도 인덱스에 남김
+- **결정:** `<root>/<session_id>/` 아래 `session.json`(메타)·`events.jsonl`·`stats.jsonl`·`manifest.json`,
+  스트림별 `index.jsonl` + 이미지는 `frames/NNNNNN.jpg`, 수치 배열(depth uint16 mm, thermal float32 ℃)은
+  `records.bin`(고정 크기 레코드, 인덱스에 offset·bytes). 대기열 초과로 **버린 샘플도 인덱스에 `path:null`,
+  `invalid_reason:writer_queue_full`로 남긴다.** `stopped`는 flush·close·manifest 기록 후에만 보고한다.
+  프로세스 중단으로 열린 채 남은 세션은 기동 시 `failed(interrupted)` + 파일 `partial`로 닫는다.
+- **이유:** 연구용 원본은 "무엇을 받았고 무엇을 저장했는지"가 프레임 단위로 재구성돼야 한다. 프레임 파일은
+  분석·라벨링 도구가 바로 읽고, 배열은 미리보기 이미지가 원본 수치를 대체하지 않도록 이진 그대로 둔다.
+  JSONL은 append-only라 중단돼도 앞부분이 살아남고 프레임마다 DB 동기 쓰기가 없다.
+- **대안:** 동영상 컨테이너(mp4/mkv) — Orin Nano는 NVENC가 없어 CPU 인코딩이며 프레임 단위 메타 결합이
+  약함(실측 후 7단계에서 재검토), SQLite 인덱스(동기 쓰기 부담), HDF5(부분 손상 시 복구 어려움).
+- **날짜:** 2026-09-12

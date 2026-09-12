@@ -1,0 +1,45 @@
+{
+ "device": "/dev/video4",
+ "link": {
+  "available": true,
+  "links": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "raw": "Link satus:0-0-0-0"
+ },
+ "controls": {
+  "exposure": 30,
+  "gain": 0,
+  "frame_rate": 30000000,
+  "sensor_mode": 0
+ },
+ "format": {
+  "width": 1920,
+  "height": 1536,
+  "pixel_format": "UYVY",
+  "bytesperline": 3840,
+  "sizeimage": 5898240,
+  "driver_fps": 30.0,
+  "driver": "tegra-video",
+  "card": "vi-output, fzcam 10-001a"
+ },
+ "frames": 8,
+ "elapsed_sec": 7.106,
+ "recv_fps": 1.13,
+ "seq_first": 0,
+ "seq_last": 0,
+ "seq_gaps": 0,
+ "timeouts": 3,
+ "error_flags": 0,
+ "blank_frames": 8,
+ "timestamp_clock": [
+  "host_monotonic"
+ ],
+ "ts_interval_ms_median": 0.0,
+ "dequeue_latency_ms_median": 97070327.437,
+ "jpeg_encode_ms_median": null,
+ "jpeg_bytes_median": null
+}

@@ -128,3 +128,17 @@ python3 jetson/bench/benchmark.py          # 결과 → notes/data/bench/summary
 ## 참고
 - PyTorch for Jetson (jetson-ai-lab 인덱스) — https://pypi.jetson-ai-lab.io/jp6/cu126
 - NVIDIA JetPack 6.2 릴리즈노트 — https://docs.nvidia.com/jetson/archives/jetpack-archived/jetpack-62/release-notes/
+
+---
+
+## 수집 서비스 (2026-09-12 추가)
+
+Pi 관리 서버의 상대편인 수집 서비스는 `jetson/collector/`에 있다. 설치·설정·저장 레이아웃·검증은
+`jetson/collector/README.md`, 계약은 `docs/pi-jetson-api.md`.
+
+```bash
+python3 -m venv ~/collector-venv --system-site-packages && ~/collector-venv/bin/pip install -r jetson/collector/requirements.txt
+sudo cp jetson/collector/systemd/jetson-collector.service /etc/systemd/system/
+sudo cp jetson/collector/systemd/jetson-collector.env /etc/default/jetson-collector
+sudo systemctl daemon-reload && sudo systemctl enable --now jetson-collector
+```

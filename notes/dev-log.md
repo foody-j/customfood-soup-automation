@@ -84,6 +84,36 @@
   관리 화면 이벤트 카드에 CSV/JSONL 링크 노출.
 - `docs/jetson-collector-brief.md`에 §5.5 로깅 절 추가 — Jetson 수집 서비스도 같은 원칙으로
   만들도록 지시(특히 배포 경로 로깅 함정, 프레임마다 로그 찍지 말 것, 회전 필수).
+## 2026-09-12 — Jetson 수집 서비스 1차 구현 (플랜 3단계, Jetson에서 작업)
+
+- **`jetson/collector/` 신설** — Python 3.10 + FastAPI, `~/collector-venv`(--system-site-packages로 JetPack cv2 사용).
+  계약(`docs/pi-jetson-api.md`)대로 status/start/stop/shutdown + 확장(`sessions`, `capture/config`).
+  결정 2건: **D-020** V4L2 ioctl 직접 호출, **D-021** 저장 레이아웃.
+- **구성**: `session.py`(상태기계·센서별 수집 스레드·1초 통계·디스크 감시) · `storage.py`(스트림 기록기·
+  유한 대기열·index.jsonl 버퍼 flush·manifest·복구·백그라운드 체크섬) · `sensors/`(mock 5종 / v4l2 ISX031F /
+  unsupported Gemini 2·MLX90640·MLX90614) · `sysmon.py`(5초 시스템 상태) · `service.py`(세션 소유·probe 캐시·
+  정상 종료 순서) · systemd 유닛.
+- **실기기에서 확인한 것(문서와 달랐던 점)**:
+  - OpenCV V4L2 백엔드는 링크 없는 `/dev/video4`에서 `ok=True`·전부 0 프레임·`POS_MSEC`=0·노출/게인 −1을
+    돌려줌 → 신뢰 불가. 직접 ioctl로 바꾸고 C 헤더로 구조체 크기 검증(v4l2_buffer 88B, ts@24, seq@56).
+  - 직접 DQBUF 결과(링크 없음): 2초 타임아웃 사이에 sequence=0·timestamp=0·전부 0 프레임이 간헐 출력
+    → `blank_frame`으로 `valid=false`. `notes/data/experiments/20260912_isx031f_v4l2_link-down_check.md`.
+  - `/sys/devices/virtual/thermal/thermal_zone{2,3,4}`(cv*)는 EAGAIN → 온도 항목 null 처리.
+  - systemd-timesyncd는 NTP 오프셋을 노출하지 않음 → `clock.ntp_offset_ms: null`, 지터·루트분산만 기록.
+  - Orbbec USB 없음·pyorbbecsdk 없음, MLX I2C 응답 없음 → 어댑터를 만들지 않고 `connected:false + reason`.
+- **테스트 21개 통과**(`pytest -q`, 모의 센서·임시 경로): Pi 계약 모델(`pi-server/app/models.py`)로 응답 교차
+  검증, 중복 시작 200 거절·같은 ID 멱등, stop 저장 완료 후 응답·멱등, 종료 중 status, 센서 분리/재연결,
+  전 센서 open 실패, 쓰기 실패→failed, 디스크 부족 시작 거절·진행 중 안전 종료, 대기열 초과 계수+인덱스 기록,
+  프로세스 재시작 후 미완료 세션 `failed(interrupted)`·partial, shutdown 순서, 설정 변경 전후 기록, depth 3스트림 분리.
+- **Pi 왕복(실제 Pi 클라이언트 코드, Jetson 로컬 8101에 HTTP 모드로 기동)**: 시작→세션 디렉터리 생성 → 중복 시작
+  Pi 409 → 중지 0.07s·manifest stopped → 서비스만 SIGINT → Pi `service_down`("OS는 살아 있고 수집 서비스만 무응답")
+  → 재기동 후 Jetson 단독 세션 → Pi `session.adopted`로 인계 → Pi에서 중지 성공. **실기 Pi(10.42.0.1:8100)는
+  이 시점에 무응답이라 실기 왕복·랜선 뽑기 시험은 미실시**(SSH 키 없음 — Pi 설정은 사람이 해야 함).
+  - 관찰: Pi 이벤트에 `session.orphaned`→`session.adopted`가 시작 직후 한 번 찍힘. 시작 명령 **직전에 받은
+    낡은 status 보고**를 시작 후 재동기화에 쓰는 Pi 쪽 경합(`monitor.probe_once` → `reconcile`). Jetson 문제 아님.
+- **미실시/남은 것**: ISX031F 실측(FPS·CPU·JPEG·기록 속도)은 카메라 보드 전원 연결 후 `tools/v4l2_check.py --jpeg`,
+  Gemini 2·MLX 어댑터는 실물 확보 후, Pi 화면에 확장 필드(스트림 통계·recovered) 표시, 위 Pi 경합 수정.
+
 ## 2026-09-11 — 음향(소리) 센서 방법론 조사 + Jetson 실기기 상태 확인 (플랜 3단계 착수 전)
 
 - **음향 조사** → `docs/research-methodology-4-acoustic.md` (소스 16건). 질문 "소리 센서 헤비한가, FFT로 되나".
@@ -92,7 +122,7 @@
   못 얻는다.** 국/탕·급식 주방 특유 문제 = 복수 솥 소스 분리·후드 소음(공기 마이크 감쇠·잡음은 2025
   논문이 명시). 권고: 수집 단계에 USB 마이크 원시 WAV 저장만 추가하고 모델 사용은 8단계에서 판단.
   I2S MEMS는 JetPack 6 DTB 병합 필요 + 카메라 DTB 오버레이와 충돌 위험이라 배제.
-  → 사용자 결정 **D-016: 마이크 미채택**(doneness 정보 없음 + 복수 솥/후드 소음 리스크).
+  → 사용자 결정 **D-019: 마이크 미채택**(doneness 정보 없음 + 복수 솥/후드 소음 리스크).
 - **Jetson 실기기 확인(지시서 1절)** — 코드 작성 전 보고 완료:
   - `/dev/video4`(ISX031F) 노드·드라이버 있음, UYVY/NV16 640x514~3840x2160 모두 30fps 고정.
     **그러나 캡처 실패**: `fzcam_cfg` → `Link satus:0-0-0-0`, i2c 버스 9·10 모두 0x29(디시리얼라이저)

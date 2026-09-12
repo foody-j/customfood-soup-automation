@@ -121,6 +121,24 @@ Pi의 실험 기록 기능이 쓰는 값이다. **전부 선택(optional)** 이�
 `kind` 값(현재): `rgb_gmsl2` · `depth_usb` · `thermal_i2c` · `point_temp_i2c`.
 새 종류는 이 문서와 `pi-server/app/models.py`에 함께 추가한다.
 
+### 확장 필드 (2026-09-12, Jetson 구현이 추가로 보냄 — Pi는 무시해도 됨)
+
+계약 필드의 **타입은 바꾸지 않았다.** 아래는 Jetson이 덧붙이는 값이며 Pi 화면이 쓰려면
+`pi-server/app/models.py`에 같은 이름으로 추가하면 된다(없어도 파싱은 통과한다).
+
+| 위치 | 필드 | 뜻 |
+|---|---|---|
+| 최상위 | `device_id`, `schema_version`, `sensor_mode` | 장치 식별·저장 스키마 버전·센서 모드(mock/auto/real) |
+| 최상위 | `clock` | `boot_id`, `monotonic_ns`, `realtime_minus_monotonic_ns`, `ntp_synchronized`, `ntp_offset_ms`(미확인이면 null), `ntp_jitter_ms`, `ntp_root_dispersion_ms` |
+| 최상위 | `system` | CPU·GPU·메모리·온도·디스크 스냅샷(약 5초 주기, 측정 불가 항목 null) |
+| 최상위 | `last_session` | 마지막으로 끝난 세션 요약(`end_reason`, 경로, manifest 요약) |
+| 최상위 | `recovered_sessions` | 기동 시 발견한 **중단된** 세션 목록(완료로 보고하지 않음) |
+| 최상위 | `errors` | 서비스 수준 오류 최근 목록 |
+| `capture` | `phases` | `requested`/`starting`/`running`/`stop_requested`/`stopping`/`files_closed`/`completed` 시각(UTC), 스트림별 `first_sample:*` |
+| `capture` | `streams[]` | 스트림별 `received`/`written`/`bytes_written`/`invalid`/`dropped{사유:수}`/`gaps_detected`(근거 없으면 null)/`backlog`/`recv_fps`/`write_fps`/`connected`/`reconnects` |
+| `capture` | `frames_dropped_detected`, `frames_invalid`, `writer_backlog`, `checksum_state`, `stop_reason`, `name` | 집계·상태 |
+| `sensors[]` | `model`, `serial`, `driver`, `verified`, `reason`, `streams` | `verified`=실기기로 검증됐는지(코드가 있어도 검증 전이면 false). `reason`=미연결 사유 |
+
 ## 3. `POST /api/v1/capture/start`
 
 ```jsonc
@@ -147,6 +165,13 @@ Pi의 실험 기록 기능이 쓰는 값이다. **전부 선택(optional)** 이�
 - **저장 완료 후** 응답한다. `state: "stopped"`는 "원본 기록이 끝났다"는 뜻이다.
 - 이미 멈춘 세션에 대한 중지는 `accepted: true`(멱등) — Pi는 통신 실패 시 재시도한다.
 - 세션 ID가 현재 진행 중인 것과 다르면 `accepted: false`.
+- **Pi 타임아웃(2초)보다 저장 마무리가 길 수 있다.** 그 경우 Pi는 `ReadTimeout`으로 세션을
+  `stopping`에 두고(`capture.stop_deferred`), 이후 status의 `capture.state == stopped`를 보고
+  `capture.stop_confirmed`로 마무리한다. Jetson은 `COLLECTOR_STOP_WAIT`(기본 120초)까지 기다린 뒤
+  그래도 안 끝나면 `accepted:true, state:"stopping"`으로 응답한다 — Pi는 이 응답을 받으면
+  세션을 `stopped`로 표시하므로(현 구현) 이 경로는 사실상 status 재동기화에 맡긴다.
+- 진행 중 세션이 없으면 어떤 `session_id`든 `accepted: true`(멱등 — 이미 멈춰 있음).
+- 끝난 세션의 `session_id`로 다시 start하면 `accepted:false`(저장 디렉터리가 겹치므로). 새 ID가 필요하다.
 
 ## 5. `POST /api/v1/system/shutdown`
 
@@ -182,10 +207,20 @@ Pi와의 연결은 관리 경로일 뿐 수집의 전제가 아니다(플랜 §4
 |---|---|
 | `sensors[].stats` · `last_session_summary` | **정의됨, Jetson 미구현** — §2.1. 모의 구현은 `pi-server/app/jetson/mock.py` |
 | `GET /api/v1/preview/{sensor_id}.jpg` (저해상 미리보기) | **미정의** — 플랜 3단계에서 추가 |
+| `GET /api/v1/preview/{sensor_id}.jpg` (저해상 미리보기) | **미정의** — 3단계 범위에서 제외(원본 저장 우선). 추가 시 미리보기가 원본을 대체하지 않는다는 규칙 유지 |
 | 센서별 설정 조회/변경 (`/api/v1/sensors/...`) | 미정의 — 4단계 |
 | 인증 | 없음(로컬 유선망 전제). 운영 전 재검토 |
-| 시계 오프셋 보고 | 미정의 — 장치 간 동기화 실측(5단계) 때 필드 추가 |
+| 시계 오프셋 보고 | 확장 필드 `clock`으로 1차 제공(NTP 오프셋은 timesyncd가 노출하지 않아 null). 장치 간 보정은 5단계 |
 
-Jetson 쪽 구현은 아직 없다. Pi 쪽 클라이언트는
-`pi-server/app/jetson/http_client.py`에 이 계약대로 이미 작성돼 있어,
-`SOUP_JETSON_MODE=http`로 바꾸면 바로 붙는다.
+### Jetson 쪽 추가 엔드포인트 (2026-09-12, 계약 확장 — Pi 클라이언트는 아직 쓰지 않음)
+
+| 엔드포인트 | 뜻 |
+|---|---|
+| `GET /api/v1/health` | 생존 확인 `{ok:true}` |
+| `GET /api/v1/sessions?limit=` | 저장된 세션 목록(session.json 요약) |
+| `GET /api/v1/sessions/{session_id}` | `session`(메타) + `manifest`(결과 목록) + `live`(진행 중이면 현재 통계) |
+| `POST /api/v1/capture/config` | 실험 중 설정 변경 `{session_id?, sensor_id, changes}` → `{applied, before, after}` 또는 `{accepted:false, message}`. 변경 시각·전후 값이 세션 기록에 남는다 |
+
+Jetson 구현: `jetson/collector/` (README 참고). Pi 쪽 클라이언트
+`pi-server/app/jetson/http_client.py`는 `SOUP_JETSON_MODE=http`로 바꾸면 그대로 붙는다
+(2026-09-12 Jetson에서 Pi 서버 코드를 HTTP 모드로 띄워 왕복 검증 완료 — `notes/dev-log.md`).
