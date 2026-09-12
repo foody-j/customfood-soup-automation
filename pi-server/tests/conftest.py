@@ -30,6 +30,8 @@ def make_settings(tmp_path: Path, **overrides) -> Settings:
         mock_boot_host_sec=0.0,
         mock_boot_api_sec=0.0,
         mock_shutdown_sec=0.05,
+        # 지표 루프도 사실상 멈춰 둔다 — 필요할 때 POST /api/metrics/sample로 찍는다
+        metrics_interval_sec=3600.0,
     )
     return base.replace(**overrides)
 

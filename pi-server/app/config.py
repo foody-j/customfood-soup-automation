@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import os
+import socket
 from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import urlparse
@@ -93,6 +94,19 @@ class Settings:
     #: 이 서버 자신의 표시용 이름(여러 대 운용 시 구분)
     site_name: str = "국·탕 실험장치 관리 서버"
 
+    # ── 식별자 ─────────────────────────────────────────────────────────────
+    #: 다른 연구과제와 기록을 섞지 않기 위한 과제 식별자. 기록·내보내기에 항상 실린다.
+    project_id: str = "customfood-soup"
+    #: 이 Pi를 식별한다(같은 과제에 장치가 여러 대일 수 있다). 기본값은 호스트명.
+    device_id: str = ""
+
+    # ── Pi 자체 운영 지표 ───────────────────────────────────────────────────
+    metrics_enabled: bool = True
+    #: 정상 상태 측정 간격. 5~10초부터 시작하고 필요하면 늘린다.
+    metrics_interval_sec: float = 10.0
+    metrics_retention: int = 20000
+    metrics_retention_days: int = 14
+
     @property
     def jetson_host(self) -> str:
         return urlparse(self.jetson_base_url).hostname or "unknown"
@@ -134,6 +148,12 @@ class Settings:
             host=_env_str("SOUP_HOST", "0.0.0.0"),
             port=_env_int("SOUP_PORT", 8100),
             site_name=_env_str("SOUP_SITE_NAME", "국·탕 실험장치 관리 서버"),
+            project_id=_env_str("SOUP_PROJECT_ID", "customfood-soup"),
+            device_id=_env_str("SOUP_DEVICE_ID", socket.gethostname()),
+            metrics_enabled=_env_str("SOUP_METRICS_ENABLED", "1") not in ("0", "false", "no"),
+            metrics_interval_sec=_env_float("SOUP_METRICS_INTERVAL", 10.0),
+            metrics_retention=_env_int("SOUP_METRICS_RETENTION", 20000),
+            metrics_retention_days=_env_int("SOUP_METRICS_RETENTION_DAYS", 14),
         )
         if settings.jetson_mode not in (MODE_MOCK, MODE_HTTP):
             raise ValueError(f"SOUP_JETSON_MODE 값이 잘못됨: {settings.jetson_mode!r}")

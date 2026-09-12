@@ -64,6 +64,51 @@ SSH를 막았다면 `SOUP_JETSON_PROBE_PORT`를 상시 열린 다른 포트로 �
 }
 ```
 
+### 2.1 확장 필드 — **Jetson이 추가로 제공해야 할 것** (2026-09-12 추가)
+
+Pi의 실험 기록 기능이 쓰는 값이다. **전부 선택(optional)** 이라 없어도 기존 동작은
+그대로지만, 없으면 Pi 화면·내보내기에 `미확인`으로 표시된다.
+
+```jsonc
+{
+  "sensors": [
+    {
+      "sensor_id": "cam_rgb_0", "kind": "rgb_gmsl2", "connected": true, "simulated": false,
+      "stats": {                       // ← ① 센서별 수집 통계 (누적)
+        "frames_written": 12040,
+        "frames_dropped": 3,
+        "bytes_written": 2170000000,   // 모르면 생략/null
+        "fps_measured": 9.8,           // 실제 측정 FPS
+        "last_frame_at": "2026-09-12T05:00:00.000Z"  // 장치 시각
+      }
+    }
+  ],
+  "last_session_summary": {            // ← ② 가장 최근에 **닫힌** 세션의 저장 결과
+    "session_id": "sess-20260912T040348Z-62fe",
+    "path": "/data/raw/sess-...",
+    "files": 155,
+    "bytes_written": 27900000,
+    "frames_written": 310,
+    "frames_dropped": 0,
+    "closed_at": "2026-09-12T04:03:52.000Z",   // 저장 완료 시각(장치 시각)
+    "ok": true,                                 // 온전히 끝났는지. 모르면 null
+    "note": null
+  }
+}
+```
+
+**왜 필요한가**
+
+- ① `stats` — Pi는 프레임 단위 기록을 가져오지 않는다(원본은 Jetson 것). 대신 이
+  누적 요약만 받아 "어느 센서가 얼마나 찍혔고 얼마나 놓쳤는지"를 화면에 표시한다.
+- ② `last_session_summary` — **Pi는 중지 응답만으로 "저장 완료"라고 기록하지 않는다.**
+  이 요약을 받아야 비로소 `capture.save_confirmed` 사건을 남기고 실험 기록에 박제한다.
+  요약이 오지 않으면 그 실험의 저장 결과는 영원히 `미확인`으로 남는다.
+  → **세션을 닫을 때 반드시 채울 것.** `ok=false`면 Pi가 `capture.save_incomplete`(error)로 남긴다.
+
+`closed_at`·`last_frame_at`은 **장치 시각**이다. Pi는 이를 사건의 `occurred_at`에 넣고
+자신이 받은 시각은 `ts`에 따로 남긴다(둘을 섞지 않는다).
+
 **필드 규약**
 
 - `sensors[].simulated` — 실물 연동이 끝나지 않은 센서는 반드시 `true`. 모의 구현을
@@ -135,6 +180,7 @@ Pi와의 연결은 관리 경로일 뿐 수집의 전제가 아니다(플랜 §4
 
 | 항목 | 상태 |
 |---|---|
+| `sensors[].stats` · `last_session_summary` | **정의됨, Jetson 미구현** — §2.1. 모의 구현은 `pi-server/app/jetson/mock.py` |
 | `GET /api/v1/preview/{sensor_id}.jpg` (저해상 미리보기) | **미정의** — 플랜 3단계에서 추가 |
 | 센서별 설정 조회/변경 (`/api/v1/sensors/...`) | 미정의 — 4단계 |
 | 인증 | 없음(로컬 유선망 전제). 운영 전 재검토 |

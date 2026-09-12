@@ -24,12 +24,15 @@ from fastapi.staticfiles import StaticFiles
 from .capture import CaptureService
 from .config import STATIC_DIR, Settings
 from .db import Database
+from .hostmetrics import HostMetricsRecorder
+from .identity import Identity
 from .jetson import create_jetson_client
 from .logging_setup import configure_logging
 from .models import EventLevel
 from .monitor import JetsonMonitor
 from .power import create_power_controller
 from .routes import mock_router, router
+from .util import new_boot_id
 
 log = logging.getLogger(__name__)
 
@@ -41,34 +44,59 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @contextlib.asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        # 기동 시 한 번 보존 정책 적용 — 꺼져 있던 동안 기간이 지난 기록을 정리한다
-        removed = app.state.db.prune_events(
-            settings.event_retention, settings.event_retention_days
-        )
+        db: Database = app.state.db
+        # 기동 시 한 번 보존 정책 적용 — 꺼져 있던 동안 기간이 지난 기록을 정리한다.
+        # 실험 기록(session_id가 붙은 사건)과 세션 자체는 대상이 아니다.
+        removed = db.prune_events(settings.event_retention, settings.event_retention_days)
+        removed += db.prune_metrics(settings.metrics_retention, settings.metrics_retention_days)
         if removed:
-            log.info("보존 정책으로 이벤트 %d건 정리", removed)
-        app.state.db.log_event(
+            log.info("보존 정책으로 운영 기록 %d건 정리", removed)
+        db.log_event(
             level=EventLevel.INFO,
             source="pi",
             code="server.started",
             message=(
                 f"관리 서버 기동 (jetson={settings.jetson_mode}, power={settings.power_mode})"
             ),
-            detail={"jetson_url": app.state.jetson.base_url},
+            detail={
+                "jetson_url": app.state.jetson.base_url,
+                "boot_id": app.state.identity.boot_id,
+                "schema_version": db.schema_version,
+                "project_id": app.state.identity.project_id,
+                "device_id": app.state.identity.device_id,
+            },
         )
+        # 미완결로 남은 세션이 있으면 재시작 사실을 기록으로 남긴다.
+        # (임의로 닫지 않는다 — 재접속 후 Jetson과 대조해서 정한다)
+        stale_session = db.active_session()
+        if stale_session is not None:
+            db.log_event(
+                level=EventLevel.WARN,
+                source="pi",
+                code="session.reopened_after_restart",
+                message=(
+                    f"서버 재시작 — 진행 중이던 세션이 남아 있음: {stale_session['session_id']}"
+                    " (Jetson과 대조해 확정한다)"
+                ),
+                session_id=stale_session["session_id"],
+                detail={"state": stale_session["state"]},
+            )
         await app.state.monitor.start()
+        await app.state.metrics.start()
         try:
             yield
         finally:
+            await app.state.metrics.stop()
             await app.state.monitor.stop()
             await app.state.jetson.close()
-            app.state.db.log_event(
+            db.log_event(
                 level=EventLevel.INFO,
                 source="pi",
                 code="server.stopped",
-                message="관리 서버 종료",
+                message="관리 서버 정상 종료",
+                detail={"boot_id": app.state.identity.boot_id},
             )
-            app.state.db.close()
+            db.close()
 
     app = FastAPI(
         title="국·탕 실험장치 Pi 관리 서버",
@@ -81,18 +109,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     db = Database(settings.db_path)
+    boot_id = new_boot_id()
+    identity = Identity(settings, db, boot_id)
     jetson = create_jetson_client(settings)
     power = create_power_controller(settings, jetson)
     monitor = JetsonMonitor(settings, db, jetson, power)
-    capture = CaptureService(settings, db, jetson)
+    capture = CaptureService(settings, db, jetson, identity)
+    metrics = HostMetricsRecorder(settings, db, boot_id)
     monitor.set_report_hook(capture.reconcile)
 
     app.state.settings = settings
     app.state.db = db
+    app.state.identity = identity
     app.state.jetson = jetson
     app.state.power = power
     app.state.monitor = monitor
     app.state.capture = capture
+    app.state.metrics = metrics
 
     app.include_router(router)
     if settings.is_mock_jetson:

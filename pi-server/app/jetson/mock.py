@@ -22,7 +22,9 @@ from ..models import (
     JetsonCapture,
     JetsonReport,
     SensorInfo,
+    SensorStats,
     StorageInfo,
+    StorageResult,
 )
 from ..util import utcnow_iso
 from .base import JetsonUnreachable
@@ -58,6 +60,8 @@ class MockJetsonClient:
         self._capture_config: dict[str, Any] = {}
         self._capture_started_mono: float | None = None
         self._used_bytes = 12 * 1000**3
+        #: 가장 최근에 닫힌 세션의 저장 결과 요약(실물 Jetson이 채워야 할 필드)
+        self._last_summary: StorageResult | None = None
         #: 네트워크만 끊긴 상황(전원은 살아 있음)을 재현하는 스위치 — 테스트·시연용
         self.link_cut = False
 
@@ -154,9 +158,11 @@ class MockJetsonClient:
                     connected=True,
                     simulated=True,
                     detail=detail,
+                    stats=self._sensor_stats(),
                 )
                 for sid, kind, detail in MOCK_SENSORS
             ],
+            last_session_summary=self._last_summary,
             mock=True,
         )
 
@@ -210,6 +216,7 @@ class MockJetsonClient:
             )
         if self._capture_started_mono is not None:
             self._used_bytes += int((time.monotonic() - self._capture_started_mono) * _BYTES_PER_SEC)
+        self._last_summary = self._build_summary()
         self._capture = JetsonCapture(
             state=CaptureState.STOPPED,
             session_id=self._capture.session_id,
@@ -234,6 +241,39 @@ class MockJetsonClient:
             session_id=self._capture.session_id,
             state=self._capture.state,
             message="정상 종료 진행 중",
+        )
+
+    def _sensor_stats(self) -> SensorStats | None:
+        """센서별 누적 통계(모의). 실물에서는 어댑터가 실제로 센 값을 채운다."""
+        if self._capture.state is not CaptureState.RUNNING:
+            return None
+        per_sensor = max(1, len(MOCK_SENSORS))
+        written = self._capture.frames_written // per_sensor
+        return SensorStats(
+            frames_written=written,
+            frames_dropped=0,
+            bytes_written=written * 180_000,
+            fps_measured=float(self._capture_config.get("fps") or 10),
+            last_frame_at=utcnow_iso(),
+        )
+
+    def _build_summary(self) -> StorageResult:
+        """세션을 닫을 때 만드는 저장 결과 요약.
+
+        **저장이 끝난 뒤에 확정한다** — Pi는 이 요약을 받아야 비로소
+        '저장 완료'로 기록한다(중지 응답만으로는 확정하지 않는다).
+        """
+        frames = self._capture.frames_written
+        return StorageResult(
+            session_id=self._capture.session_id or "",
+            path=f"/data/raw/{self._capture.session_id}",
+            files=frames * len(MOCK_SENSORS),
+            bytes_written=frames * 180_000 * len(MOCK_SENSORS),
+            frames_written=frames,
+            frames_dropped=self._capture.frames_dropped,
+            closed_at=utcnow_iso(),
+            ok=True,
+            note="모의 저장 결과 — 실제 파일은 없다",
         )
 
     async def close(self) -> None:  # 인터페이스 맞춤용

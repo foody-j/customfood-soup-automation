@@ -62,6 +62,56 @@ Pi가 프로브로 **알 수 있는 사실**은 두 가지뿐이다.
 - **통신 단절만으로 서버가 하는 조치는 없다.** 기록하고 표시할 뿐, 전원을 끄거나 세션을
   지우지 않는다(플랜 §4·§5).
 
+## 실험 관리 — 무엇을 어디에 남기는가
+
+| 기록 | 어디에 | 특징 |
+|---|---|---|
+| **실험(세션)** | `sessions` | 이름·재료·조건·메모 + **설정 스냅샷** + Jetson 저장 결과 요약 |
+| **사건** | `events` | 조작·상태변화·오류·**수동 입력**(재료 투입/가열/교반/메모) |
+| **Pi 운영 지표** | `host_metrics` | CPU·메모리·온도·디스크 (주기 측정) |
+
+### 공통 식별자
+
+모든 기록에 `schema_version` · `project_id` · `session_id` · `device_id`가 따라붙는다.
+다른 연구과제의 기록과 섞이지 않게 하려는 것이라, **세션에는 시작 시점의 값이 박제된다**
+— 나중에 `project_id`를 바꿔도 과거 실험의 소속은 변하지 않는다.
+
+```bash
+curl -X PUT localhost:8100/api/identity -H 'content-type: application/json' \
+     -d '{"project_id":"customfood-soup","device_id":"pi-lab-01"}'
+```
+
+### 설정 스냅샷
+
+촬영을 시작하면 그 시점의 `/api/config` 값이 세션에 복사된다. 이후 전역 설정을 바꿔도
+**과거 실험의 조건 기록은 변하지 않는다.** 실험 조건을 나중에 추적할 수 있어야 하기 때문.
+
+### 사건의 시각 — 세 가지를 구분한다
+
+| 필드 | 뜻 |
+|---|---|
+| `ts` | **Pi가 기록한 시각** (항상 있음) |
+| `occurred_at` | **실제 발생 시각** — 장치가 알려줬거나 사람이 사후 입력한 경우. 모르면 `null` |
+| `detail.sent_at` / `detail.confirmed_at` | 명령을 **보낸 시각**과 Jetson **확인 응답을 받은 시각** |
+
+`occurred_at`이 `null`이면 "모른다"는 뜻이다 — `ts`를 복사해 발생 시각인 척하지 않는다.
+경과시간(`latency_ms`)은 벽시계가 아니라 **monotonic 시계**로 잰다(NTP 보정에 흔들리지
+않게). 서로 다른 기기의 monotonic 값은 절대 직접 비교하지 않는다.
+
+### 사실을 부풀리지 않는 두 지점
+
+- **시작 요청 성공 ≠ 촬영 시작** — `capture.start_requested`(보냄)와 `capture.started`
+  (Jetson이 확인함)가 다른 사건으로 남는다.
+- **중지 응답 ≠ 저장 완료** — 중지 확인은 `capture.stopped`, Jetson이 **저장 결과 요약**을
+  보내줘야 `capture.save_confirmed`가 남고 세션에 박제된다. 요약이 없으면 화면·내보내기에
+  저장 결과가 `미확인`으로 표시된다.
+
+### 조작 출처
+
+인증 기능이 없으므로 **사용자 신원을 지어내지 않는다.** 사건에는 관측 가능한 사실만
+남긴다 — `source`는 `ui`(화면) / `api`(스크립트), `detail`에 `client_host`와
+`authenticated: false`.
+
 ## 촬영 세션
 
 - Pi가 `session_id`(`sess-20260911T143000Z-a1b2`)를 만들어 Jetson에 내려보낸다.
@@ -147,7 +197,19 @@ Pi가 프로브로 **알 수 있는 사실**은 두 가지뿐이다.
 | `session.adopted` | warn | Pi가 모르던 세션을 Jetson에서 인계받음 |
 | `session.orphaned` | warn | Pi는 진행 중으로 알았으나 Jetson은 아님 → "확인 불가"로 표시 |
 | `session.mismatch` | error | 양쪽이 **서로 다른 세션**을 진행 중이라 믿음. Jetson 쪽 채택 |
-| `config.updated` | info | 실험 설정 변경 |
+| `capture.start_called` · `capture.stop_called` | info | API 호출 접수(출처·request_id 기록) |
+| `capture.start_rejected_local` | warn | 이미 진행 중이라 Pi가 자체 거절 |
+| `capture.device_started` | info | Jetson이 보고한 **장치 기준 시작 시각**(`occurred_at`) |
+| `capture.save_confirmed` | info | **저장 결과 요약 수신 — 저장 완료 확정** |
+| `capture.save_incomplete` | error | 저장이 온전히 끝나지 않음(`ok=false`) |
+| `mark.ingredient` · `mark.heat` · `mark.stir` · `mark.note` | info | **수동 입력 사건**(`origin=manual`) |
+| `session.info_updated` | info | 실험 정보 수정(변경 전후 기록) |
+| `session.reopened_after_restart` | warn | 서버 재시작 시 미완결 세션이 남아 있었음 |
+| `host.disk_low` · `host.disk_ok` | warn/info | Pi 디스크 여유 임계값 넘나듦 |
+| `host.temp_high` · `host.temp_ok` | warn/info | Pi 온도 임계값 넘나듦 |
+| `identity.updated` | info | 과제·장치 식별자 변경 |
+| `backup.downloaded` | info | DB 백업 내려받음 |
+| `config.updated` | info | 실험 설정 변경(변경 전후 기록) |
 | `power.on` · `power.shutdown` | info | 전원 조작 (모의면 `detail.simulated=true`) |
 | `power.force-off` | warn | 강제 전원 차단 |
 | `power.*_unsupported` | warn | 전원 회로 미구성 상태에서 조작을 시도해 거절됨 |
@@ -158,7 +220,10 @@ Pi가 프로브로 **알 수 있는 사실**은 두 가지뿐이다.
 
 ### 반드시 알아둘 것
 
-- **이벤트는 보존 기간이 지나면 사라진다.** 실험 구간이 끝나면 관리 화면의
+- **실험 기록은 자동으로 지워지지 않는다.** 보존 정책(정리)의 대상은 세션과 무관한
+  운영 로그와 `host_metrics`뿐이다. `sessions`와 **`session_id`가 붙은 사건**은 건드리지
+  않는다 — 연구 기록을 로그 정리로 잃지 않기 위한 규칙이다.
+- **운영 이벤트는 보존 기간이 지나면 사라진다.** 실험 구간이 끝나면 관리 화면의
   `내보내기: CSV`로 받아 두는 것이 안전하다. 과제 보고서에 그대로 붙일 수 있게
   시간 오름차순 + Excel용 BOM으로 내보낸다.
   ```bash
@@ -195,7 +260,11 @@ Pi가 프로브로 **알 수 있는 사실**은 두 가지뿐이다.
 | `SOUP_LOG_LEVEL` | `INFO` | 로그 레벨 |
 | `SOUP_LOG_FILE` | (없음) | 지정하면 회전 파일로도 기록 |
 | `SOUP_LOG_MAX_MB` · `SOUP_LOG_BACKUPS` | `5` · `3` | 파일 회전 크기·개수 |
-| `SOUP_EVENT_RETENTION` · `_DAYS` | `5000` · `90` | 이벤트 보존(건수·기간) |
+| `SOUP_EVENT_RETENTION` · `_DAYS` | `5000` · `90` | 운영 이벤트 보존(건수·기간) |
+| `SOUP_PROJECT_ID` | `customfood-soup` | 과제 식별자 |
+| `SOUP_DEVICE_ID` | 호스트명 | 장치 식별자 |
+| `SOUP_METRICS_ENABLED` · `_INTERVAL` | `1` · `10` | Pi 지표 수집 여부·주기(초) |
+| `SOUP_METRICS_RETENTION` · `_DAYS` | `20000` · `14` | 지표 보존 |
 
 ## 상시 실행 (systemd)
 
@@ -222,7 +291,13 @@ journalctl -u soup-pi-server -f
 | POST | `/api/status/refresh` | 즉시 프로브 후 상태 반환 |
 | POST | `/api/capture/start` · `/stop` | 촬영 시작·중지 |
 | GET | `/api/sessions` · `/api/sessions/{id}` | 세션 이력 |
-| GET | `/api/events` | 오류·조작 이력 |
+| GET | `/api/sessions/{id}/export?format=json\|csv\|jsonl` | **실험 1건 번들 내보내기** |
+| PATCH | `/api/sessions/{id}` | 실험 정보 보완(이름·재료·조건·메모) |
+| POST | `/api/marks` | **실험 중 사건 수동 기록** |
+| GET | `/api/events` | 사건·조작·오류 이력 (`session_id`·`request_id`·`origin` 필터) |
+| GET | `/api/metrics`, POST `/api/metrics/sample` | Pi 운영 지표 |
+| GET | `/api/identity`, PUT `/api/identity` | 과제·장치 식별자 |
+| GET | `/api/backup` | **일관된 DB 스냅샷** 내려받기 |
 | GET·PUT | `/api/config` | 실험 설정 |
 | GET | `/api/power`, POST `/api/power/{on,shutdown,force-off}` | 전원(미지원 시 501) |
 | POST | `/api/mock/jetson/{power,link}` | 모의 장치 조작(모의 모드에서만 등록) |
@@ -241,7 +316,10 @@ app/
   capture.py     촬영 세션 제어·재동기화
   power.py       전원 제어 어댑터 (기본 미지원)
   routes.py      HTTP API
+  identity.py    공통 식별자(project/device/schema/boot)
+  hostmetrics.py Pi 자체 운영 지표 수집(외부 의존성 없음)
+  logging_setup.py 로깅 설정(배포 경로에서도 반드시 적용)
   jetson/        Jetson 연동 어댑터 (mock / http)
   static/        관리 화면 (빌드 없음)
-tests/           API 테스트 14개
+tests/           API 테스트 30개
 ```

@@ -17,6 +17,7 @@
       </div>
     </div>
     <div class="header-right">
+      <span id="identity-badge" class="badge badge-plain" title="과제 / 장치 식별자">—</span>
       <span id="mock-badge" class="badge badge-mock hidden">모의 모드</span>
       <span id="server-badge" class="conn-badge off"><i class="conn-dot"></i><span id="server-badge-text">관리 서버 연결 확인 중</span></span>
     </div>
@@ -44,7 +45,7 @@
   </section>
 
   <div class="grid">
-    <!-- ── 촬영 제어 ───────────────────────────────────────────────────── -->
+    <!-- ── 촬영 ────────────────────────────────────────────────────────── -->
     <section class="card">
       <h2>촬영</h2>
       <div id="session-box" class="session-box">
@@ -54,8 +55,14 @@
         <label>실험 이름
           <input id="in-name" type="text" placeholder="예: 된장국 3차" value="실험" />
         </label>
+        <label>재료
+          <input id="in-ingredients" type="text" placeholder="예: 된장 40g, 두부 1/2모, 애호박 50g" />
+        </label>
+        <label>실험 조건
+          <input id="in-conditions" type="text" placeholder="예: 중불, 뚜껑 열고, 물 1.2L" />
+        </label>
         <label>메모
-          <input id="in-note" type="text" placeholder="조건·변경점 등" />
+          <input id="in-note" type="text" placeholder="변경점·특이사항" />
         </label>
       </div>
       <div class="btn-row">
@@ -65,17 +72,58 @@
       <p id="capture-msg" class="msg hidden"></p>
     </section>
 
+    <!-- ── 실험 중 사건 기록 ───────────────────────────────────────────── -->
+    <section class="card">
+      <h2>실험 중 사건 기록</h2>
+      <p class="hint">
+        누르는 즉시 현재 세션에 기록됩니다. 전부 <b>수동 입력</b>으로 표시됩니다.
+      </p>
+      <div class="form">
+        <label>내용 (선택)
+          <input id="mark-text" type="text" placeholder="예: 두부 투입 / 중불→약불" />
+        </label>
+        <label>실제 발생 시각 (비우면 지금)
+          <input id="mark-time" type="datetime-local" step="1" />
+        </label>
+      </div>
+      <div class="btn-row mark-row">
+        <button class="btn btn-mark" data-kind="ingredient">재료 투입</button>
+        <button class="btn btn-mark" data-kind="heat">가열 변경</button>
+        <button class="btn btn-mark" data-kind="stir">교반</button>
+        <button class="btn btn-mark" data-kind="note">메모</button>
+      </div>
+      <p id="mark-msg" class="msg hidden"></p>
+      <ul id="mark-list" class="mark-list"><li class="muted">기록된 사건 없음</li></ul>
+    </section>
+
     <!-- ── 장치 ────────────────────────────────────────────────────────── -->
     <section class="card">
       <h2>장치 · 저장소</h2>
       <div id="storage-box" class="storage">—</div>
       <ul id="sensor-list" class="sensor-list"><li class="muted">보고 없음</li></ul>
+      <div id="save-summary" class="save-summary hidden"></div>
+    </section>
+
+    <!-- ── Pi 자체 운영 상태 ───────────────────────────────────────────── -->
+    <section class="card">
+      <h2>Pi 운영 상태</h2>
+      <p class="hint">관리 서버 자신의 상태입니다. 읽지 못한 값은 <b>미확인</b>으로 표시됩니다.</p>
+      <dl class="kv kv-tight">
+        <div><dt>CPU</dt><dd id="host-cpu">미확인</dd></div>
+        <div><dt>메모리</dt><dd id="host-mem">미확인</dd></div>
+        <div><dt>온도</dt><dd id="host-temp">미확인</dd></div>
+        <div><dt>디스크 여유</dt><dd id="host-disk">미확인</dd></div>
+      </dl>
+      <p id="host-meta" class="hint">—</p>
     </section>
 
     <!-- ── 실험 설정 ───────────────────────────────────────────────────── -->
     <section class="card">
       <h2>실험 설정</h2>
-      <p class="hint">Jetson이 해석하는 값입니다. 관리 서버는 보관·전달만 합니다.</p>
+      <p class="hint">
+        Jetson이 해석하는 값입니다. 촬영을 시작하면 <b>그 시점 값이 실험에 박제</b>되어,
+        나중에 여기를 바꿔도 과거 기록은 변하지 않습니다.
+      </p>
       <div class="form">
         <label>활성 센서 (쉼표 구분)
           <input id="cfg-sensors" type="text" placeholder="cam_rgb_0, thermal_0" />
@@ -124,6 +172,18 @@
     </div>
   </section>
 
+  <!-- ── 실험 이력 ───────────────────────────────────────────────────── -->
+  <section class="card">
+    <div class="card-head">
+      <h2>실험 이력</h2>
+      <span class="hint">실험별로 사건·조작·오류를 묶어 내보낼 수 있습니다.</span>
+    </div>
+    <table class="events sessions">
+      <thead><tr><th>시작</th><th>실험</th><th>상태</th><th>저장 결과</th><th>내보내기</th></tr></thead>
+      <tbody id="session-rows"><tr><td colspan="5" class="muted">불러오는 중…</td></tr></tbody>
+    </table>
+  </section>
+
   <!-- ── 이벤트 ──────────────────────────────────────────────────────── -->
   <section class="card">
     <div class="card-head">
@@ -131,7 +191,8 @@
       <span class="hint">
         오류·조작 이력은 디스크에 남습니다(브라우저를 닫아도 계속 기록).
         내보내기: <a href="/api/events/export?format=csv" download>CSV</a> ·
-        <a href="/api/events/export?format=jsonl" download>JSONL</a>
+        <a href="/api/events/export?format=jsonl" download>JSONL</a> ·
+        <a href="/api/backup" download>DB 백업</a>
       </span>
     </div>
     <table class="events">
@@ -142,6 +203,8 @@
 
   <footer class="foot">
     <span id="foot-time">—</span>
+    <span>·</span>
+    <span id="foot-schema">—</span>
     <span>·</span>
     <a href="/docs">API 문서</a>
   </footer>

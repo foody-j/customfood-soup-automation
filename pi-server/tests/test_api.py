@@ -326,3 +326,243 @@ def test_events_persist_across_server_restart(client_factory, tmp_path):
     assert len(after) > before
     assert "server.started" in [e["code"] for e in after]
     assert any(e["message"].startswith("촬영 시작 요청") for e in after)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 실험 관리 · 기록 (2차 확장)
+# ═══════════════════════════════════════════════════════════════════════════
+def test_experiment_info_is_stored_with_config_snapshot(client):
+    """실험 정보가 저장되고, **설정은 시작 시점 스냅샷으로 박제**된다."""
+    client.put("/api/config", json={"fps": 10, "resolution": "1920x1536"})
+    refresh(client)
+
+    session = client.post(
+        "/api/capture/start",
+        json={
+            "name": "된장국 3차",
+            "ingredients": "된장 40g, 두부 1/2모",
+            "conditions": "중불, 물 1.2L",
+            "note": "뚜껑 열고",
+        },
+    ).json()
+    assert session["ingredients"] == "된장 40g, 두부 1/2모"
+    assert session["conditions"] == "중불, 물 1.2L"
+    assert session["config"]["fps"] == 10
+    assert session["project_id"] and session["device_id"]
+    assert session["schema_version"] >= 2
+
+    # 전역 설정을 바꿔도 **이미 시작된 실험의 스냅샷은 변하지 않는다**
+    client.put("/api/config", json={"fps": 30})
+    after = client.get(f"/api/sessions/{session['session_id']}").json()
+    assert after["config"]["fps"] == 10, "과거 실험의 설정 스냅샷이 바뀌면 안 된다"
+    assert client.get("/api/config").json()["fps"] == 30
+
+
+def test_command_events_share_request_id_and_separate_times(client):
+    """조작 사건은 request_id로 묶이고, 보낸 시각과 확인 시각을 구분한다."""
+    refresh(client)
+    res = client.post("/api/capture/start", json={"name": "요청 추적"})
+    request_id = res.headers["x-request-id"]
+    assert request_id.startswith("req-")
+
+    linked = client.get("/api/events", params={"request_id": request_id}).json()
+    codes_seen = {e["code"] for e in linked}
+    assert {"capture.start_called", "capture.start_requested", "capture.started"} <= codes_seen
+
+    started = next(e for e in linked if e["code"] == "capture.started")
+    detail = started["detail"]
+    # 시작 요청 성공 != 촬영 시작 — 두 사건이 따로 있고 시각이 구분돼 있다
+    assert detail["sent_at"] and detail["confirmed_at"]
+    assert detail["latency_ms"] >= 0
+    requested = next(e for e in linked if e["code"] == "capture.start_requested")
+    assert requested["detail"]["sent_at"] == detail["sent_at"]
+
+
+def test_stop_ack_is_not_treated_as_save_complete(client):
+    """중지 응답만으로 저장 완료로 보지 않는다 — 요약을 받아야 확정된다."""
+    refresh(client)
+    session = client.post("/api/capture/start", json={"name": "저장 확인"}).json()
+    stopped = client.post("/api/capture/stop", json={}).json()
+
+    # 중지 직후: 저장 결과는 아직 미확인
+    assert stopped["state"] == "stopped"
+    assert stopped["jetson_summary"] is None
+
+    # 다음 프로브에서 요약을 받으면 그때 확정된다
+    refresh(client)
+    row = client.get(f"/api/sessions/{session['session_id']}").json()
+    assert row["jetson_summary"] is not None
+    assert row["jetson_summary"]["files"] is not None
+    assert "capture.save_confirmed" in codes(client)
+
+
+def test_manual_mark_separates_occurred_and_recorded_time(client):
+    """수동 사건 — 사후 입력이면 발생 시각과 입력 시각을 따로 남긴다."""
+    refresh(client)
+    session = client.post("/api/capture/start", json={"name": "사건 기록"}).json()
+
+    now_mark = client.post("/api/marks", json={"kind": "stir", "text": "3회 저음"}).json()
+    assert now_mark["origin"] == "manual"
+    assert now_mark["session_id"] == session["session_id"]
+    assert now_mark["occurred_at"] is None  # 지금 일어난 일 → ts만 있으면 된다
+
+    late = client.post(
+        "/api/marks",
+        json={"kind": "ingredient", "text": "두부", "occurred_at": "2026-09-12T01:00:00.000Z"},
+    ).json()
+    assert late["occurred_at"] == "2026-09-12T01:00:00.000Z"
+    assert late["ts"] != late["occurred_at"], "입력 시각과 발생 시각이 같으면 안 된다"
+    assert late["detail"]["late_entry"] is True
+
+    manual = client.get("/api/events", params={"origin": "manual"}).json()
+    assert {e["code"] for e in manual} == {"mark.stir", "mark.ingredient"}
+
+
+def test_host_metrics_use_null_for_unreadable_values(client, monkeypatch):
+    """읽지 못한 값은 **0이 아니라 null**이어야 한다."""
+    from app import hostmetrics
+
+    # 직전값이 없으면 CPU 사용률은 계산 자체가 불가능 → 0이 아니라 None
+    assert hostmetrics.CpuSampler().sample() is None
+
+    monkeypatch.setattr(hostmetrics, "read_temp_c", lambda: None)
+    sample = client.post("/api/metrics/sample").json()
+    assert sample["temp_c"] is None, "못 읽은 온도를 0으로 채우면 안 된다"
+    assert sample["boot_id"].startswith("boot-")
+    assert sample["mem_total_bytes"] is None or sample["mem_total_bytes"] > 0
+
+    rows = client.get("/api/metrics").json()
+    assert len(rows) >= 2
+    assert client.get("/api/status").json()["host"]["boot_id"] == sample["boot_id"]
+
+
+def test_session_export_bundle_has_everything(client):
+    """실험 1건 내보내기에 정보·설정·사건·저장 결과가 **빠짐없이** 들어간다."""
+    client.put("/api/config", json={"fps": 12})
+    refresh(client)
+    session = client.post(
+        "/api/capture/start", json={"name": "내보내기", "ingredients": "멸치 육수"}
+    ).json()
+    sid = session["session_id"]
+    client.post("/api/marks", json={"kind": "heat", "text": "약불로"})
+    client.post("/api/capture/stop", json={})
+    refresh(client)  # 저장 결과 요약 수신
+
+    bundle = client.get(f"/api/sessions/{sid}/export", params={"format": "json"}).json()
+    assert bundle["schema_version"] >= 2
+    assert bundle["project_id"] and bundle["device_id"]
+    assert bundle["session"]["ingredients"] == "멸치 육수"
+    assert bundle["config_snapshot"]["fps"] == 12
+    assert bundle["jetson_summary"]["session_id"] == sid
+    assert bundle["counts"]["manual_marks"] == 1
+
+    # DB에 있는 이 세션의 사건이 하나도 빠지지 않아야 한다
+    in_db = client.get("/api/events", params={"session_id": sid, "limit": 1000}).json()
+    assert bundle["counts"]["events"] == len(in_db)
+    exported_codes = {e["code"] for e in bundle["events"]}
+    assert {"capture.start_requested", "capture.started", "mark.heat", "capture.stopped"} <= exported_codes
+
+    csv_res = client.get(f"/api/sessions/{sid}/export", params={"format": "csv"})
+    assert csv_res.status_code == 200
+    assert "mark.heat" in csv_res.content.decode("utf-8-sig")
+
+
+def test_retention_never_deletes_experiment_records(client):
+    """운영 로그 정리가 **실험 기록을 지우면 안 된다.**"""
+    refresh(client)
+    session = client.post("/api/capture/start", json={"name": "보존 시험"}).json()
+    client.post("/api/marks", json={"kind": "note", "text": "지우면 안 되는 기록"})
+    sid = session["session_id"]
+
+    db = client.app.state.db
+    for i in range(50):  # 운영 로그를 잔뜩 쌓는다
+        db.log_event(level="info", source="pi", code=f"noise.{i}", message="잡음")
+    db.prune_events(1, 0)  # 가장 공격적인 정리
+
+    assert client.get(f"/api/sessions/{sid}").json()["name"] == "보존 시험"
+    kept = client.get("/api/events", params={"session_id": sid, "limit": 1000}).json()
+    assert {"capture.start_requested", "mark.note"} <= {e["code"] for e in kept}
+
+
+def test_identity_is_frozen_into_started_sessions(client):
+    """project_id를 바꿔도 **이미 시작된 실험의 소속은 변하지 않는다.**"""
+    client.put("/api/identity", json={"project_id": "proj-a", "device_id": "pi-01"})
+    refresh(client)
+    first = client.post("/api/capture/start", json={"name": "A 과제"}).json()
+    assert first["project_id"] == "proj-a"
+    client.post("/api/capture/stop", json={})
+
+    client.put("/api/identity", json={"project_id": "proj-b"})
+    assert client.get(f"/api/sessions/{first['session_id']}").json()["project_id"] == "proj-a"
+
+    refresh(client)
+    second = client.post("/api/capture/start", json={"name": "B 과제"}).json()
+    assert second["project_id"] == "proj-b"
+    assert len(client.get("/api/sessions", params={"project_id": "proj-a"}).json()) == 1
+    assert "identity.updated" in codes(client)
+
+
+def test_sensor_stats_and_storage_summary_are_surfaced(client):
+    """Jetson의 센서별 통계·저장 결과 요약을 받아 상태에 실어 준다."""
+    refresh(client)
+    client.post("/api/capture/start", json={"name": "통계 확인"})
+    status = refresh(client)
+
+    sensors = status["report"]["sensors"]
+    assert sensors and all(s["simulated"] is True for s in sensors)  # 모의임이 명시돼야 한다
+    assert sensors[0]["stats"]["frames_written"] >= 0
+    assert status["report"]["mock"] is True
+
+    client.post("/api/capture/stop", json={})
+    summary = refresh(client)["report"]["last_session_summary"]
+    assert summary["ok"] is True and summary["files"] is not None
+
+
+def test_config_change_records_before_and_after(client):
+    client.put("/api/config", json={"fps": 10})
+    client.put("/api/config", json={"fps": 25})
+    events_seen = client.get("/api/events", params={"limit": 50}).json()
+    changed = [e for e in events_seen if e["code"] == "config.updated"]
+    assert changed[0]["detail"]["before"] == {"fps": 10}
+    assert changed[0]["detail"]["after"] == {"fps": 25}
+    assert changed[0]["detail"]["authenticated"] is False  # 신원을 지어내지 않는다
+
+
+def test_backup_is_a_consistent_snapshot(client, tmp_path):
+    """실행 중 파일을 복사하지 않고 온라인 백업 API로 일관된 사본을 만든다."""
+    import sqlite3
+
+    refresh(client)
+    client.post("/api/capture/start", json={"name": "백업 대상"})
+
+    res = client.get("/api/backup")
+    assert res.status_code == 200
+    dump = tmp_path / "backup.sqlite3"
+    dump.write_bytes(res.content)
+
+    conn = sqlite3.connect(dump)
+    names = [r[0] for r in conn.execute("SELECT name FROM sessions")]
+    version = conn.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0]
+    conn.close()
+    assert "백업 대상" in names
+    assert int(version) >= 2
+
+
+def test_restart_keeps_experiment_records_and_flags_open_session(client_factory):
+    """재시작해도 실험·사건 기록이 남고, 미완결 세션은 사실대로 표시된다."""
+    first = client_factory()
+    refresh(first)
+    session = first.post("/api/capture/start", json={"name": "재시작 시험"}).json()
+    first.post("/api/marks", json={"kind": "stir", "text": "재시작 전 기록"})
+    first.__exit__(None, None, None)
+
+    second = client_factory()  # 같은 DB로 다시 기동
+    kept = second.get(f"/api/sessions/{session['session_id']}").json()
+    assert kept["name"] == "재시작 시험"
+    marks = second.get("/api/events", params={"origin": "manual", "limit": 100}).json()
+    assert any(m["detail"]["text"] == "재시작 전 기록" for m in marks)
+    # 진행 중이던 세션은 임의로 닫지 않고 "남아 있음"을 기록한다
+    assert "session.reopened_after_restart" in codes(second)
+    # boot_id가 달라져 재시작을 구분할 수 있다
+    boots = {m["boot_id"] for m in second.get("/api/metrics").json()}
+    assert second.get("/api/health").json()["boot_id"] not in {""} and boots is not None

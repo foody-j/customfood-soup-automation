@@ -270,3 +270,37 @@ input:focus {
   .status-label { font-size: 19px; }
   .app { padding: 20px 16px 32px; }
 }
+
+/* ── 실험 정보·사건 기록 (2차 확장) ────────────────────────────────────── */
+.badge-plain {
+  background: #FFF; color: var(--gray-700); border-color: var(--gray-300);
+  font-variant-numeric: tabular-nums; font-weight: 500;
+}
+
+.kv-tight { margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.kv-tight dd { font-size: 13px; }
+
+/* 사건 기록 버튼 — 크고 누르기 쉽게(실험 중에 급히 누른다) */
+.mark-row { gap: 6px; }
+.btn-mark { flex: 1 1 44%; padding: 11px 10px; font-size: 13px; }
+.btn-mark:hover:not(:disabled) { background: var(--lavender-soft); border-color: var(--lavender-300); }
+
+.mark-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 4px; }
+.mark-list li {
+  display: flex; align-items: center; gap: 8px; font-size: 12.5px;
+  background: #FFF; border-radius: var(--r-sm); padding: 6px 11px;
+}
+.mark-time { color: var(--gray-700); font-variant-numeric: tabular-nums; font-size: 11.5px; }
+.mark-kind { font-weight: 600; color: var(--purple-800); white-space: nowrap; }
+
+/* 저장 결과 요약 */
+.save-summary {
+  margin-top: 12px; padding: 11px 13px; border-radius: var(--r-sm);
+  background: var(--lavender-soft); font-size: 12.5px;
+}
+.save-title { font-weight: 600; margin-bottom: 3px; }
+.save-body { color: var(--gray-700); font-variant-numeric: tabular-nums; }
+
+/* 실험 이력 표 */
+.sessions td { vertical-align: middle; }
+.sessions a { font-size: 12px; }

@@ -32,13 +32,20 @@ const SESSION_VIEW = {
   idle:     ['대기', ''],
 };
 
-let lastStatus = null;
+const MARK_VIEW = {
+  'mark.ingredient': '재료 투입',
+  'mark.heat': '가열 변경',
+  'mark.stir': '교반',
+  'mark.note': '메모',
+};
+
+const UNKNOWN = '미확인';
 let busy = false;
 
 // ── 공통 ───────────────────────────────────────────────────────────────────
 async function api(path, options) {
   const res = await fetch(path, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Soup-Client': 'ui' },
     ...options,
   });
   let body = null;
@@ -63,6 +70,14 @@ function localTime(iso) {
   return d.toLocaleTimeString('ko-KR', { hour12: false });
 }
 
+function localDateTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('ko-KR', { hour12: false, month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit' });
+}
+
 function agoText(iso, ageSec) {
   if (!iso) return '없음';
   const sec = ageSec != null ? ageSec : (Date.now() - new Date(iso).getTime()) / 1000;
@@ -73,9 +88,11 @@ function agoText(iso, ageSec) {
 }
 
 function bytesText(n) {
-  if (n == null) return '—';
+  if (n == null) return UNKNOWN;
   const gb = n / 1e9;
-  return gb >= 1000 ? `${(gb / 1000).toFixed(2)} TB` : `${gb.toFixed(1)} GB`;
+  if (gb >= 1000) return `${(gb / 1000).toFixed(2)} TB`;
+  if (gb >= 1) return `${gb.toFixed(1)} GB`;
+  return `${(n / 1e6).toFixed(0)} MB`;
 }
 
 function elapsedText(startedIso) {
@@ -87,6 +104,12 @@ function elapsedText(startedIso) {
   return h > 0 ? `${h}시간 ${m}분 ${s}초` : `${m}분 ${s}초`;
 }
 
+function escapeHtml(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // ── 렌더 ───────────────────────────────────────────────────────────────────
 function renderServerBadge(alive) {
   const badge = $('server-badge');
@@ -94,10 +117,133 @@ function renderServerBadge(alive) {
   $('server-badge-text').textContent = alive ? '관리 서버 연결됨' : '관리 서버 연결 끊김';
 }
 
+function renderHost(host) {
+  if (!host) {
+    $('host-meta').textContent = '아직 측정 전입니다.';
+    return;
+  }
+  // 못 읽은 값은 0이 아니라 "미확인" — 서버가 null로 준다.
+  $('host-cpu').textContent = host.cpu_percent == null
+    ? UNKNOWN : `${host.cpu_percent.toFixed(0)}%` + (host.load1 != null ? ` (load ${host.load1})` : '');
+  $('host-mem').textContent = (host.mem_used_bytes == null || host.mem_total_bytes == null)
+    ? UNKNOWN : `${bytesText(host.mem_used_bytes)} / ${bytesText(host.mem_total_bytes)}`;
+  $('host-temp').textContent = host.temp_c == null ? UNKNOWN : `${host.temp_c.toFixed(1)}℃`;
+  $('host-disk').textContent = host.disk_free_bytes == null
+    ? UNKNOWN : `${bytesText(host.disk_free_bytes)} / ${bytesText(host.disk_total_bytes)}`;
+  const up = host.uptime_sec == null ? UNKNOWN : `${Math.floor(host.uptime_sec / 3600)}시간`;
+  $('host-meta').textContent = `측정 ${agoText(host.ts)} · 가동 ${up} · ${host.boot_id}`;
+}
+
+function renderSensors(report) {
+  const sensors = (report && report.sensors) || [];
+  $('sensor-list').innerHTML = sensors.length
+    ? sensors.map((x) => {
+        const st = x.stats;
+        const stat = st
+          ? `${st.frames_written.toLocaleString()}프레임` +
+            (st.frames_dropped ? ` · 누락 ${st.frames_dropped}` : '') +
+            (st.fps_measured != null ? ` · ${st.fps_measured}fps` : '')
+          : `통계 ${UNKNOWN}`;
+        return `
+        <li>
+          <span class="dot ${x.connected ? 'on' : ''}"></span>
+          <span class="name">${escapeHtml(x.sensor_id)}</span>
+          <span class="muted">${escapeHtml(x.kind)}</span>
+          ${x.simulated ? '<span class="pill wait">모의</span>' : ''}
+          <span class="detail">${escapeHtml(stat)}</span>
+        </li>`;
+      }).join('')
+    : '<li class="muted">보고 없음</li>';
+
+  const box = $('save-summary');
+  const sum = report && report.last_session_summary;
+  if (!sum) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  box.innerHTML = `
+    <div class="save-title">최근 저장 결과 <span class="mono">${escapeHtml(sum.session_id)}</span></div>
+    <div class="save-body">
+      파일 ${sum.files != null ? sum.files.toLocaleString() : UNKNOWN} ·
+      ${bytesText(sum.bytes_written)} ·
+      프레임 ${sum.frames_written != null ? sum.frames_written.toLocaleString() : UNKNOWN}
+      ${sum.ok === false ? '<span class="pill bad">불완전</span>' : ''}
+      ${sum.path ? `<div class="muted mono">${escapeHtml(sum.path)}</div>` : ''}
+    </div>`;
+}
+
+function renderSession(s) {
+  const box = $('session-box');
+  const sess = s.active_session || s.last_session;
+  if (!sess) {
+    box.innerHTML = '<div class="session-none">진행 중인 세션 없음</div>';
+    return;
+  }
+  const [label, cls] = SESSION_VIEW[sess.state] || [sess.state, ''];
+  const frames = s.report && s.report.capture && s.report.capture.session_id === sess.session_id
+    ? s.report.capture.frames_written : null;
+  const active = !!s.active_session;
+  box.innerHTML = `
+    <div class="session-id">${escapeHtml(sess.session_id)}</div>
+    <div class="session-name">${escapeHtml(sess.name)} <span class="pill ${cls}">${label}</span>
+      ${sess.jetson_ack ? '' : '<span class="pill bad">Jetson 미확인</span>'}</div>
+    <div class="session-meta">
+      시작 ${localTime(sess.started_at)}${active ? ` · 경과 ${elapsedText(sess.started_at)}` : ''}
+      ${frames != null ? ` · 프레임 ${frames.toLocaleString()}` : ''}
+    </div>
+    ${sess.ingredients ? `<div class="session-meta">재료: ${escapeHtml(sess.ingredients)}</div>` : ''}
+    ${sess.conditions ? `<div class="session-meta">조건: ${escapeHtml(sess.conditions)}</div>` : ''}
+    ${sess.note ? `<div class="session-meta">메모: ${escapeHtml(sess.note)}</div>` : ''}
+    <div class="session-meta">
+      저장 결과: ${sess.jetson_summary ? '확인됨' : `<b>${UNKNOWN}</b>`}
+    </div>`;
+}
+
+function renderEvents(rows) {
+  $('event-rows').innerHTML = rows.length
+    ? rows.map((e) => {
+        const late = e.occurred_at && e.occurred_at !== e.ts;
+        return `
+        <tr>
+          <td>${localTime(e.ts)}${late ? `<div class="muted">발생 ${localTime(e.occurred_at)}</div>` : ''}</td>
+          <td><span class="lv ${e.level}">${e.level.toUpperCase()}</span>
+              ${e.origin === 'manual' ? '<span class="pill wait">수동</span>' : ''}</td>
+          <td>${escapeHtml(e.message)}<span class="code">${escapeHtml(e.code)}</span></td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="3" class="muted">기록 없음</td></tr>';
+}
+
+/** 수동 사건은 전용 조회로 가져온다.
+ *  최근 이벤트 목록에서 걸러내면 링크 상태 변화 같은 잦은 이벤트에 밀려 사라진다. */
+async function loadMarks() {
+  try {
+    renderMarks(await api('/api/events?origin=manual&limit=10'));
+  } catch (_) { /* 다음 주기에 다시 */ }
+}
+
+function renderMarks(marks) {
+  $('mark-list').innerHTML = marks.length
+    ? marks.slice(0, 8).map((e) => {
+        const when = e.occurred_at || e.ts;
+        const late = e.occurred_at && e.occurred_at !== e.ts;
+        const kind = MARK_VIEW[e.code] || e.code;
+        const text = (e.detail && e.detail.text) || '';
+        return `<li><span class="mark-time">${localTime(when)}</span>
+          <span class="mark-kind">${escapeHtml(kind)}</span>
+          <span>${escapeHtml(text)}</span>
+          ${late ? '<span class="pill wait">사후 입력</span>' : ''}</li>`;
+      }).join('')
+    : '<li class="muted">기록된 사건 없음</li>';
+}
+
 function render(s) {
-  lastStatus = s;
   $('site-name').textContent = s.site_name;
   $('mock-badge').classList.toggle('hidden', !s.mock_mode);
+
+  if (s.identity) {
+    $('identity-badge').textContent = `${s.identity.project_id} / ${s.identity.device_id}`;
+    $('foot-schema').textContent =
+      `schema v${s.identity.schema_version} · ${s.identity.boot_id}`;
+  }
 
   const view = STATUS_VIEW[s.jetson_status] || STATUS_VIEW.unknown;
   $('status-dot').className = `status-dot ${view.dot}`;
@@ -110,7 +256,7 @@ function render(s) {
 
   const p = s.power;
   $('power-state').textContent = p.supported
-    ? `${p.state === 'on' ? '켜짐' : p.state === 'off' ? '꺼짐' : '알 수 없음'}${p.simulated ? ' (모의)' : ''}`
+    ? `${p.state === 'on' ? '켜짐' : p.state === 'off' ? '꺼짐' : UNKNOWN}${p.simulated ? ' (모의)' : ''}`
     : '제어 미지원';
   $('power-note').textContent = p.note || '';
   const powerDisabled = !p.supported;
@@ -120,32 +266,12 @@ function render(s) {
 
   $('stale-warning').classList.toggle('hidden', !s.link.stale || s.link.state === 'unknown');
 
-  // 세션
-  const box = $('session-box');
-  const sess = s.active_session || s.last_session;
-  if (!sess) {
-    box.innerHTML = '<div class="session-none">진행 중인 세션 없음</div>';
-  } else {
-    const [label, cls] = SESSION_VIEW[sess.state] || [sess.state, ''];
-    const frames = s.report && s.report.capture && s.report.capture.session_id === sess.session_id
-      ? s.report.capture.frames_written : null;
-    const active = !!s.active_session;
-    box.innerHTML = `
-      <div class="session-id">${sess.session_id}</div>
-      <div class="session-name">${escapeHtml(sess.name)} <span class="pill ${cls}">${label}</span>
-        ${sess.jetson_ack ? '' : '<span class="pill bad">Jetson 미확인</span>'}</div>
-      <div class="session-meta">
-        시작 ${localTime(sess.started_at)}${active ? ` · 경과 ${elapsedText(sess.started_at)}` : ''}
-        ${frames != null ? ` · 프레임 ${frames.toLocaleString()}` : ''}
-        ${sess.note ? ` · ${escapeHtml(sess.note)}` : ''}
-      </div>`;
-  }
-
+  renderSession(s);
   const canStart = s.jetson_status === 'online' && !s.active_session;
   $('btn-start').disabled = !canStart || busy;
   $('btn-stop').disabled = !s.active_session || busy;
+  document.querySelectorAll('.btn-mark').forEach((b) => { b.disabled = busy; });
 
-  // 저장소·센서
   const storage = s.report && s.report.storage;
   if (storage) {
     const usedPct = Math.min(100, Math.max(0,
@@ -155,48 +281,47 @@ function render(s) {
         / ${bytesText(storage.total_bytes)}</div>
        <div class="bar"><i style="width:${usedPct.toFixed(1)}%"></i></div>`;
   } else {
-    $('storage-box').innerHTML = '<span class="muted">보고 없음</span>';
+    $('storage-box').innerHTML = `<span class="muted">보고 없음</span>`;
   }
 
-  const sensors = (s.report && s.report.sensors) || [];
-  $('sensor-list').innerHTML = sensors.length
-    ? sensors.map((x) => `
-        <li>
-          <span class="dot ${x.connected ? 'on' : ''}"></span>
-          <span class="name">${escapeHtml(x.sensor_id)}</span>
-          <span class="muted">${escapeHtml(x.kind)}</span>
-          ${x.simulated ? '<span class="pill wait">모의</span>' : ''}
-          <span class="detail">${escapeHtml(x.detail || '')}</span>
-        </li>`).join('')
-    : '<li class="muted">보고 없음</li>';
-
-  // 이벤트
-  const rows = s.recent_events || [];
-  $('event-rows').innerHTML = rows.length
-    ? rows.map((e) => `
-        <tr>
-          <td>${localTime(e.ts)}</td>
-          <td><span class="lv ${e.level}">${e.level.toUpperCase()}</span></td>
-          <td>${escapeHtml(e.message)}<span class="code">${escapeHtml(e.code)}</span></td>
-        </tr>`).join('')
-    : '<tr><td colspan="3" class="muted">기록 없음</td></tr>';
+  renderSensors(s.report);
+  renderHost(s.host);
+  renderEvents(s.recent_events || []);
 
   $('foot-time').textContent = `서버 시각 ${localTime(s.server_time)}`;
   $('mock-card').classList.toggle('hidden', !s.link.mock);
 }
 
-function escapeHtml(str) {
-  return String(str == null ? '' : str)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+async function loadSessions() {
+  try {
+    const rows = await api('/api/sessions?limit=12');
+    $('session-rows').innerHTML = rows.length
+      ? rows.map((r) => {
+          const [label, cls] = SESSION_VIEW[r.state] || [r.state, ''];
+          const saved = r.jetson_summary
+            ? `${r.jetson_summary.files != null ? r.jetson_summary.files.toLocaleString() + '개' : ''} ${bytesText(r.jetson_summary.bytes_written)}`
+            : `<span class="muted">${UNKNOWN}</span>`;
+          return `<tr>
+            <td>${localDateTime(r.started_at)}</td>
+            <td>${escapeHtml(r.name)}<div class="muted mono">${escapeHtml(r.session_id)}</div></td>
+            <td><span class="pill ${cls}">${label}</span></td>
+            <td>${saved}</td>
+            <td><a href="/api/sessions/${encodeURIComponent(r.session_id)}/export?format=json" download>JSON</a>
+              · <a href="/api/sessions/${encodeURIComponent(r.session_id)}/export?format=csv" download>CSV</a></td>
+          </tr>`;
+        }).join('')
+      : '<tr><td colspan="5" class="muted">실험 기록 없음</td></tr>';
+  } catch (_) { /* 서버가 잠깐 안 뜬 경우 — 다음 주기에 다시 */ }
 }
 
 // ── 폴링 ───────────────────────────────────────────────────────────────────
+let sessionTick = 0;
 async function poll() {
   try {
     const s = await api('/api/status');
     renderServerBadge(true);
     render(s);
+    if (sessionTick++ % 4 === 0) { loadSessions(); loadMarks(); }
   } catch (err) {
     renderServerBadge(false);
   }
@@ -216,22 +341,51 @@ async function withBusy(fn, msgEl) {
   }
 }
 
+/** datetime-local 입력(로컬 시각) → UTC ISO8601. 비어 있으면 null. */
+function markTimeToUtc() {
+  const raw = $('mark-time').value;
+  if (!raw) return null;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 function bind() {
   $('btn-refresh').addEventListener('click', async () => {
-    const s = await api('/api/status/refresh', { method: 'POST' });
-    render(s);
+    render(await api('/api/status/refresh', { method: 'POST' }));
   });
 
   $('btn-start').addEventListener('click', () => withBusy(async () => {
-    const body = { name: $('in-name').value || '실험', note: $('in-note').value || null };
+    const body = {
+      name: $('in-name').value || '실험',
+      note: $('in-note').value || null,
+      ingredients: $('in-ingredients').value || null,
+      conditions: $('in-conditions').value || null,
+    };
     const sess = await api('/api/capture/start', { method: 'POST', body: JSON.stringify(body) });
+    loadSessions();
     return `촬영 시작됨: ${sess.session_id}`;
   }, $('capture-msg')));
 
   $('btn-stop').addEventListener('click', () => withBusy(async () => {
     const sess = await api('/api/capture/stop', { method: 'POST', body: JSON.stringify({}) });
+    loadSessions();
     return `촬영 중지됨: ${sess.session_id} (${sess.state})`;
   }, $('capture-msg')));
+
+  document.querySelectorAll('.btn-mark').forEach((btn) => {
+    btn.addEventListener('click', () => withBusy(async () => {
+      const body = {
+        kind: btn.dataset.kind,
+        text: $('mark-text').value || null,
+        occurred_at: markTimeToUtc(),
+      };
+      const ev = await api('/api/marks', { method: 'POST', body: JSON.stringify(body) });
+      $('mark-text').value = '';
+      $('mark-time').value = '';
+      await loadMarks();
+      return `기록됨: ${ev.message}`;
+    }, $('mark-msg')));
+  });
 
   $('btn-save-config').addEventListener('click', () => withBusy(async () => {
     const body = {
@@ -243,7 +397,7 @@ function bind() {
       note: $('cfg-note').value || null,
     };
     await api('/api/config', { method: 'PUT', body: JSON.stringify(body) });
-    return '설정 저장됨';
+    return '설정 저장됨 (진행 중 실험에는 영향 없음)';
   }, $('config-msg')));
 
   const power = (path, confirmText) => () => withBusy(async () => {
@@ -283,5 +437,7 @@ async function loadConfig() {
 
 bind();
 loadConfig();
+loadSessions();
+loadMarks();
 poll();
 setInterval(poll, POLL_MS);
