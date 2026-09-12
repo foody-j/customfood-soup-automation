@@ -15,6 +15,16 @@ Raspberry Pi 5에서 **상시 실행**되는 실험장치 관리 서버. Jetson 
 
 ---
 
+## 화면
+
+![Pi 관리 화면](../docs/img/pi-server-ui-20260912.png)
+
+*2026-09-12 실기기(Raspberry Pi 5) 크로미움 실촬영. 모의 Jetson 구동 상태.*
+전체 페이지는 [`docs/img/pi-server-ui-full-20260912.png`](../docs/img/pi-server-ui-full-20260912.png)
+— Pi 운영 상태·실험 이력 표·이벤트 목록까지 포함.
+
+---
+
 ## 빠른 시작 (모의 모드)
 
 하드웨어 없이 바로 돈다. 모의 Jetson이 프로세스 안에서 함께 뜬다.
