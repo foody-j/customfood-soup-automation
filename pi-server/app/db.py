@@ -11,6 +11,7 @@ API는 **동기**다. 호출당 작업량이 작고(로컬 파일, 수십 행) W
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 import threading
 from datetime import timedelta
@@ -54,6 +55,14 @@ CREATE TABLE IF NOT EXISTS app_config (
     updated_at TEXT NOT NULL
 );
 """
+
+
+#: 운영 이력을 서비스 로그에도 흘려보내는 로거.
+#: DB는 "조회·내보내기", journal은 "무슨 일이 있었나를 시간순으로 읽기" 용도다.
+#: 둘 중 하나만 있으면 곤란하다 — DB는 journalctl로 못 보고, journal은 회전돼 사라진다.
+event_log = logging.getLogger("app.events")
+
+_LEVEL_TO_LOGGING = {"info": logging.INFO, "warn": logging.WARNING, "error": logging.ERROR}
 
 
 def _loads(raw: str | None) -> dict[str, Any]:
@@ -113,6 +122,18 @@ class Database:
             )
             self._conn.commit()
             event_id = int(cur.lastrowid or 0)
+
+        # 같은 사건을 서비스 로그에도 남긴다. 맨 앞의 `#<id>`가 DB 행과 journal 줄을
+        # 잇는 열쇠다 — 나중에 "이 로그가 어느 이벤트냐"를 정확히 맞출 수 있다.
+        event_log.log(
+            _LEVEL_TO_LOGGING.get(level_value, logging.INFO),
+            "[#%s %s] %s%s%s",
+            event_id,
+            code,
+            message,
+            f" (session={session_id})" if session_id else "",
+            f" detail={json.dumps(detail, ensure_ascii=False)[:200]}" if detail else "",
+        )
         return {"id": event_id, **row, "detail": detail}
 
     def list_events(

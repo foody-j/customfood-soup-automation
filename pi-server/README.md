@@ -103,6 +103,59 @@ Pi가 프로브로 **알 수 있는 사실**은 두 가지뿐이다.
 | **운영 이력**<br>(장비에 무슨 일이 있었나) | SQLite `events` 테이블 | **5000건 또는 90일**<br>(먼저 걸리는 쪽) | 관리 화면 하단 · `GET /api/events`<br>**내보내기: CSV / JSONL** |
 | **수집 원본·매니페스트**<br>(무엇을 찍었나) | **Jetson 로컬**<br>`<session>/manifest.jsonl` | 수동 관리(D-006) | Jetson에서 직접. Pi로 오지 않는다 |
 
+### 로그 한 줄 읽는 법
+
+```
+2026-09-12 12:40:39+0900 ERROR   app.events: [#5 capture.start_failed] Jetson 무응답 — 시작 실패 (session=sess-20260912T034039Z-8105)
+└─ 로컬시각+UTC오프셋      └─등급  └─출처      └─DB 행 번호  └─코드        └─사람이 읽는 설명   └─어느 실험인지
+```
+
+- 맨 앞 **`#5`는 SQLite `events` 테이블의 `id`**다. journal에서 본 줄을 DB에서 정확히
+  다시 찾을 수 있고, 반대로도 된다. 두 기록면을 잇는 열쇠다.
+- **코드(`capture.start_failed`)는 기계가 읽는 값**, 뒤의 한국어는 사람이 읽는 값이다.
+  코드는 바뀌지 않으므로 `grep 'capture.start_failed'`로 과거 사례를 모을 수 있다.
+- 시각 표기가 **세 군데에서 다르다.** 헷갈리지 않도록 규칙을 고정해 두었다:
+
+  | 어디 | 표기 | 예 |
+  |---|---|---|
+  | 서비스 로그 | 로컬 시각 + UTC 오프셋 | `2026-09-12 12:40:39+0900` |
+  | 이벤트 DB · API | **UTC** ISO8601 | `2026-09-12T03:40:39.123Z` |
+  | 관리 화면 | 로컬 시각 | `12시 40분 39초` |
+
+  같은 순간이 로그 `12:40`, DB `03:40Z`로 보이는 건 정상이다(한국은 UTC+9).
+  로그에 오프셋을 찍어두었으므로 환산이 필요하면 그 값을 쓰면 된다.
+
+### 이벤트 코드 사전
+
+`grep`으로 찾거나 화면에서 봤을 때 뜻을 알 수 있도록 전부 적어둔다.
+
+| 코드 | 등급 | 뜻 |
+|---|---|---|
+| `server.started` · `server.stopped` | info | 관리 서버 기동·종료 |
+| `link.online` | info | Jetson 수집 서비스 응답 정상 |
+| `link.service_down` | warn | 호스트(OS)는 응답, 수집 서비스만 무응답 → 서비스 재시작 대상 |
+| `link.unreachable` | error | 호스트·서비스 모두 무응답 (전원 OFF/네트워크 단절 구분 불가) |
+| `capture.start_requested` | info | 사용자가 촬영 시작을 눌렀음 (아직 확인 전) |
+| `capture.started` | info | Jetson이 촬영 시작을 확인 |
+| `capture.start_failed` | error | Jetson 무응답·오류로 시작 실패 |
+| `capture.start_rejected` | error | Jetson이 시작을 거절(다른 세션 진행 중 등) |
+| `capture.stop_requested` | info | 사용자가 중지를 눌렀음 |
+| `capture.stopped` | info | Jetson이 중지·저장 완료를 확인 |
+| `capture.stop_deferred` | warn | Jetson 무응답 → 중지 보류. 연결 복구 시 자동 확인 |
+| `capture.stop_rejected` | error | Jetson이 중지를 거절(세션 ID 불일치 등) |
+| `capture.stop_confirmed` | info/error | 재접속 후 해당 세션의 종료(또는 실패)를 확인 |
+| `session.adopted` | warn | Pi가 모르던 세션을 Jetson에서 인계받음 |
+| `session.orphaned` | warn | Pi는 진행 중으로 알았으나 Jetson은 아님 → "확인 불가"로 표시 |
+| `session.mismatch` | error | 양쪽이 **서로 다른 세션**을 진행 중이라 믿음. Jetson 쪽 채택 |
+| `config.updated` | info | 실험 설정 변경 |
+| `power.on` · `power.shutdown` | info | 전원 조작 (모의면 `detail.simulated=true`) |
+| `power.force-off` | warn | 강제 전원 차단 |
+| `power.*_unsupported` | warn | 전원 회로 미구성 상태에서 조작을 시도해 거절됨 |
+| `mock.jetson_power` · `mock.jetson_link` | info/warn | **모의 장치** 조작(실물과 무관) |
+
+> 코드를 추가·변경하면 이 표도 함께 갱신할 것. 이 표가 없으면 반년 뒤 로그를 봐도
+> `session.orphaned`가 무슨 뜻인지 알 수 없다.
+
 ### 반드시 알아둘 것
 
 - **이벤트는 보존 기간이 지나면 사라진다.** 실험 구간이 끝나면 관리 화면의

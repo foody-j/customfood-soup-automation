@@ -246,6 +246,31 @@ def test_logging_is_configured_by_create_app(client_factory, tmp_path):
     reset_for_tests()
 
 
+def test_events_also_land_in_service_log(client_factory, tmp_path):
+    """운영 이력은 DB와 서비스 로그 **양쪽**에 남아야 한다.
+
+    DB만 있으면 journalctl로 사건을 못 읽고, 로그만 있으면 회전돼 사라진다.
+    두 기록면을 잇기 위해 로그 줄 맨 앞에 DB 행 번호(`#id`)를 붙인다.
+    """
+    import re
+
+    from app.logging_setup import reset_for_tests
+
+    reset_for_tests()
+    log_path = tmp_path / "svc.log"
+    client = client_factory(log_file=log_path)
+    refresh(client)
+    client.post("/api/capture/start", json={"name": "로그 미러링"})
+
+    text = log_path.read_text(encoding="utf-8")
+    assert "app.events" in text
+    assert "capture.start_requested" in text
+    assert re.search(r"\[#\d+ capture\.start_requested\]", text), "DB 행 번호(#id)가 붙어야 한다"
+    # 시각에 UTC 오프셋이 있어야 UTC로 저장되는 DB와 대조할 때 헷갈리지 않는다
+    assert re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[+-]\d{4} ", text.splitlines()[0])
+    reset_for_tests()
+
+
 def test_event_export_csv_and_jsonl(client):
     refresh(client)
     client.post("/api/capture/start", json={"name": "내보내기 시험"})

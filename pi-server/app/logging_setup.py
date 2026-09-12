@@ -25,7 +25,10 @@ from pathlib import Path
 from .config import Settings
 
 FORMAT = "%(asctime)s %(levelname)-7s %(name)s: %(message)s"
-DATEFMT = "%Y-%m-%d %H:%M:%S"
+#: **로컬 시각 + UTC 오프셋**(`2026-09-12 12:39:13+0900`).
+#: 오프셋을 빼면 UTC로 저장되는 이벤트 DB(`...T03:39:13.301Z`)와 대조할 때 9시간을
+#: 착각한다. 사람은 로컬 시각으로 읽고 기계는 오프셋으로 정확히 환산하도록 둘 다 적는다.
+DATEFMT = "%Y-%m-%d %H:%M:%S%z"
 
 #: uvicorn이 따로 들고 있는 로거들. 같은 포맷·같은 목적지로 합친다.
 _UVICORN_LOGGERS = ("uvicorn", "uvicorn.error", "uvicorn.access")
