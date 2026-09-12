@@ -1,0 +1,39 @@
+; Jetson 수집 서비스 — 부팅 시 자동 실행, 실패 시 재시작.
+;
+; 설치:
+;   sudo cp systemd/jetson-collector.service /etc/systemd/system/
+;   sudo cp systemd/jetson-collector.env /etc/default/jetson-collector   # 값 수정 후
+;   sudo systemctl daemon-reload && sudo systemctl enable --now jetson-collector
+;
+; 사용자/경로가 다르면 User=, WorkingDirectory=, ExecStart=, ReadWritePaths= 를 함께 고칠 것.
+
+[Unit]
+Description=Soup Jetson 수집 서비스 (FastAPI) — 센서 수집·원본 저장·Pi 제어 API
+Documentation=file:///home/ubuntu/customfood-soup-automation/jetson/collector/README.md
+After=network-online.target fzcam_cfg.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/customfood-soup-automation/jetson/collector
+EnvironmentFile=-/etc/default/jetson-collector
+ExecStart=/home/ubuntu/collector-venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=3
+StartLimitIntervalSec=60
+StartLimitBurst=10
+; SIGINT → lifespan 종료 → 진행 중 세션 저장 마무리(최대 COLLECTOR_STOP_WAIT). 그 뒤 SIGKILL.
+KillSignal=SIGINT
+TimeoutStopSec=150
+
+; 카메라(/dev/video*)·I2C 접근이 필요하므로 PrivateDevices는 쓰지 않는다.
+SupplementaryGroups=video i2c
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/collector-data
+
+[Install]
+WantedBy=multi-user.target

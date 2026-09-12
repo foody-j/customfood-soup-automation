@@ -1,0 +1,5 @@
+# Jetson 수집 서비스 런타임 의존성 (JetPack 6 / Ubuntu 22.04 / Python 3.10 기준)
+# cv2·numpy는 JetPack 제공 시스템 패키지를 쓴다: venv를 --system-site-packages로 만들 것.
+fastapi>=0.115
+uvicorn[standard]>=0.30
+psutil>=5.9
