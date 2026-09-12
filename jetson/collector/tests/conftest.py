@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app.config import Settings  # noqa: E402
+from app.logging_setup import reset_for_tests  # noqa: E402
 from app.main import create_app  # noqa: E402
 from app.service import CollectorService  # noqa: E402
 
@@ -54,6 +55,7 @@ def client_factory(tmp_path):
 
     def factory(**overrides) -> TestClient:
         st = make_settings(tmp_path, **overrides)
+        reset_for_tests()
         client = TestClient(create_app(st))
         client.__enter__()
         clients.append(client)

@@ -56,6 +56,8 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 | `COLLECTOR_STOP_WAIT` | 120 초 | stop 응답이 저장 완료를 기다리는 상한 |
 | `COLLECTOR_CHECKSUM` | `after_stop` | 세션 종료 후 백그라운드 sha256 (`none`으로 끔) |
 | `COLLECTOR_POWEROFF_CMD` | (없음) | shutdown 마지막 단계 명령. 비우면 저장 완료 후 로그만 |
+| `COLLECTOR_LOG_LEVEL` / `LOG_FILE` / `LOG_MAX_MB` / `LOG_BACKUPS` | INFO / 없음 / 5 / 3 | 서비스 로그 레벨·회전 파일 |
+| `COLLECTOR_LOG_SUMMARY_INTERVAL` | 30 초 | 수집 중 요약 로그 주기 |
 
 ## 센서 ID와 스트림
 
@@ -114,6 +116,18 @@ Pi의 HTTP 타임아웃은 2초(`SOUP_PROBE_TIMEOUT`)다. stop은 저장 완료 
 
 프로세스가 세션 중에 죽으면 다음 기동 때 `state`가 starting/running/stopping인 세션을 찾아
 `failed(end_reason=interrupted)`로 닫고 파일을 `partial`로 표시한다. 완료로 보고하지 않는다.
+
+## 로그 — 세 가지 기록의 구분
+
+| 무엇 | 어디에 | 보는 법 |
+|---|---|---|
+| 서비스 로그(프로그램이 어떻게 돌았나) | journald, 선택 시 회전 파일(`COLLECTOR_LOG_FILE`, `COLLECTOR_LOG_MAX_MB`×(backups+1) 상한) | `journalctl -u jetson-collector -f` |
+| 프레임 기록(무엇을 찍었나) | 세션 디렉터리 `*/index.jsonl` | 파일 직접 |
+| 세션 메타·사건 | `session.json`, `events.jsonl`, `stats.jsonl` | 파일 직접 또는 `GET /api/v1/sessions/{id}` |
+
+`journalctl -u jetson-collector`에서 볼 수 있는 것: 기동(센서 수·저장 경로), 세션 시작/중지 요청/닫힘(세션 ID·프레임·드롭·바이트·사유),
+센서 open 실패·분리·재연결, 저장 실패, 디스크 부족, `COLLECTOR_LOG_SUMMARY_INTERVAL`(기본 30초)마다 스트림별 요약 한 줄,
+uvicorn 접속 로그(같은 포맷). 프레임마다 로그를 찍지 않는다. 로깅은 `create_app()`에서 설정되므로 systemd 실행에서도 남는다.
 
 ## 실기기 점검 도구
 

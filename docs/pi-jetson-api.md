@@ -79,7 +79,7 @@ Pi의 실험 기록 기능이 쓰는 값이다. **전부 선택(optional)** 이�
         "frames_dropped": 3,
         "bytes_written": 2170000000,   // 모르면 생략/null
         "fps_measured": 9.8,           // 실제 측정 FPS
-        "last_frame_at": "2026-09-12T05:00:00.000Z"  // 장치 시각
+        "last_frame_at": "2026-09-12T05:00:00.000Z"  // 장치 시각(Jetson 호스트 UTC, 마지막으로 저장된 프레임의 수신 시각)
       }
     }
   ],
@@ -205,8 +205,7 @@ Pi와의 연결은 관리 경로일 뿐 수집의 전제가 아니다(플랜 §4
 
 | 항목 | 상태 |
 |---|---|
-| `sensors[].stats` · `last_session_summary` | **정의됨, Jetson 미구현** — §2.1. 모의 구현은 `pi-server/app/jetson/mock.py` |
-| `GET /api/v1/preview/{sensor_id}.jpg` (저해상 미리보기) | **미정의** — 플랜 3단계에서 추가 |
+| `sensors[].stats` · `last_session_summary` | **Jetson 구현됨(2026-09-12)** — §2.1. `stats`는 진행 중 세션의 스트림 통계를 센서 단위로 합산(세션 없으면 null), `last_session_summary`는 파일 close·manifest 기록 후 확정(`ok=false`면 `note`에 사유) |
 | `GET /api/v1/preview/{sensor_id}.jpg` (저해상 미리보기) | **미정의** — 3단계 범위에서 제외(원본 저장 우선). 추가 시 미리보기가 원본을 대체하지 않는다는 규칙 유지 |
 | 센서별 설정 조회/변경 (`/api/v1/sensors/...`) | 미정의 — 4단계 |
 | 인증 | 없음(로컬 유선망 전제). 운영 전 재검토 |

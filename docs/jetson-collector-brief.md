@@ -105,6 +105,7 @@ Pi 쪽(`pi-server/`)과 같은 구조·같은 원칙으로 만들면 된다. 코
    `capture.save_confirmed`를 남기므로, 세션 종료 처리에 반드시 포함할 것.
 
 참조 구현(모의)은 `pi-server/app/jetson/mock.py`의 `_sensor_stats()` · `_build_summary()`.
+→ **2026-09-12 Jetson 구현 완료**: `jetson/collector/app/service.py`의 `_sensor_stats()` · `_on_session_finished()`.
 
 ## 4. 저장 레이아웃
 
@@ -180,6 +181,9 @@ Pi 쪽 구현(`pi-server/app/logging_setup.py`, `pi-server/README.md`의 "로그
    원본보다 커진다. 프레임 단위 기록은 manifest가 담당하고, 서비스 로그는
    N초 요약(기록 FPS·누적 프레임·드롭)으로 남긴다.
 7. **`journalctl -u jetson-collector` 로 무엇을 볼 수 있는지 README에 적는다.**
+
+→ **2026-09-12 반영**: `jetson/collector/app/logging_setup.py`(create_app에서 호출, uvicorn 합침,
+`COLLECTOR_LOG_*` 환경변수, 크기 회전), 세션 로그는 시작/중지/분리/실패 + `COLLECTOR_LOG_SUMMARY_INTERVAL`초 요약.
 
 ## 6. 실행 환경
 

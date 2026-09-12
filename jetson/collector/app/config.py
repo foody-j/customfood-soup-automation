@@ -86,6 +86,15 @@ class Settings:
     #: 정상 종료 시 실행할 OS 종료 명령. 비우면 실행하지 않고 로그만 남긴다.
     poweroff_cmd: str = ""
 
+    # ── 로그 (지시서 §5.5) ──────────────────────────────────────────────────
+    log_level: str = "INFO"
+    #: 비우면 표준출력(journald)만. 주면 크기 회전 파일에도 남긴다.
+    log_file: str = ""
+    log_max_mb: float = 5.0
+    log_backups: int = 3
+    #: 수집 중 N초마다 요약 한 줄(기록 FPS·누적 프레임·드롭). 프레임마다 찍지 않는다.
+    log_summary_interval_sec: float = 30.0
+
     # ── 서버 ───────────────────────────────────────────────────────────────
     host: str = "0.0.0.0"
     port: int = 8000
@@ -119,6 +128,11 @@ class Settings:
             stop_wait_sec=_env_float("COLLECTOR_STOP_WAIT", 120.0),
             sensor_retry_sec=_env_float("COLLECTOR_SENSOR_RETRY", 2.0),
             poweroff_cmd=_env_str("COLLECTOR_POWEROFF_CMD", ""),
+            log_level=_env_str("COLLECTOR_LOG_LEVEL", "INFO"),
+            log_file=_env_str("COLLECTOR_LOG_FILE", ""),
+            log_max_mb=_env_float("COLLECTOR_LOG_MAX_MB", 5.0),
+            log_backups=_env_int("COLLECTOR_LOG_BACKUPS", 3),
+            log_summary_interval_sec=_env_float("COLLECTOR_LOG_SUMMARY_INTERVAL", 30.0),
             host=_env_str("COLLECTOR_HOST", "0.0.0.0"),
             port=_env_int("COLLECTOR_PORT", 8000),
         )

@@ -19,7 +19,7 @@ from typing import Any
 from . import SCHEMA_VERSION, SERVICE_NAME, VERSION
 from .clock import boot_id, clock_relation, utcnow_iso
 from .config import Settings
-from .models import ACTIVE_STATES, CaptureAck, CaptureState, JetsonCapture, JetsonReport, SensorInfo, StorageInfo
+from .models import ACTIVE_STATES, CaptureAck, CaptureState, JetsonCapture, JetsonReport, SensorInfo, SensorStats, StorageInfo, StorageResult
 from .sensors.base import SensorAdapter, SensorError, SensorProbe
 from .sensors.registry import build_sensors
 from .session import CaptureSession
@@ -38,6 +38,7 @@ class CollectorService:
         self._lock = threading.RLock()
         self._session: CaptureSession | None = None
         self._last_session: dict[str, Any] | None = None
+        self._last_summary: StorageResult | None = None
         self.accepting = True
         self._shutting_down = False
         self._errors: list[dict[str, Any]] = []
@@ -97,14 +98,38 @@ class CollectorService:
 
     def sensor_infos(self) -> list[SensorInfo]:
         probes = self._refresh_probes()
+        stats = self._sensor_stats()
         out = []
         for s in self.sensors:
             p = probes.get(s.sensor_id)
             if p is None:
                 continue
             out.append(SensorInfo(sensor_id=s.sensor_id, kind=s.kind, connected=p.connected, simulated=p.simulated,
-                                  detail=p.detail, model=p.model, serial=p.serial, driver=p.driver,
-                                  verified=p.verified, reason=p.reason, streams=[st.stream_id for st in s.streams]))
+                                  detail=p.detail, stats=stats.get(s.sensor_id), model=p.model, serial=p.serial,
+                                  driver=p.driver, verified=p.verified, reason=p.reason,
+                                  streams=[st.stream_id for st in s.streams]))
+        return out
+
+    def _sensor_stats(self) -> dict[str, SensorStats]:
+        """계약 §2.1 ① — 진행 중 세션의 스트림 통계를 센서 단위로 합친다. 세션이 없으면 비어 있다."""
+        with self._lock:
+            session = self._session
+            if session is None or session.finished:
+                return {}
+            streams = session.stream_stats()
+        out: dict[str, SensorStats] = {}
+        for st in streams:
+            cur = out.get(st["sensor_id"]) or SensorStats(bytes_written=0)
+            cur.frames_written += st["written"]
+            cur.frames_dropped += st["dropped_total"] + st["write_errors"]
+            cur.bytes_written = (cur.bytes_written or 0) + st["bytes_written"]
+            fps = st.get("write_fps")
+            if fps is not None:
+                cur.fps_measured = max(cur.fps_measured or 0.0, fps)
+            last = st.get("last_written_utc")
+            if last and (cur.last_frame_at is None or last > cur.last_frame_at):
+                cur.last_frame_at = last
+            out[st["sensor_id"]] = cur
         return out
 
     # ── 보고 ────────────────────────────────────────────────────────────────
@@ -127,7 +152,7 @@ class CollectorService:
             uptime_sec=round(time.monotonic() - self._started_mono, 1),
             accepting_new_capture=self.accepting and not self._shutting_down,
             capture=capture, storage=storage, sensors=self.sensor_infos(),
-            mock=self.settings.is_mock_only,
+            last_session_summary=self._last_summary, mock=self.settings.is_mock_only,
             device_id=self.settings.device_id, schema_version=SCHEMA_VERSION, sensor_mode=self.settings.sensor_mode,
             clock=_clock_brief(), system=self._sysmon.latest(), last_session=last,
             recovered_sessions=list(self.recovered), errors=list(self._errors[-20:]),
@@ -199,9 +224,23 @@ class CollectorService:
         return chosen
 
     def _on_session_finished(self, session: CaptureSession) -> None:
+        """파일 close·manifest 기록이 끝난 뒤 호출된다 — 여기서 저장 결과 요약을 확정한다."""
+        manifest = session.store.read_manifest()
+        summ = session.summary()
         with self._lock:
             self._last_session = {**session.snapshot(), "end_reason": session.end_reason,
                                   "path": str(session.store.dir), "manifest": _manifest_brief(session)}
+            self._last_summary = StorageResult(
+                session_id=session.session_id, path=str(session.store.dir),
+                files=len(manifest.get("files", [])) if manifest else None,
+                bytes_written=summ["bytes_written"], frames_written=summ["frames_written"],
+                frames_dropped=summ["frames_dropped"], closed_at=session.phases.get("completed"),
+                ok=session.state is CaptureState.STOPPED if manifest else False,
+                note=None if session.state is CaptureState.STOPPED else f"{session.end_reason}: {session.last_error}",
+            )
+        log.info("세션 %s 닫힘 — state=%s files=%s frames=%s dropped=%s bytes=%s reason=%s",
+                 session.session_id, session.state.value, self._last_summary.files, summ["frames_written"],
+                 summ["frames_dropped"], summ["bytes_written"], session.end_reason)
 
     # ── 중지 ────────────────────────────────────────────────────────────────
     def stop_capture(self, *, session_id: str | None, reason: str | None, wait_sec: float | None = None) -> CaptureAck:

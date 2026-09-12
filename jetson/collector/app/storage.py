@@ -90,6 +90,7 @@ class WriterStats:
     last_host_utc: str | None = None
     write_errors: int = 0
     last_write_ms: float | None = None
+    last_written_utc: str | None = None
 
     def drop(self, reason: str, n: int = 1) -> None:
         self.dropped[reason] = self.dropped.get(reason, 0) + n
@@ -251,6 +252,7 @@ class StreamWriter(threading.Thread):
             with self._lock:
                 self.stats.written += 1
                 self.stats.bytes_written += nbytes
+                self.stats.last_written_utc = s.host.utc
         self._index_line(s, frame_id, path, offset, nbytes, None, extra)
         with self._lock:
             self.stats.last_write_ms = round((time.monotonic() - t0) * 1000, 2)
@@ -343,6 +345,7 @@ class StreamWriter(threading.Thread):
                 "invalid": st.invalid, "dropped": dict(st.dropped), "dropped_total": st.dropped_total(),
                 "gaps_detected": st.gaps_detected, "last_seq": st.last_seq,
                 "backlog": self._q.qsize(), "write_errors": st.write_errors, "last_write_ms": st.last_write_ms,
+                "last_written_utc": st.last_written_utc,
             }
 
     def manifest_entries(self) -> list[dict[str, Any]]:

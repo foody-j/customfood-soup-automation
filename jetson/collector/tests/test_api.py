@@ -62,6 +62,37 @@ def test_acks_match_pi_contract(client, pi_models):
     pi_models.CaptureAck.model_validate(res.json())
 
 
+def test_sensor_stats_and_save_summary_for_pi(client, pi_models):
+    """계약 §2.1 — 진행 중엔 sensors[].stats, 닫힌 뒤엔 last_session_summary(ok=true)."""
+    assert status(client)["last_session_summary"] is None
+    start(client, sid="sess-summary", sensors=("cam_rgb_0", "cam_depth_0"))
+    wait_running(client, "sess-summary")
+    time.sleep(0.6)  # fps 측정은 1주기 뒤부터
+    rep = pi_models.JetsonReport.model_validate(status(client))
+    by_id = {s.sensor_id: s for s in rep.sensors}
+    assert by_id["cam_rgb_0"].stats is not None and by_id["cam_rgb_0"].stats.frames_written > 0
+    assert by_id["cam_rgb_0"].stats.last_frame_at.endswith("Z")
+    assert by_id["cam_depth_0"].stats.frames_written >= by_id["cam_rgb_0"].stats.frames_written * 0  # 3스트림 합산
+    assert by_id["thermal_0"].stats is None  # 세션에 없는 센서는 통계 없음(0으로 꾸미지 않음)
+    client.post("/api/v1/capture/stop", json={"session_id": "sess-summary"})
+    rep = pi_models.JetsonReport.model_validate(status(client))
+    summ = rep.last_session_summary
+    assert summ is not None and summ.session_id == "sess-summary" and summ.ok is True
+    assert summ.files and summ.frames_written and summ.closed_at and summ.path.endswith("sess-summary")
+    assert all(s.stats is None for s in rep.sensors)  # 세션 없음 → 통계 없음
+
+
+def test_save_summary_not_ok_when_failed(client, monkeypatch, pi_models):
+    def boom(self, s):
+        raise OSError(5, "I/O error")
+
+    monkeypatch.setattr(storage_mod.StreamWriter, "_write_image", boom)
+    start(client, sid="sess-bad", sensors=("cam_rgb_0",))
+    assert wait_until(lambda: status(client)["capture"]["state"] == "failed", timeout=10)
+    summ = pi_models.JetsonReport.model_validate(status(client)).last_session_summary
+    assert summ is not None and summ.session_id == "sess-bad" and summ.ok is False and "write_failed" in summ.note
+
+
 # ── 시작 규칙 ──────────────────────────────────────────────────────────────
 def test_duplicate_start_rejected_with_200(client):
     a = start(client, sid="sess-A")

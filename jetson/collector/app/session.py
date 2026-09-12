@@ -140,6 +140,7 @@ class CaptureSession:
             self.phases["running"] = self.started_at
             self.store.update(state=self.state.value, phases=dict(self.phases))
             self.store.append_event("info", "session.running", f"수집 시작 — 센서 {opened}/{len(self.sensors)} 열림")
+            log.info("세션 %s 수집 시작 (%s) — 센서 %d/%d 열림, 경로 %s", self.session_id, self.name, opened, len(self.sensors), self.store.dir)
         t = threading.Thread(target=self._stats_loop, name=f"stats:{self.session_id}", daemon=True)
         self._threads.append(t)
         t.start()
@@ -150,6 +151,7 @@ class CaptureSession:
         except SensorError as exc:
             self._sensor_state[s.sensor_id].update(connected=False, last_error=str(exc))
             self.store.append_event("warn" if first else "error", "sensor.open_failed", str(exc), sensor_id=s.sensor_id)
+            log.warning("세션 %s 센서 open 실패: %s", self.session_id, exc)
             return False
         except Exception as exc:  # 어댑터 버그도 세션을 죽이지 않는다
             self._sensor_state[s.sensor_id].update(connected=False, last_error=repr(exc))
@@ -183,6 +185,7 @@ class CaptureSession:
             except SensorError as exc:
                 st.update(connected=False, last_error=str(exc))
                 self.store.append_event("error", "sensor.disconnected", str(exc), sensor_id=s.sensor_id)
+                log.error("세션 %s 센서 분리: %s", self.session_id, exc)
                 try:
                     s.close()
                 except Exception:
@@ -209,6 +212,7 @@ class CaptureSession:
             self.store.append_event("warn", "sensor.close_failed", repr(exc), sensor_id=s.sensor_id)
 
     def _on_write_error(self, message: str) -> None:
+        log.error("세션 %s 저장 실패: %s", self.session_id, message)
         self.store.append_event("error", "storage.write_failed", message)
         self._abort("write_failed", message)
 
@@ -273,6 +277,7 @@ class CaptureSession:
             self.stop_reason = reason
             self.phases["stop_requested"] = utcnow_iso()
             self.store.append_event("info", "session.stop_requested", f"중지 요청: {reason or '사유 없음'}")
+            log.info("세션 %s 중지 요청: %s", self.session_id, reason or "사유 없음")
         self._stop_event.set()
         t = threading.Thread(target=self._finalize, name=f"finalize:{self.session_id}", daemon=True)
         t.start()

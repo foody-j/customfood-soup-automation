@@ -28,12 +28,40 @@ FINISHED_STATES = (CaptureState.STOPPED, CaptureState.FAILED)
 
 
 # ── 계약 필드(Pi가 파싱) ─────────────────────────────────────────────────────
+class SensorStats(BaseModel):
+    """센서별 누적 통계(계약 §2.1 ①). 프레임 단위 기록은 Pi로 보내지 않는다."""
+
+    frames_written: int = 0
+    frames_dropped: int = 0
+    bytes_written: int | None = None
+    fps_measured: float | None = None
+    #: 마지막으로 **저장된** 프레임의 Jetson 장치 시각(호스트 수신 UTC). 모르면 null
+    last_frame_at: str | None = None
+
+
+class StorageResult(BaseModel):
+    """가장 최근에 닫힌 세션의 저장 결과 요약(계약 §2.1 ②). Pi는 이것을 받아야
+    `capture.save_confirmed`를 남긴다 — 중지 응답만으로 저장 완료라고 하지 않는다."""
+
+    session_id: str
+    path: str | None = None
+    files: int | None = None
+    bytes_written: int | None = None
+    frames_written: int | None = None
+    frames_dropped: int | None = None
+    closed_at: str | None = None
+    ok: bool | None = None
+    note: str | None = None
+
+
 class SensorInfo(BaseModel):
     sensor_id: str
     kind: str  # rgb_gmsl2 | depth_usb | thermal_i2c | point_temp_i2c
     connected: bool
     simulated: bool = False
     detail: str | None = None
+    #: 계약 §2.1 ① — 진행 중 세션의 누적 통계. 세션이 없으면 null
+    stats: SensorStats | None = None
     # ── 확장(Pi 무시) ──
     model: str | None = None
     serial: str | None = None
@@ -80,6 +108,8 @@ class JetsonReport(BaseModel):
     capture: JetsonCapture = Field(default_factory=JetsonCapture)
     storage: StorageInfo | None = None
     sensors: list[SensorInfo] = Field(default_factory=list)
+    #: 계약 §2.1 ② — 마지막으로 닫힌 세션의 저장 결과(파일 close·manifest 기록 후 확정)
+    last_session_summary: StorageResult | None = None
     mock: bool = False
     # ── 확장(Pi 무시) ──
     device_id: str | None = None

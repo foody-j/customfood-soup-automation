@@ -111,6 +111,13 @@
   이 시점에 무응답이라 실기 왕복·랜선 뽑기 시험은 미실시**(SSH 키 없음 — Pi 설정은 사람이 해야 함).
   - 관찰: Pi 이벤트에 `session.orphaned`→`session.adopted`가 시작 직후 한 번 찍힘. 시작 명령 **직전에 받은
     낡은 status 보고**를 시작 후 재동기화에 쓰는 Pi 쪽 경합(`monitor.probe_once` → `reconcile`). Jetson 문제 아님.
+- **(같은 날 후속) Pi 계약 확장 반영** — 리베이스 중 Pi 쪽 커밋(기록 스키마 v2)이 `sensors[].stats`·
+  `last_session_summary`(§2.1)·로그 관리(§5.5)를 요구한 것을 확인하고 구현: 센서 단위 누적 통계(스트림 합산,
+  세션 없으면 null), 저장 결과 요약은 **파일 close·manifest 기록 후** `_on_session_finished`에서 확정(`ok`, 실패 시
+  `note`에 사유), `logging_setup.py`(create_app에서 설정·uvicorn 합침·`COLLECTOR_LOG_*` 회전 파일·N초 요약 로그).
+  갱신된 Pi 서버 코드로 재왕복: Pi 이벤트에 `capture.save_confirmed`(occurred_at=closed_at)·세션 `jetson_summary.ok=true`
+  확인. 이전에 봤던 `session.orphaned` 경합은 v2 Pi 코드에서는 재현되지 않았다. 결정 번호는 Pi가 먼저 쓴
+  D-016~018을 피해 **D-019(마이크)·D-020(V4L2)·D-021(저장 레이아웃)**으로 재부여. 테스트 23개 통과.
 - **미실시/남은 것**: ISX031F 실측(FPS·CPU·JPEG·기록 속도)은 카메라 보드 전원 연결 후 `tools/v4l2_check.py --jpeg`,
   Gemini 2·MLX 어댑터는 실물 확보 후, Pi 화면에 확장 필드(스트림 통계·recovered) 표시, 위 Pi 경합 수정.
 
