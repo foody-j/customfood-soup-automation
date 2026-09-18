@@ -7,21 +7,10 @@
 
 from __future__ import annotations
 
-import importlib.util
 import subprocess
 from typing import Any
 
-from .base import KIND_DEPTH_USB, KIND_POINT_TEMP_I2C, KIND_THERMAL_I2C, SensorAdapter, SensorError, SensorProbe
-
-ORBBEC_USB_VENDOR = "2bc5"
-
-
-def _lsusb_has(vendor_hex: str) -> bool | None:
-    try:
-        res = subprocess.run(["lsusb"], capture_output=True, text=True, timeout=3)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    return f"ID {vendor_hex}:" in res.stdout
+from .base import KIND_POINT_TEMP_I2C, KIND_THERMAL_I2C, SensorAdapter, SensorError, SensorProbe
 
 
 def _i2c_has(bus: int, addr: int) -> bool | None:
@@ -68,25 +57,6 @@ class _Unsupported(SensorAdapter):
 
     def close(self) -> None:
         return None
-
-
-class OrbbecGemini2Unsupported(_Unsupported):
-    """Orbbec Gemini 2 — pyorbbecsdk가 설치돼 있지 않고 USB에도 장치가 없다."""
-
-    def __init__(self) -> None:
-        super().__init__("cam_depth_0", KIND_DEPTH_USB, "Orbbec Gemini 2", "Orbbec Gemini 2 (USB3) — 미연동")
-
-    def _reason(self) -> tuple[str, dict[str, Any]]:
-        sdk = importlib.util.find_spec("pyorbbecsdk") is not None
-        usb = _lsusb_has(ORBBEC_USB_VENDOR)
-        facts = {"pyorbbecsdk_installed": sdk, "usb_present": usb}
-        if not sdk and not usb:
-            return "pyorbbecsdk 미설치 + USB 장치 없음", facts
-        if not sdk:
-            return "pyorbbecsdk 미설치(USB 장치는 감지됨) — 어댑터 작성 필요", facts
-        if not usb:
-            return "USB 장치 없음(SDK는 있음) — 어댑터 작성 필요", facts
-        return "SDK·장치 있음 — 어댑터 미작성(실물 검증 필요)", facts
 
 
 class Mlx90640Unsupported(_Unsupported):

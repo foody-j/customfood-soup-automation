@@ -126,6 +126,8 @@ class StreamWriter(threading.Thread):
         self._records_fh = None
         self._records_off = 0
         self._frame_no = 0
+        self._array_dtype: str | None = None
+        self._array_shape: tuple[int, ...] | None = None
         self._last_flush = time.monotonic()
         self._stop = threading.Event()
         self.finished = threading.Event()
@@ -241,6 +243,10 @@ class StreamWriter(threading.Thread):
                 path, nbytes, extra = self._write_image(s)
             elif self.spec.data_kind == DATA_ARRAY:
                 arr = np.ascontiguousarray(s.data)
+                if self._array_dtype is None:
+                    self._array_dtype, self._array_shape = str(arr.dtype), tuple(arr.shape)
+                elif (str(arr.dtype), tuple(arr.shape)) != (self._array_dtype, self._array_shape):
+                    raise ValueError(f"{self.rel}: 배열 형식 변경 {arr.dtype}/{arr.shape} != {self._array_dtype}/{self._array_shape}")
                 raw = arr.tobytes()
                 assert self._records_fh is not None
                 self._records_fh.write(raw)
@@ -366,7 +372,8 @@ class StreamWriter(threading.Thread):
             })
         elif self.spec.data_kind == DATA_ARRAY:
             entries.append({
-                "path": f"{self.rel}/records.bin", "format": f"raw records dtype={self.spec.dtype} shape={list(self.spec.shape or [])}",
+                "path": f"{self.rel}/records.bin",
+                "format": f"raw records dtype={self._array_dtype or self.spec.dtype} shape={list(self._array_shape or self.spec.shape or [])}",
                 "role": "data", "unit": self.spec.unit, "bytes": _size(self.dir / "records.bin"), "frames": st.written,
                 "first_host_utc": st.first_host_utc, "last_host_utc": st.last_host_utc,
                 "started_at": self.started_utc, "ended_at": self.ended_utc, "status": status,

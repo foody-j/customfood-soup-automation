@@ -86,7 +86,7 @@ SOUP_JETSON_MODE=mock SOUP_POWER_MODE=mock .venv/bin/python -m app.main
 - [x] React+Vite 대시보드 (목 데이터 구동)
 - [x] **Pi 관리 서버 1차** — 모의 Jetson 대상 상태 감시·촬영 제어·이벤트 기록·관리 화면 (플랜 2단계)
 - [ ] Jetson 수집 서비스 구현 (`docs/pi-jetson-api.md` 계약) → `SOUP_JETSON_MODE=http` 전환
-- [ ] Orbbec Gemini 2 수집·저장·미리보기 (플랜 3단계)
+- [ ] Orbbec Gemini 2 수집·저장·미리보기 실기기 검증 (Jetson 어댑터·설치 지시서 구현, 플랜 3단계)
 - [ ] Pi에 Mosquitto 설치 + WebSocket 리스너(9001)
 - [ ] `useCookingData.js`를 mqtt.js 구독으로 교체
 - [ ] Jetson 전원 제어 회로 + GPIO 어댑터 (플랜 6단계)

@@ -2,6 +2,21 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-09-18 — Gemini 2 Jetson 수집 경로 및 실행 지시서
+
+- Jetson 수집 서비스에 Orbbec Python SDK v2 기반 `cam_depth_0` 어댑터를 추가했다.
+  color·depth·IR 프레임을 읽고 장치 시각·순번, 실제 적용 프로필·모델·시리얼·펌웨어,
+  깊이 scale을 기록한다. SDK/장치가 없으면 `connected:false`로 원인을 보고한다.
+- 색상은 JPEG(선택 시 BGR raw), 깊이는 mm `uint16`, IR은 강도 `uint16`으로 기존
+  세션 저장 구조에 기록한다. 배열의 실제 dtype·shape를 manifest에 반영한다.
+  활성 세션의 받은 샘플로만 선택적 저속 JPEG 미리보기를 제공한다(D-023).
+- `docs/gemini2-jetson-setup.md`에 Jetson SDK·udev 설치, USB 점검, 서비스 설정,
+  세션 시작/중지, 원본 재열기 및 실기기 합격 기준을 정리했다.
+- 가짜 SDK를 사용한 어댑터·API·저장·미리보기 테스트 9건 통과(Windows 개발 머신에서
+  Linux 전용 V4L2 모듈만 대체해 실행). 기존 전체 collector 테스트는 Windows의
+  `fcntl`/aarch64 구조체·`os.getloadavg`·UTF-8 환경 차이로 통과하지 못했다.
+  실제 Jetson USB 카메라 촬영·FPS·연속 운전은 아직 검증하지 않았다.
+
 ## 2026-09-18 — Jetson 센서 5대 개발·검증 지침서
 
 - `docs/jetson-five-sensor-guide.md` 작성. MLX90640 2대, MLX90614 2대, MAX31865/PT100

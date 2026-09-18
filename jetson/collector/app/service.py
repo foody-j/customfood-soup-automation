@@ -273,6 +273,19 @@ class CollectorService:
                 raise SensorError(f"세션 ID 불일치({cur.session_id})")
         return cur.apply_config_change(sensor_id, changes)
 
+    def preview_frame(self, *, sensor_id: str, stream_id: str,
+                      session_id: str | None = None) -> tuple[str, bytes, str, int] | None:
+        """활성 세션이 이미 만든 축소 JPEG만 읽는다. 장치를 다시 열지 않는다."""
+        with self._lock:
+            cur = self._session
+        if cur is None or (session_id is not None and cur.session_id != session_id):
+            return None
+        cached = cur.preview_frame(sensor_id, stream_id)
+        if cached is None:
+            return None
+        payload, host_utc, seq = cached
+        return cur.session_id, payload, host_utc, seq
+
     # ── 정상 종료 ───────────────────────────────────────────────────────────
     def shutdown(self) -> CaptureAck:
         with self._lock:

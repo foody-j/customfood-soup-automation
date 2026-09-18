@@ -210,7 +210,7 @@ def build_mock_sensors() -> list[SensorAdapter]:
     return [
         MockRgbCamera("cam_rgb_0", "mock — Sensing ISX031F 자리 (/dev/video4)"),
         MockRgbCamera("cam_rgb_1", "mock — Sensing ISX031F 2번 자리"),
-        MockDepthCamera("cam_depth_0", "mock — Orbbec Gemini 2 자리 (SDK 미연동)"),
+        MockDepthCamera("cam_depth_0", "mock — Orbbec Gemini 2 자리"),
         MockThermalArray("thermal_0", "mock — MLX90640 32x24 자리"),
         MockPointTemp("point_temp_0", "mock — MLX90614 자리"),
     ]

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 
 from .models import CaptureAck, ConfigChangeRequest, JetsonReport, StartRequest, StopRequest
 from .sensors.base import SensorError
@@ -53,6 +53,20 @@ async def capture_config(request: Request, body: ConfigChangeRequest) -> dict:
         )
     except SensorError as exc:
         return {"accepted": False, "message": str(exc)}
+
+
+@router.get("/capture/preview/{sensor_id}/{stream_id}")
+async def capture_preview(request: Request, sensor_id: str, stream_id: str,
+                          session_id: str | None = None) -> Response:
+    """활성 세션의 선택적 저속 JPEG 시각화. 원본 수집에는 영향이 없다."""
+    frame = _svc(request).preview_frame(sensor_id=sensor_id, stream_id=stream_id, session_id=session_id)
+    if frame is None:
+        raise HTTPException(status_code=404, detail="활성 세션의 미리보기 프레임이 없음")
+    active_session_id, payload, host_utc, seq = frame
+    return Response(content=payload, media_type="image/jpeg", headers={
+        "Cache-Control": "no-store", "X-Preview-Session-Id": active_session_id,
+        "X-Preview-Host-Utc": host_utc, "X-Preview-Sequence": str(seq),
+    })
 
 
 @router.post("/system/shutdown", response_model=CaptureAck)

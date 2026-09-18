@@ -55,6 +55,8 @@ class Settings:
     sensor_mode: str = SENSOR_MODE_MOCK
     #: GMSL2 카메라 노드(ISX031F, FG12-4CH). `auto`/`real`에서만 사용.
     v4l2_devices: tuple[str, ...] = ("/dev/video4",)
+    #: 여러 Orbbec 장치가 연결된 경우 사용할 Gemini 2 시리얼. 비우면 첫 Gemini 2.
+    orbbec_serial: str = ""
     #: 센서 탐색(probe) 결과 캐시 수명. status는 2초마다 오므로 매번 탐색하지 않는다.
     probe_ttl_sec: float = 10.0
 
@@ -115,6 +117,7 @@ class Settings:
             project_id=_env_str("COLLECTOR_PROJECT_ID", "customfood-soup"),
             sensor_mode=_env_str("COLLECTOR_SENSOR_MODE", SENSOR_MODE_MOCK),
             v4l2_devices=tuple(d.strip() for d in devices.split(",") if d.strip()),
+            orbbec_serial=_env_str("COLLECTOR_ORBBEC_SERIAL", ""),
             probe_ttl_sec=_env_float("COLLECTOR_PROBE_TTL", 10.0),
             data_root=Path(root).expanduser() if root else Path.home() / "collector-data",
             min_free_bytes=_env_int("COLLECTOR_MIN_FREE_BYTES", 2 * 1000**3),

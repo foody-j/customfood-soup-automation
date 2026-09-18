@@ -15,9 +15,12 @@
 from __future__ import annotations
 
 import logging
+import math
 import threading
 import time
 from typing import Any, Callable
+
+import numpy as np
 
 from . import VERSION
 from .clock import clock_relation, utcnow_iso
@@ -27,6 +30,65 @@ from .sensors.base import SensorAdapter, SensorError
 from .storage import SessionStore, StreamWriter, disk_usage
 
 log = logging.getLogger(__name__)
+
+try:
+    import cv2  # type: ignore
+except Exception:  # pragma: no cover - recording still works without preview support
+    cv2 = None
+
+_PREVIEW_STREAMS = frozenset({"rgb", "color", "depth", "ir", "left_ir", "right_ir"})
+_PREVIEW_MAX_STREAMS = 8
+_PREVIEW_MAX_BYTES = 256 * 1024
+_PREVIEW_MAX_SIDE = 640
+_PREVIEW_DEPTH_MAX_MM = 4000
+
+
+def _preview_jpeg(sample: Any) -> bytes | None:
+    """샘플의 축소 시각화만 만든다. 깊이는 0~4 m 고정 범위의 의사색이다."""
+    if cv2 is None:
+        return None
+    stream_id = sample.stream_id
+    fmt = (sample.pixel_format or "").upper()
+    data = sample.data
+    if stream_id == "depth":
+        depth = np.asarray(data)
+        if depth.ndim != 2 or depth.size == 0:
+            return None
+        depth_8 = (np.clip(depth, 0, _PREVIEW_DEPTH_MAX_MM).astype(np.float32) *
+                   (255.0 / _PREVIEW_DEPTH_MAX_MM)).astype(np.uint8)
+        image = cv2.applyColorMap(depth_8, cv2.COLORMAP_JET)
+        image[depth == 0] = 0
+    elif stream_id in {"ir", "left_ir", "right_ir"}:
+        ir = np.asarray(data)
+        if ir.ndim != 2 or ir.size == 0:
+            return None
+        if ir.dtype == np.uint8 or int(ir.max()) <= 255:
+            image = ir.astype(np.uint8)
+        else:
+            image = cv2.normalize(ir, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    elif isinstance(data, (bytes, bytearray, memoryview)):
+        raw = np.frombuffer(data, dtype=np.uint8)
+        if fmt in {"MJPG", "JPEG"}:
+            image = cv2.imdecode(raw, cv2.IMREAD_COLOR)
+        elif fmt == "UYVY" and sample.width and sample.height:
+            image = cv2.cvtColor(raw.reshape(sample.height, sample.width, 2), cv2.COLOR_YUV2BGR_UYVY)
+        else:
+            return None
+    else:
+        image = np.asarray(data)
+        if image.ndim == 3 and image.shape[2] == 3 and fmt in {"RGB", "RGB8"}:
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        elif image.ndim == 3 and image.shape[2] == 4:
+            image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+    if image is None or image.ndim not in (2, 3) or image.size == 0:
+        return None
+    height, width = image.shape[:2]
+    if max(height, width) > _PREVIEW_MAX_SIDE:
+        scale = _PREVIEW_MAX_SIDE / max(height, width)
+        image = cv2.resize(image, (max(1, round(width * scale)), max(1, round(height * scale))),
+                           interpolation=cv2.INTER_AREA)
+    ok, encoded = cv2.imencode(".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
+    return encoded.tobytes() if ok else None
 
 
 class CaptureSession:
@@ -73,6 +135,23 @@ class CaptureSession:
         self._finalize_started = False
         self._prev_counts: dict[tuple[str, str], tuple[float, int, int]] = {}
         self._rates: dict[tuple[str, str], dict[str, float | None]] = {}
+        preview_config = self.config.get("preview")
+        self._preview_enabled = bool(preview_config is True or
+                                     (isinstance(preview_config, dict) and preview_config.get("enabled") is True))
+        requested_fps = preview_config.get("max_fps", 1.0) if isinstance(preview_config, dict) else 1.0
+        try:
+            requested_fps = float(requested_fps)
+        except (TypeError, ValueError):
+            requested_fps = 1.0
+        if not math.isfinite(requested_fps):
+            requested_fps = 1.0
+        self._preview_period = 1.0 / min(2.0, max(0.1, requested_fps))
+        self._preview_allowed = {
+            (s.sensor_id, spec.stream_id)
+            for s in sensors for spec in s.streams if spec.stream_id in _PREVIEW_STREAMS
+        }
+        self._preview_frames: dict[tuple[str, str], tuple[bytes, str, int]] = {}
+        self._preview_last_attempt: dict[tuple[str, str], float] = {}
 
     # ── 시작 ────────────────────────────────────────────────────────────────
     def start(self) -> None:
@@ -205,7 +284,8 @@ class CaptureSession:
                     continue
                 if w.stats.received == 0:
                     self.phases[f"first_sample:{s.sensor_id}/{smp.stream_id}"] = smp.host.utc
-                w.submit(smp)
+                if w.submit(smp):
+                    self._update_preview(s.sensor_id, smp)
         try:
             s.close()
         except Exception as exc:
@@ -276,6 +356,7 @@ class CaptureSession:
                 self.state = CaptureState.STOPPING
             self.stop_reason = reason
             self.phases["stop_requested"] = utcnow_iso()
+            self._preview_frames.clear()
             self.store.append_event("info", "session.stop_requested", f"중지 요청: {reason or '사유 없음'}")
             log.info("세션 %s 중지 요청: %s", self.session_id, reason or "사유 없음")
         self._stop_event.set()
@@ -362,6 +443,40 @@ class CaptureSession:
     @property
     def finished(self) -> bool:
         return self._done.is_set()
+
+    # ── 저속 미리보기 ───────────────────────────────────────────────────────
+    def _update_preview(self, sensor_id: str, sample: Any) -> None:
+        """기존 수집 루프의 샘플로만 최신 JPEG를 만든다. 기록용 원본은 수정하지 않는다."""
+        if not self._preview_enabled or cv2 is None or not sample.valid or self._stop_event.is_set():
+            return
+        key = (sensor_id, sample.stream_id)
+        if key not in self._preview_allowed:
+            return
+        now = time.monotonic()
+        with self._lock:
+            if now - self._preview_last_attempt.get(key, float("-inf")) < self._preview_period:
+                return
+            if key not in self._preview_frames and len(self._preview_frames) >= _PREVIEW_MAX_STREAMS:
+                return
+            self._preview_last_attempt[key] = now
+        try:
+            payload = _preview_jpeg(sample)
+        except Exception as exc:  # preview must never interrupt raw capture
+            log.debug("미리보기 변환 실패 (%s/%s): %s", sensor_id, sample.stream_id, exc)
+            return
+        if payload is None or len(payload) > _PREVIEW_MAX_BYTES:
+            return
+        with self._lock:
+            if not self._stop_event.is_set() and (key in self._preview_frames or
+                                                  len(self._preview_frames) < _PREVIEW_MAX_STREAMS):
+                self._preview_frames[key] = (payload, sample.host.utc, sample.seq)
+
+    def preview_frame(self, sensor_id: str, stream_id: str) -> tuple[bytes, str, int] | None:
+        """현재 실행 중인 세션의 캐시만 반환한다. 장치나 기록 파일을 열지 않는다."""
+        with self._lock:
+            if not self._preview_enabled or self.state is not CaptureState.RUNNING or self._stop_event.is_set():
+                return None
+            return self._preview_frames.get((sensor_id, stream_id))
 
     # ── 실험 중 설정 변경 ───────────────────────────────────────────────────
     def apply_config_change(self, sensor_id: str, changes: dict[str, Any]) -> dict[str, Any]:

@@ -3,6 +3,9 @@
 > 이 문서는 **Jetson 실기기에서 작업하는 에이전트/개발자용 작업 지시서**다.
 > 작성: 2026-09-11, Pi에서. 계약 문서는 `docs/pi-jetson-api.md`(단일 출처).
 > Pi 쪽 상대편 구현은 `pi-server/`에 이미 완성돼 있고 모의 Jetson으로 검증됐다.
+> **현재 상태(2026-09-18):** 이 문서의 Gemini 2 "미연동" 표기는 작성 시점의 기록이다.
+> Jetson SDK 어댑터와 실행 절차는 [`gemini2-jetson-setup.md`](gemini2-jetson-setup.md) 참고.
+> 실기기 촬영 검증은 아직 남아 있다.
 
 ---
 

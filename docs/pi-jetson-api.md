@@ -206,7 +206,7 @@ Pi와의 연결은 관리 경로일 뿐 수집의 전제가 아니다(플랜 §4
 | 항목 | 상태 |
 |---|---|
 | `sensors[].stats` · `last_session_summary` | **Jetson 구현됨(2026-09-12)** — §2.1. `stats`는 진행 중 세션의 스트림 통계를 센서 단위로 합산(세션 없으면 null), `last_session_summary`는 파일 close·manifest 기록 후 확정(`ok=false`면 `note`에 사유) |
-| `GET /api/v1/preview/{sensor_id}.jpg` (저해상 미리보기) | **미정의** — 3단계 범위에서 제외(원본 저장 우선). 추가 시 미리보기가 원본을 대체하지 않는다는 규칙 유지 |
+| 저해상 미리보기 | **Jetson 구현됨(2026-09-18)** — 아래 `GET /api/v1/capture/preview/{sensor_id}/{stream_id}`. 활성 세션에서 요청 시에만 사용, 원본 저장과 분리 |
 | 센서별 설정 조회/변경 (`/api/v1/sensors/...`) | 미정의 — 4단계 |
 | 인증 | 없음(로컬 유선망 전제). 운영 전 재검토 |
 | 시계 오프셋 보고 | 확장 필드 `clock`으로 1차 제공(NTP 오프셋은 timesyncd가 노출하지 않아 null). 장치 간 보정은 5단계 |
@@ -219,6 +219,7 @@ Pi와의 연결은 관리 경로일 뿐 수집의 전제가 아니다(플랜 §4
 | `GET /api/v1/sessions?limit=` | 저장된 세션 목록(session.json 요약) |
 | `GET /api/v1/sessions/{session_id}` | `session`(메타) + `manifest`(결과 목록) + `live`(진행 중이면 현재 통계) |
 | `POST /api/v1/capture/config` | 실험 중 설정 변경 `{session_id?, sensor_id, changes}` → `{applied, before, after}` 또는 `{accepted:false, message}`. 변경 시각·전후 값이 세션 기록에 남는다 |
+| `GET /api/v1/capture/preview/{sensor_id}/{stream_id}?session_id=` | `config.preview.enabled=true`로 시작한 활성 세션의 최근 축소 JPEG. `max_fps` 기본 1, 상한 2. 아직 프레임이 없거나 종료되면 404. `Cache-Control: no-store`, 세션 ID·수신 UTC·시퀀스 응답 헤더 포함. 원본 파일·세션 저장을 대신하지 않는다 |
 
 Jetson 구현: `jetson/collector/` (README 참고). Pi 쪽 클라이언트
 `pi-server/app/jetson/http_client.py`는 `SOUP_JETSON_MODE=http`로 바꾸면 그대로 붙는다

@@ -14,7 +14,7 @@ Pi 관리 서버(`pi-server/`)의 상대편이며, 접점은 계약 문서 `docs
 | API | Python 3.10 + FastAPI (`app/routes.py`, `app/main.py`) |
 | 세션 상태기계 | `app/session.py` — starting → running → stopping → stopped / failed |
 | 저장 | `app/storage.py` — 세션 디렉터리·index.jsonl·records.bin·manifest.json·복구·체크섬 |
-| 센서 어댑터 | `app/sensors/` — mock · v4l2(ISX031F) · unsupported(Gemini 2·MLX) |
+| 센서 어댑터 | `app/sensors/` — mock · v4l2(ISX031F) · Orbbec Gemini 2 · unsupported(MLX) |
 | 시스템 상태 | `app/sysmon.py` — CPU·GPU·메모리·온도·디스크 (기본 5초) |
 | 자동 실행 | `systemd/jetson-collector.service` |
 
@@ -49,6 +49,7 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 |---|---|---|
 | `COLLECTOR_SENSOR_MODE` | `mock` | `mock` 모의만 / `auto` 실기기+미지원 보고+`mock_*` / `real` 실기기만 |
 | `COLLECTOR_V4L2_DEVICES` | `/dev/video4` | ISX031F 노드(쉼표 구분) → `cam_rgb_0`, `cam_rgb_1`… |
+| `COLLECTOR_ORBBEC_SERIAL` | (없음) | Gemini 2가 여러 대일 때 선택할 USB 장치 시리얼 |
 | `COLLECTOR_DATA_ROOT` | `~/collector-data` | 세션 원본 루트 |
 | `COLLECTOR_MIN_FREE_BYTES` | 2 GB | 미만이면 시작 거절, 진행 중이면 안전 종료(`failed`, `disk_low`) |
 | `COLLECTOR_WRITER_QUEUE_MAX` | 64 | 스트림별 기록 대기열 상한(넘치면 버리고 셈) |
@@ -61,10 +62,10 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 
 ## 센서 ID와 스트림
 
-| sensor_id | kind | 스트림 | 상태(2026-09-12) |
+| sensor_id | kind | 스트림 | 상태(2026-09-18) |
 |---|---|---|---|
 | `cam_rgb_0` | rgb_gmsl2 | `rgb` (UYVY→JPEG 프레임 파일, 또는 raw) | 어댑터 있음. **실기기 검증 전**(GMSL 링크 미확립 상태에서 ioctl 경로만 확인) |
-| `cam_depth_0` | depth_usb | `color` / `depth`(mm, uint16) / `ir` | **미지원** — pyorbbecsdk·USB 장치 없음 |
+| `cam_depth_0` | depth_usb | `color`(JPEG 또는 BGR raw) / `depth`(mm, uint16) / `ir`(intensity, uint16) | 어댑터 구현. **Jetson 실기기 검증 전** — SDK·USB 장치 필요 |
 | `thermal_0` | thermal_i2c | `temp_array` (24×32 float32 ℃) | **미지원** — I2C 응답 없음 |
 | `point_temp_0` | point_temp_i2c | `temp` (object/ambient ℃) | **미지원** — I2C 응답 없음 |
 | `mock_*` (auto) / 위 ID 그대로 (mock) | — | 위와 같은 스트림 구조 | 모의, 항상 `simulated:true` |
@@ -80,6 +81,9 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 ```
 
 `sensors`를 비우면 **연결된 센서 전부**를 쓴다. 미연결·미지원 센서를 지정하면 시작을 거절한다(200 + `accepted:false`).
+
+Gemini 2의 Jetson SDK 설치, USB 권한, 수집·미리보기 시험 및 저장 파일 확인은
+[`docs/gemini2-jetson-setup.md`](../../docs/gemini2-jetson-setup.md)를 따른다.
 
 ## 저장 레이아웃
 
