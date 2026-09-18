@@ -43,8 +43,8 @@ _PREVIEW_MAX_SIDE = 640
 _PREVIEW_DEPTH_MAX_MM = 4000
 
 
-def _preview_jpeg(sample: Any) -> bytes | None:
-    """샘플의 축소 시각화만 만든다. 깊이는 0~4 m 고정 범위의 의사색이다."""
+def _preview_jpeg(sample: Any, depth_max_mm: int = _PREVIEW_DEPTH_MAX_MM) -> bytes | None:
+    """샘플의 축소 시각화만 만든다. 깊이는 0~depth_max_mm 범위의 의사색이다(기본 4 m)."""
     if cv2 is None:
         return None
     stream_id = sample.stream_id
@@ -54,8 +54,8 @@ def _preview_jpeg(sample: Any) -> bytes | None:
         depth = np.asarray(data)
         if depth.ndim != 2 or depth.size == 0:
             return None
-        depth_8 = (np.clip(depth, 0, _PREVIEW_DEPTH_MAX_MM).astype(np.float32) *
-                   (255.0 / _PREVIEW_DEPTH_MAX_MM)).astype(np.uint8)
+        depth_8 = (np.clip(depth, 0, depth_max_mm).astype(np.float32) *
+                   (255.0 / depth_max_mm)).astype(np.uint8)
         image = cv2.applyColorMap(depth_8, cv2.COLORMAP_JET)
         image[depth == 0] = 0
     elif stream_id in {"ir", "left_ir", "right_ir"}:
@@ -146,6 +146,13 @@ class CaptureSession:
         if not math.isfinite(requested_fps):
             requested_fps = 1.0
         self._preview_period = 1.0 / min(2.0, max(0.1, requested_fps))
+        # 깊이 의사색 범위(mm). 작업 거리 0.5 m에서 기본 4 m는 거의 한 색이라 세션에서 좁힐 수 있게 한다.
+        depth_max = preview_config.get("depth_max_mm") if isinstance(preview_config, dict) else None
+        try:
+            depth_max = int(depth_max) if depth_max is not None else _PREVIEW_DEPTH_MAX_MM
+        except (TypeError, ValueError):
+            depth_max = _PREVIEW_DEPTH_MAX_MM
+        self._preview_depth_max_mm = min(65535, max(100, depth_max))
         self._preview_allowed = {
             (s.sensor_id, spec.stream_id)
             for s in sensors for spec in s.streams if spec.stream_id in _PREVIEW_STREAMS
@@ -460,7 +467,7 @@ class CaptureSession:
                 return
             self._preview_last_attempt[key] = now
         try:
-            payload = _preview_jpeg(sample)
+            payload = _preview_jpeg(sample, self._preview_depth_max_mm)
         except Exception as exc:  # preview must never interrupt raw capture
             log.debug("미리보기 변환 실패 (%s/%s): %s", sensor_id, sample.stream_id, exc)
             return

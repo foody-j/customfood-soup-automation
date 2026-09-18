@@ -219,7 +219,7 @@ Pi와의 연결은 관리 경로일 뿐 수집의 전제가 아니다(플랜 §4
 | `GET /api/v1/sessions?limit=` | 저장된 세션 목록(session.json 요약) |
 | `GET /api/v1/sessions/{session_id}` | `session`(메타) + `manifest`(결과 목록) + `live`(진행 중이면 현재 통계) |
 | `POST /api/v1/capture/config` | 실험 중 설정 변경 `{session_id?, sensor_id, changes}` → `{applied, before, after}` 또는 `{accepted:false, message}`. 변경 시각·전후 값이 세션 기록에 남는다 |
-| `GET /api/v1/capture/preview/{sensor_id}/{stream_id}?session_id=` | `config.preview.enabled=true`로 시작한 활성 세션의 최근 축소 JPEG. `max_fps` 기본 1, 상한 2. 아직 프레임이 없거나 종료되면 404. `Cache-Control: no-store`, 세션 ID·수신 UTC·시퀀스 응답 헤더 포함. 원본 파일·세션 저장을 대신하지 않는다 |
+| `GET /api/v1/capture/preview/{sensor_id}/{stream_id}?session_id=` | `config.preview.enabled=true`로 시작한 활성 세션의 최근 축소 JPEG. `max_fps` 기본 1, 상한 2. `config.preview.depth_max_mm`(기본 4000, 100~65535)로 깊이 의사색 범위를 정한다 — 작업 거리 0.5 m에서는 1000~1500 권장. 아직 프레임이 없거나 종료되면 404. `Cache-Control: no-store`, 세션 ID·수신 UTC·시퀀스 응답 헤더 포함. 원본 파일·세션 저장을 대신하지 않는다 |
 
 Jetson 구현: `jetson/collector/` (README 참고). Pi 쪽 클라이언트
 `pi-server/app/jetson/http_client.py`는 `SOUP_JETSON_MODE=http`로 바꾸면 그대로 붙는다

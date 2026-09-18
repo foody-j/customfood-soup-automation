@@ -32,7 +32,7 @@ _PAGE = """<!doctype html>
  .scroll{overflow-x:auto}
 </style></head><body>
 <h1>Jetson 수집 점검 화면</h1>
-<div class="mut">미리보기는 축소 JPEG(최대 2 fps)이며 저장되는 원본과 별개다. 깊이는 0~4 m 고정 의사색.</div>
+<div class="mut">미리보기는 축소 JPEG(최대 2 fps)이며 저장되는 원본과 별개다. 깊이 의사색 범위는 세션의 preview.depth_max_mm(점검 세션은 1.5 m).</div>
 <div class="bar">
  <span id="state">상태 읽는 중…</span>
  <button id="start">점검 세션 시작</button><button id="stop">세션 중지</button>
@@ -85,7 +85,7 @@ $("start").onclick = async () => {
   if (!sensors.length) { $("msg").textContent = "연결된 실물 센서가 없다."; return; }
   const sid = "check-" + new Date().toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
   const r = await (await fetch(API + "/capture/start", {method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({session_id: sid, name: "viewer 점검 세션", config: {sensors, preview: {enabled: true, max_fps: 2}}})})).json();
+    body: JSON.stringify({session_id: sid, name: "viewer 점검 세션", config: {sensors, preview: {enabled: true, max_fps: 2, depth_max_mm: 1500}}})})).json();
   $("msg").textContent = r.accepted ? "" : ("시작 거절: " + (r.message || ""));
   tick();
 };

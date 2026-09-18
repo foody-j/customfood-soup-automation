@@ -93,3 +93,15 @@ def test_viewer_page_is_served_and_uses_only_existing_endpoints(client):
     assert res.status_code == 200 and res.headers["content-type"].startswith("text/html")
     assert res.headers["cache-control"] == "no-store"
     assert "/capture/preview/" in res.text and "/status" in res.text
+
+
+def test_depth_preview_range_is_configurable_per_session():
+    import cv2
+    from types import SimpleNamespace
+    from app.session import _preview_jpeg
+
+    depth = np.full((40, 60), 500, dtype=np.uint16)  # 작업 거리 0.5 m
+    sample = SimpleNamespace(stream_id="depth", pixel_format="Z16_MM", data=depth, width=60, height=40)
+    wide = cv2.imdecode(np.frombuffer(_preview_jpeg(sample), np.uint8), cv2.IMREAD_COLOR)
+    narrow = cv2.imdecode(np.frombuffer(_preview_jpeg(sample, 1000), np.uint8), cv2.IMREAD_COLOR)
+    assert not np.array_equal(wide, narrow)  # 같은 깊이가 범위에 따라 다른 색으로 그려진다
