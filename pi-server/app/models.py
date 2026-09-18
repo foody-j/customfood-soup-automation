@@ -83,7 +83,7 @@ class SensorStats(BaseModel):
 
 class SensorInfo(BaseModel):
     sensor_id: str
-    kind: str  # rgb_gmsl2 | depth_usb | thermal_i2c | point_temp_i2c ...
+    kind: str  # rgb_gmsl2 | depth_usb | thermal_i2c | point_temp_i2c | rtd_spi ...
     connected: bool
     #: 실물 연동이 끝나지 않은 센서는 반드시 True. "연동 완료"로 표시하지 않기 위함(플랜 §4).
     simulated: bool = False

@@ -139,7 +139,7 @@ Pi 쪽(`pi-server/`)과 같은 구조·같은 원칙으로 만들면 된다. 코
 ```python
 class SensorAdapter(Protocol):
     sensor_id: str
-    kind: str            # rgb_gmsl2 | depth_usb | thermal_i2c | point_temp_i2c
+    kind: str            # rgb_gmsl2 | depth_usb | thermal_i2c | point_temp_i2c | rtd_spi
     simulated: bool
     def probe(self) -> SensorInfo: ...        # 연결 여부·지원 기능
     def open(self, config: dict) -> None: ...

@@ -36,6 +36,36 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_opt_int(name: str, default: int | None) -> int | None:
+    """정수 또는 미설정. `0x70` 같은 16진수도 받는다. `none`/`off`는 명시적 None."""
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    if raw.strip().lower() in ("none", "off"):
+        return None
+    try:
+        return int(raw.strip(), 0)
+    except ValueError:
+        return default
+
+
+def _env_opt_float(name: str, default: float | None) -> float | None:
+    try:
+        return float(os.environ[name])
+    except (KeyError, ValueError):
+        return default
+
+
+def _env_int_tuple(name: str, default: tuple[int, ...]) -> tuple[int, ...]:
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        return tuple(int(v.strip(), 0) for v in raw.split(",") if v.strip())
+    except ValueError:
+        return default
+
+
 def _env_bool(name: str, default: bool) -> bool:
     raw = os.environ.get(name)
     if raw is None or not raw.strip():
@@ -59,6 +89,39 @@ class Settings:
     orbbec_serial: str = ""
     #: 센서 탐색(probe) 결과 캐시 수명. status는 2초마다 오므로 매번 탐색하지 않는다.
     probe_ttl_sec: float = 10.0
+
+    # ── I²C·SPI 센서 5대 (docs/jetson-five-sensor-guide.md) ────────────────
+    # 버스 번호·CS 핀·기준 저항은 **실측 전에는 기본값이 없다**(None/빈 값). 미설정이면
+    # 해당 센서는 status에 `connected=false` + 이유로 나가고 열지 않는다.
+    #: 열화상 버스(J12 3/5번)의 실측 `/dev/i2c-N` 번호.
+    i2c_thermal_bus: int | None = None
+    #: 그 버스의 TCA9548A 주소. None이면 mux 없이 직결(센서 1대 단독 시험용).
+    i2c_thermal_mux_addr: int | None = 0x70
+    #: thermal_0, thermal_1 … 순서의 mux 채널.
+    thermal_channels: tuple[int, ...] = (0, 1)
+    #: 카메라 1대의 목표 전체 프레임 주기(Hz). 초기 시험 목표이며 검증된 성능이 아니다.
+    thermal_rate_hz: float = 2.0
+    #: MLX90640 장치 refresh rate(서브페이지 주기). 전체 프레임 = 서브페이지 2장이고
+    #: 같은 버스의 카메라는 직렬로 읽으므로 `목표 Hz × 2 × 카메라 수` 이상이어야 한다.
+    thermal_refresh_hz: float = 8.0
+    #: getFrame의 일시적 ValueError/RuntimeError 재시도 횟수(지침서 §5-2).
+    thermal_read_retries: int = 2
+    #: 비접촉 온도 버스(J12 27/28번, 100 kHz)의 실측 번호·mux 주소·채널.
+    i2c_point_bus: int | None = None
+    i2c_point_mux_addr: int | None = 0x70
+    point_channels: tuple[int, ...] = (0, 1)
+    point_rate_hz: float = 1.0
+    #: MAX31865 CS로 쓸 Blinka 핀 이름(예: J12 물리 15번 = `D22`). 하드웨어 CS0(24번) 금지.
+    pt100_cs_pin: str = ""
+    #: MAX31865 보드의 **실물** 기준 저항(Ω). 430을 가정하지 않는다.
+    pt100_ref_ohms: float | None = None
+    pt100_nominal_ohms: float = 100.0
+    pt100_wires: int = 3
+    pt100_rate_hz: float = 1.0
+    #: 연속 읽기 실패가 이만큼 쌓이면 어댑터가 분리로 보고 세션이 재연결을 시도한다.
+    sensor_fail_limit: int = 5
+    #: 시스템 Jetson.GPIO가 보드를 못 알아볼 때(Orin Nano Super + 2.1.7) 넘길 모델명.
+    jetson_model_name: str = ""
 
     # ── 저장 ───────────────────────────────────────────────────────────────
     #: 세션 원본 루트. 기본은 홈 아래(`/data`는 sudo 필요).
@@ -119,6 +182,23 @@ class Settings:
             v4l2_devices=tuple(d.strip() for d in devices.split(",") if d.strip()),
             orbbec_serial=_env_str("COLLECTOR_ORBBEC_SERIAL", ""),
             probe_ttl_sec=_env_float("COLLECTOR_PROBE_TTL", 10.0),
+            i2c_thermal_bus=_env_opt_int("COLLECTOR_I2C_THERMAL_BUS", None),
+            i2c_thermal_mux_addr=_env_opt_int("COLLECTOR_I2C_THERMAL_MUX_ADDR", 0x70),
+            thermal_channels=_env_int_tuple("COLLECTOR_THERMAL_CHANNELS", (0, 1)),
+            thermal_rate_hz=_env_float("COLLECTOR_THERMAL_RATE_HZ", 2.0),
+            thermal_refresh_hz=_env_float("COLLECTOR_THERMAL_REFRESH_HZ", 8.0),
+            thermal_read_retries=_env_int("COLLECTOR_THERMAL_READ_RETRIES", 2),
+            i2c_point_bus=_env_opt_int("COLLECTOR_I2C_POINT_BUS", None),
+            i2c_point_mux_addr=_env_opt_int("COLLECTOR_I2C_POINT_MUX_ADDR", 0x70),
+            point_channels=_env_int_tuple("COLLECTOR_POINT_CHANNELS", (0, 1)),
+            point_rate_hz=_env_float("COLLECTOR_POINT_RATE_HZ", 1.0),
+            pt100_cs_pin=_env_str("COLLECTOR_PT100_CS_PIN", ""),
+            pt100_ref_ohms=_env_opt_float("COLLECTOR_PT100_REF_OHMS", None),
+            pt100_nominal_ohms=_env_float("COLLECTOR_PT100_NOMINAL_OHMS", 100.0),
+            pt100_wires=_env_int("COLLECTOR_PT100_WIRES", 3),
+            pt100_rate_hz=_env_float("COLLECTOR_PT100_RATE_HZ", 1.0),
+            sensor_fail_limit=_env_int("COLLECTOR_SENSOR_FAIL_LIMIT", 5),
+            jetson_model_name=_env_str("COLLECTOR_JETSON_MODEL_NAME", ""),
             data_root=Path(root).expanduser() if root else Path.home() / "collector-data",
             min_free_bytes=_env_int("COLLECTOR_MIN_FREE_BYTES", 2 * 1000**3),
             writer_queue_max=_env_int("COLLECTOR_WRITER_QUEUE_MAX", 64),

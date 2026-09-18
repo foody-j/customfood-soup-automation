@@ -14,7 +14,7 @@ Pi 관리 서버(`pi-server/`)의 상대편이며, 접점은 계약 문서 `docs
 | API | Python 3.10 + FastAPI (`app/routes.py`, `app/main.py`) |
 | 세션 상태기계 | `app/session.py` — starting → running → stopping → stopped / failed |
 | 저장 | `app/storage.py` — 세션 디렉터리·index.jsonl·records.bin·manifest.json·복구·체크섬 |
-| 센서 어댑터 | `app/sensors/` — mock · v4l2(ISX031F) · Orbbec Gemini 2 · unsupported(MLX) |
+| 센서 어댑터 | `app/sensors/` — mock · v4l2(ISX031F) · Orbbec Gemini 2 · MLX90640×2 · MLX90614×2 · MAX31865/PT100(`i2cmux.py` 버스 잠금) |
 | 시스템 상태 | `app/sysmon.py` — CPU·GPU·메모리·온도·디스크 (기본 5초) |
 | 자동 실행 | `systemd/jetson-collector.service` |
 
@@ -50,6 +50,15 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 | `COLLECTOR_SENSOR_MODE` | `mock` | `mock` 모의만 / `auto` 실기기+미지원 보고+`mock_*` / `real` 실기기만 |
 | `COLLECTOR_V4L2_DEVICES` | `/dev/video4` | ISX031F 노드(쉼표 구분) → `cam_rgb_0`, `cam_rgb_1`… |
 | `COLLECTOR_ORBBEC_SERIAL` | (없음) | Gemini 2가 여러 대일 때 선택할 USB 장치 시리얼 |
+| `COLLECTOR_I2C_THERMAL_BUS` / `I2C_POINT_BUS` | **(없음)** | 열화상·비접촉 온도 버스의 **실측** `/dev/i2c-N` 번호. 비우면 해당 센서는 `connected:false` + 이유 |
+| `COLLECTOR_I2C_THERMAL_MUX_ADDR` / `I2C_POINT_MUX_ADDR` | `0x70` | 그 버스의 TCA9548A 주소. `none`이면 mux 없이 직결(단독 시험) |
+| `COLLECTOR_THERMAL_CHANNELS` / `POINT_CHANNELS` | `0,1` | `thermal_0,1` / `point_temp_0,1` 순서의 mux 채널 |
+| `COLLECTOR_THERMAL_RATE_HZ` / `POINT_RATE_HZ` / `PT100_RATE_HZ` | 2 / 1 / 1 | 센서별 목표 주기(초기 시험 목표). 세션에서는 `per_sensor.<id>.rate_hz` |
+| `COLLECTOR_THERMAL_REFRESH_HZ` / `THERMAL_READ_RETRIES` | 8 / 2 | MLX90640 장치 refresh rate(서브페이지 주기) / 일시적 프레임 오류 재시도 |
+| `COLLECTOR_PT100_CS_PIN` / `PT100_REF_OHMS` | **(없음)** | MAX31865 별도 GPIO CS의 Blinka 핀 이름(예 `D22`) / 보드 **실물** 기준 저항 Ω |
+| `COLLECTOR_PT100_WIRES` / `PT100_NOMINAL_OHMS` | 3 / 100 | RTD 결선 수 / 공칭 저항 |
+| `COLLECTOR_SENSOR_FAIL_LIMIT` | 5 | 연속 읽기 실패가 이만큼이면 분리로 보고 재연결 |
+| `COLLECTOR_JETSON_MODEL_NAME` | (없음) | 시스템 Jetson.GPIO가 보드를 못 알아볼 때 넘길 모델명(`JETSON_ORIN_NANO`) |
 | `COLLECTOR_DATA_ROOT` | `~/collector-data` | 세션 원본 루트 |
 | `COLLECTOR_MIN_FREE_BYTES` | 2 GB | 미만이면 시작 거절, 진행 중이면 안전 종료(`failed`, `disk_low`) |
 | `COLLECTOR_WRITER_QUEUE_MAX` | 64 | 스트림별 기록 대기열 상한(넘치면 버리고 셈) |
@@ -66,8 +75,9 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 |---|---|---|---|
 | `cam_rgb_0` | rgb_gmsl2 | `rgb` (UYVY→JPEG 프레임 파일, 또는 raw) | 어댑터 있음. **실기기 검증 전**(GMSL 링크 미확립 상태에서 ioctl 경로만 확인) |
 | `cam_depth_0` | depth_usb | `color`(JPEG 또는 BGR raw) / `depth`(mm, uint16) / `ir`(intensity, uint16) | 어댑터 구현. **Jetson 실기기 검증 전** — SDK·USB 장치 필요 |
-| `thermal_0` | thermal_i2c | `temp_array` (24×32 float32 ℃) | **미지원** — I2C 응답 없음 |
-| `point_temp_0` | point_temp_i2c | `temp` (object/ambient ℃) | **미지원** — I2C 응답 없음 |
+| `thermal_0` / `thermal_1` | thermal_i2c | `temp_array` (24×32 float32 ℃) | MLX90640 55° / 110°. 어댑터 있음. **실물 검증 전**(미배선 — 가짜 드라이버 테스트만) |
+| `point_temp_0` / `point_temp_1` | point_temp_i2c | `temp` `{object_c, ambient_c}` | MLX90614 5° / 35°. 위와 같음 |
+| `pt100_0` | rtd_spi | `temp` `{temp_c, resistance_ohm, rtd_raw}` | MAX31865 + PT100 3선식. 위와 같음 |
 | `mock_*` (auto) / 위 ID 그대로 (mock) | — | 위와 같은 스트림 구조 | 모의, 항상 `simulated:true` |
 
 요청 config 예:
@@ -79,6 +89,17 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
   "project_id": "customfood-soup", "rig_id": "rig-1",
   "calibration": { "id": "calib-2026-09", "version": 3 } }
 ```
+
+I²C·SPI 센서 5대는 카메라용 전역 `fps`를 따르지 않는다 — 주기는 `per_sensor.<id>.rate_hz`
+(예: `"per_sensor": {"thermal_0": {"rate_hz": 2, "refresh_hz": 8}}`)로 주고, 없으면 환경설정 기본값이다.
+읽기 실패·fault는 `index.jsonl`에 `valid:false` + `invalid_reason`(`i2c_error…`, `frame_error_after_retries…`,
+`max31865_fault:…`, `out_of_range`)으로 남고, 취득 시작 시각·소요·잠금 대기는 `flags`에 남는다.
+같은 버스의 센서는 mux 채널 선택~읽기 완료가 버스 잠금으로 직렬화되므로 **동시 측정이 아니다**.
+
+알려진 한계(드라이버 기준, 실물 검증 전): MLX90640 드라이버는 방사율 0.95·반사온도 `Ta-8`을 고정으로 쓰고,
+`getFrame()`의 data-ready 대기에 시간 제한이 없다(I²C 오류는 빠져나오지만 ACK만 하고 ready를 안 올리는 장치는
+그 읽기를 붙잡는다). 시스템 Jetson.GPIO 2.1.7은 Orin Nano Super에서 `import board`가 실패하므로
+`COLLECTOR_JETSON_MODEL_NAME=JETSON_ORIN_NANO`가 필요하다(PT100 경로만 해당).
 
 `sensors`를 비우면 **연결된 센서 전부**를 쓴다. 미연결·미지원 센서를 지정하면 시작을 거절한다(200 + `accepted:false`).
 
@@ -140,3 +161,17 @@ uvicorn 접속 로그(같은 포맷). 프레임마다 로그를 찍지 않는다
 ```
 
 링크 상태·실제 포맷·시퀀스 갭·타임스탬프 시계·빈 프레임·수신 FPS·JPEG 인코딩 시간을 잰다(플랜 7단계 입력).
+
+센서 5대 단독 진단([지침서](../../docs/jetson-five-sensor-guide.md) §5 순서). 서비스와 **같은 어댑터**로 읽으며,
+서비스가 같은 버스를 쓰는 동안에는 돌리지 않는다(프로세스 간 mux 잠금 없음):
+
+```bash
+PY=~/collector-venv/bin/python
+$PY tools/sensor_check.py buses                                # 장치 파일·버스 클록(스캔 없음)
+$PY tools/sensor_check.py mux --bus <N> --expect 0:0x33 1:0x33 # mux + 채널별 예상 주소만 확인
+$PY tools/sensor_check.py thermal --bus <N> --channel 0 --count 20 --out thermal0.json   # + thermal0.npy
+$PY tools/sensor_check.py point --bus <N> --channel 0 --count 30
+$PY tools/sensor_check.py pt100 --cs-pin <핀> --ref-ohms <Ω> --jetson-model JETSON_ORIN_NANO --count 30
+```
+
+성공률·실효 Hz·취득 시간(min/mean/max)·최대 공백·재시도 수를 요약한다. 결과 JSON은 `notes/data/`에 정리한다.

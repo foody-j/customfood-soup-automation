@@ -118,7 +118,7 @@ Pi의 실험 기록 기능이 쓰는 값이다. **전부 선택(optional)** 이�
 - Pi는 모르는 필드를 받아도 죽지 않는다. 반대로 **Pi가 아는 필드의 타입이 바뀌면**
   스키마 오류로 처리해 `service_down`으로 표시한다.
 
-`kind` 값(현재): `rgb_gmsl2` · `depth_usb` · `thermal_i2c` · `point_temp_i2c`.
+`kind` 값(현재): `rgb_gmsl2` · `depth_usb` · `thermal_i2c` · `point_temp_i2c` · `rtd_spi`(MAX31865 + PT100, 2026-09-18 추가).
 새 종류는 이 문서와 `pi-server/app/models.py`에 함께 추가한다.
 
 ### 확장 필드 (2026-09-12, Jetson 구현이 추가로 보냄 — Pi는 무시해도 됨)

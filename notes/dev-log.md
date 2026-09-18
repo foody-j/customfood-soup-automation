@@ -2,6 +2,42 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-09-18 — 센서 5대 실물 어댑터·단독 진단 도구 구현 (지침서 1fe42d8 기준, Jetson에서 작업)
+
+- `jetson/collector`에 실물 어댑터 3종을 추가하고 MLX 미지원 스텁을 교체했다(D-022 이행).
+  `thermal_0/1`(MLX90640), `point_temp_0/1`(MLX90614), `pt100_0`(MAX31865+PT100, 새 kind `rtd_spi`).
+  - `app/sensors/i2cmux.py` — 버스 번호당 핸들 1개 + **버스별 잠금**. 어댑터가 mux 채널 선택~읽기
+    완료를 잠금 하나로 묶는다. 열화상 재시도 사이에는 잠금을 놓아 같은 버스의 다른 카메라가 굶지 않는다.
+  - `app/sensors/polled.py` — 주기(`per_sensor.<id>.rate_hz`, 카메라용 전역 `fps`는 무시), 실패 1회는
+    `valid:false`+`invalid_reason`으로 **기록**, I/O 연속 실패가 한도에 닿으면 분리로 보고 세션이 재연결.
+  - PT100은 one-shot 1회의 원시값(`rtd_raw`)에서 저항·온도를 함께 계산한다(드라이버의 temperature와
+    resistance를 따로 읽으면 변환이 두 번 돈다). fault는 재연결 사유가 아니라 무효 샘플로 기록.
+  - `tools/sensor_check.py` — `buses`/`mux`/`thermal`/`point`/`pt100`. 서비스와 같은 어댑터로 읽어
+    성공률·실효 Hz·취득 시간·최대 공백·재시도를 요약하고 JSON(+열화상 .npy)으로 저장.
+  - 버스 번호·CS 핀·기준 저항은 **기본값을 두지 않았다**. 미설정이면 status에 `connected:false`+이유.
+- 계약: `kind`에 `rtd_spi` 추가 — `docs/pi-jetson-api.md`, `pi-server/app/models.py` 주석,
+  `docs/jetson-collector-brief.md`를 함께 고쳤다(`kind`는 문자열이라 Pi 파싱은 그대로 통과, 테스트로 확인).
+  MQTT 계약(`data-schema.md`)은 건드리지 않았다 — 5대 원본을 Pi로 보낼지는 미결정(지침서 §6).
+- **이 Jetson에서 실측한 것**
+  - venv에 Adafruit 패키지 설치: Blinka 9.2.0, extended-bus 1.0.2, tca9548a 0.8.6, mlx90640 1.3.9,
+    mlx90614 1.2.25, max31865 2.2.27 → `requirements.txt`에 반영(실물 검증 버전은 아님).
+  - **`import board` 실패**: 시스템 Jetson.GPIO 2.1.7이 compatible `nvidia,p3768-0000+p3767-0005-super`를
+    몰라 `Could not determine Jetson model`. `JETSON_MODEL_NAME=JETSON_ORIN_NANO`를 주면 통과
+    (`COLLECTOR_JETSON_MODEL_NAME`으로 넘김). I²C 경로(`ExtendedI2C`)는 이 문제와 무관하게 import된다.
+  - 장치 트리 버스 클록: `i2c-7`(c250000) 400 kHz, `i2c-1`(c240000) 100 kHz — 배선안의 두 버스 속도
+    요구와 맞는 조합이지만 **J12 핀과의 대응은 mux를 붙여 확인하기 전까지 미확정**. 목록은
+    `notes/data/logs/20260918_jetson_i2c-spi-bus-list.json`. `/dev/spidev0.0~1.1`은 존재.
+  - `i2c-7`·`i2c-1`의 `0x70`은 무응답(**센서·mux 미배선**). 실제 Adafruit 스택으로 probe/open을 돌려
+    "mux 0x70 응답 없음"으로 정직하게 보고되고, 반복 호출에도 멈추지 않는 것을 확인했다.
+    (adafruit_tca9548a는 mux 쓰기 실패 시 하위 버스 잠금을 안 풀어 다음 호출이 무한 대기한다 —
+    `I2CBusHandle.recover()`로 해소.)
+  - PT100은 GPIO를 구동하지 않았다: J12 15번의 카메라 어댑터 점유·pinmux가 미확인이라 출력으로
+    잡지 않음. CS 핀 미설정 경로만 확인.
+- 테스트: `tests/test_i2c_sensors.py` 12건(가짜 버스·드라이버) — 미설정/미배선 보고, 채널↔ID 대응,
+  두 카메라 버스 비중첩, 재시도·실패 기록·재연결 승격, PT100 환산(IEC 60751 점)·fault,
+  **5대 통합에서 한 센서의 I²C 장애가 나머지 4대를 멈추지 않음** + Pi 계약 모델 검증. 전체 34 passed, 1 skipped.
+- **미수행(실물 필요)**: 지침서 §5의 1~7단계 전부 — 실제 값, 1.5 m 배선, 2 Hz×2 달성 여부, 30분 연속.
+  MLX90640 드라이버는 방사율 0.95 고정이고 `getFrame()`의 data-ready 대기에 제한이 없다(README에 기록).
 ## 2026-09-18 — Gemini 2 Jetson 수집 경로 및 실행 지시서
 
 - Jetson 수집 서비스에 Orbbec Python SDK v2 기반 `cam_depth_0` 어댑터를 추가했다.

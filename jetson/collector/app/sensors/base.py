@@ -13,6 +13,7 @@ KIND_RGB_GMSL2 = "rgb_gmsl2"
 KIND_DEPTH_USB = "depth_usb"
 KIND_THERMAL_I2C = "thermal_i2c"
 KIND_POINT_TEMP_I2C = "point_temp_i2c"
+KIND_RTD_SPI = "rtd_spi"  # MAX31865 + PT100 (SPI)
 
 #: 스트림 자료 종류 → 저장 방식
 DATA_IMAGE = "image"  # 프레임 단위 파일(jpg) 또는 raw

@@ -1,0 +1,57 @@
+{
+ "note": "tools/sensor_check.py buses 출력 (2026-09-18, Jetson Orin Nano Super, 센서 미배선). J12 핀 대응은 미확정.",
+ "command": "buses",
+ "i2c": [
+  {
+   "dev": "/dev/i2c-0",
+   "name": "3160000.i2c",
+   "clock_hz": 400000
+  },
+  {
+   "dev": "/dev/i2c-1",
+   "name": "c240000.i2c",
+   "clock_hz": 100000
+  },
+  {
+   "dev": "/dev/i2c-2",
+   "name": "3180000.i2c",
+   "clock_hz": 400000
+  },
+  {
+   "dev": "/dev/i2c-4",
+   "name": "Tegra BPMP I2C adapter",
+   "clock_hz": null
+  },
+  {
+   "dev": "/dev/i2c-5",
+   "name": "31b0000.i2c",
+   "clock_hz": 100000
+  },
+  {
+   "dev": "/dev/i2c-7",
+   "name": "c250000.i2c",
+   "clock_hz": 400000
+  },
+  {
+   "dev": "/dev/i2c-9",
+   "name": "i2c-2-mux (chan_id 1)",
+   "clock_hz": null
+  },
+  {
+   "dev": "/dev/i2c-10",
+   "name": "i2c-2-mux (chan_id 0)",
+   "clock_hz": null
+  },
+  {
+   "dev": "/dev/i2c-11",
+   "name": "NVIDIA SOC i2c adapter 0",
+   "clock_hz": null
+  }
+ ],
+ "spidev": [
+  "/dev/spidev0.0",
+  "/dev/spidev0.1",
+  "/dev/spidev1.0",
+  "/dev/spidev1.1"
+ ]
+}
