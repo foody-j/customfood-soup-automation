@@ -86,3 +86,10 @@ def test_preview_uses_running_session_and_keeps_raw_recording(client, tmp_path, 
     assert (base / "color" / "frames").is_dir()
     manifest = json.loads((tmp_path / "data" / sid / "manifest.json").read_text())
     assert manifest["state"] == "stopped"
+
+
+def test_viewer_page_is_served_and_uses_only_existing_endpoints(client):
+    res = client.get("/viewer")
+    assert res.status_code == 200 and res.headers["content-type"].startswith("text/html")
+    assert res.headers["cache-control"] == "no-store"
+    assert "/capture/preview/" in res.text and "/status" in res.text

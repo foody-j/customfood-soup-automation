@@ -16,6 +16,7 @@ from .config import Settings
 from .logging_setup import configure_logging
 from .routes import router
 from .service import CollectorService
+from .viewer import viewer_router
 
 log = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ def create_app(settings: Settings | None = None, service: CollectorService | Non
 
     app = FastAPI(title=SERVICE_NAME, version=VERSION, lifespan=lifespan)
     app.include_router(router)
+    app.include_router(viewer_router)  # 브라우저 점검 화면(/viewer) — 기존 status·preview만 읽는다
     return app
 
 

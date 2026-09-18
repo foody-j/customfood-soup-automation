@@ -155,6 +155,14 @@ Pi의 HTTP 타임아웃은 2초(`SOUP_PROBE_TIMEOUT`)다. stop은 저장 완료 
 센서 open 실패·분리·재연결, 저장 실패, 디스크 부족, `COLLECTOR_LOG_SUMMARY_INTERVAL`(기본 30초)마다 스트림별 요약 한 줄,
 uvicorn 접속 로그(같은 포맷). 프레임마다 로그를 찍지 않는다. 로깅은 `create_app()`에서 설정되므로 systemd 실행에서도 남는다.
 
+## 브라우저 점검 화면 (`/viewer`)
+
+`http://<Jetson IP>:8000/viewer` — 지금 들어오는 프레임을 눈으로 확인하는 **점검용** 페이지.
+기존 `status`와 저속 미리보기(`capture/preview`)만 1초마다 읽으므로 새 데이터 경로가 아니고 원본 저장과도 무관하다.
+센서 연결 상태·사유, 스트림별 수신/기록 fps·드롭·무효 수, color/depth/IR 축소 영상을 보여 준다.
+"점검 세션 시작" 버튼은 연결된 실물 센서 전부로 `preview.enabled=true` 세션을 연다(Pi 없이 벤치에서 볼 때만 사용 —
+**원본이 실제로 저장되므로** 확인 후 "세션 중지"를 누르고 `check-*` 세션은 필요 없으면 지운다).
+
 ## 실기기 점검 도구
 
 ```bash
