@@ -66,7 +66,8 @@ udev 규칙 확인은 장치 프레임 수신과 별개의 확인 단계다.
 > 스크립트 대신 `sudo cp <pyorbbecsdk>/shared/99-obsensor-libusb.rules /etc/udev/rules.d/` →
 > `sudo udevadm control --reload-rules && sudo udevadm trigger` → USB 재연결로도 된다. 성공하면
 > `/dev/Gemini_2` 링크가 생긴다. 30 fps 기본 프로필은 depth+IR만 약 115 MB/s를 쓰므로 긴 세션은
-> `"fps": 10` 등으로 낮춘다.
+> 서비스 기본값을 10 fps로 두었다(`COLLECTOR_ORBBEC_FPS`, D-026). 세션에서 `fps`를 주면 그 값이 우선한다.
+> 시작 직후 depth·IR이 안 오는 경우가 간헐적으로 있으며, 어댑터가 5초 뒤 자동으로 다시 연다(events.jsonl의 `sensor.reconnected`).
 
 ## 2. USB와 서비스 계정 확인
 

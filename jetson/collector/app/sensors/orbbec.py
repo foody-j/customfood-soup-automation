@@ -20,6 +20,9 @@ from .base import DATA_ARRAY, DATA_IMAGE, KIND_DEPTH_USB, Sample, SensorAdapter,
 
 #: 켠 스트림 하나가 이 시간 동안 프레임을 안 주면(다른 스트림은 오더라도) 장치를 다시 연다.
 STREAM_SILENCE_SEC = 10.0
+#: 열고 나서 이 시간 안에 첫 프레임이 안 온 스트림이 있으면 시작 실패로 보고 다시 연다.
+#: (실기기: 세션 4회 중 2회, color만 오고 depth·IR 백엔드 콜백이 끝까지 0이었다.)
+STREAM_START_SEC = 5.0
 #: 한 스트림의 변환 실패가 연속으로 이만큼 쌓이면 일시적 오류가 아니라고 보고 다시 연다.
 BAD_FRAME_LIMIT = 30
 
@@ -131,8 +134,10 @@ class OrbbecGemini2(SensorAdapter):
         StreamSpec("ir", DATA_ARRAY, unit="raw_ir", dtype="uint16", description="Gemini 2 Y8/Y16 intensity values"),
     )
 
-    def __init__(self, serial: str | None = None, *, sdk: Any = None) -> None:
+    def __init__(self, serial: str | None = None, *, default_fps: int | None = None, sdk: Any = None) -> None:
         self.serial = serial or None
+        #: 세션 설정에 fps가 없을 때 쓸 값. None/0이면 SDK 기본 프로필.
+        self._default_fps = int(default_fps) if default_fps else None
         self._sdk = sdk
         self._pipeline: Any = None
         self._context: Any = None
@@ -141,6 +146,8 @@ class OrbbecGemini2(SensorAdapter):
         self._seq = 0
         self._last_frame_at = 0.0
         self._stream_last: dict[str, float] = {}
+        self._stream_seen: set[str] = set()
+        self._opened_at = 0.0
         self._bad_frames: dict[str, int] = {}
         self._encoding = "jpeg"
 
@@ -227,6 +234,7 @@ class OrbbecGemini2(SensorAdapter):
             encoding = str(config.get("encoding") or "jpeg").lower()
             if encoding not in ("jpeg", "raw"):
                 raise SensorError(f"Gemini 2 색상 인코딩 미지원: {encoding}")
+            fps = config["fps"] if config.get("fps") is not None else self._default_fps
             selected = {}
             for stream, sensor_type in (("color", sdk.OBSensorType.COLOR_SENSOR),
                                         ("depth", sdk.OBSensorType.DEPTH_SENSOR),
@@ -234,7 +242,7 @@ class OrbbecGemini2(SensorAdapter):
                 req = requested.get(stream) or {}
                 if not isinstance(req, dict):
                     raise SensorError(f"orbbec_profiles.{stream}은 객체여야 함")
-                effective = {"fps": config["fps"]} if config.get("fps") is not None else {}
+                effective = {"fps": fps} if fps is not None else {}
                 if stream == "color":
                     effective.update(color_size)
                 effective.update(req)
@@ -252,12 +260,14 @@ class OrbbecGemini2(SensorAdapter):
             raise SensorError(f"{self.sensor_id}: Gemini 2 시작 실패: {exc}") from exc
         self._context, self._device, self._pipeline = context, device, pipeline
         self._applied = {"device": info, "profiles": selected, "requested_profiles": requested,
-                         "requested_fps": config.get("fps"), "requested_color_resolution": resolution,
+                         "requested_fps": config.get("fps"), "default_fps": self._default_fps, "requested_color_resolution": resolution,
                          "encoding": encoding, "frame_sync": False, "read_timeout_ms": 1000}
         self._encoding = encoding
         self._seq = 0
         self._last_frame_at = time.monotonic()
         self._stream_last = {stream: self._last_frame_at for stream in selected}
+        self._stream_seen = set()
+        self._opened_at = self._last_frame_at
         self._bad_frames = {stream: 0 for stream in selected}
 
     def read(self) -> list[Sample]:
@@ -314,6 +324,10 @@ class OrbbecGemini2(SensorAdapter):
             result.append(Sample(stream, seq, host, _frame_stamp(frame), data,
                                  width=w, height=h, pixel_format=pixel_format,
                                  seq_is_device=from_device, flags=flags))
+        self._stream_seen.update(smp.stream_id for smp in result)
+        never = [st for st in self._stream_last if st not in self._stream_seen]
+        if never and self._last_frame_at - self._opened_at >= STREAM_START_SEC:
+            raise SensorError(f"{self.sensor_id}: 시작 후 {STREAM_START_SEC:.0f}초 동안 프레임 없는 스트림: {', '.join(never)}")
         silent = [st for st, at in self._stream_last.items() if self._last_frame_at - at >= STREAM_SILENCE_SEC]
         if silent:
             # 시작 직후 일부 스트림만 안 나오는 경우가 있었다(color만 수신, depth·IR 0) — 다시 열어 복구한다

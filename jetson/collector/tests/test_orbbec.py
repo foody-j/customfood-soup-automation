@@ -256,6 +256,27 @@ def test_open_uses_requested_profile_and_rejects_unsupported_profile():
         camera.open({"orbbec_profiles": {"depth": {"width": 999}}})
 
 
+def test_default_fps_applies_only_when_session_gives_none_and_keeps_default_size():
+    """실기기 결정(D-026): 기본 10 fps. fps만 바꿀 때 SDK 기본 포맷·크기를 유지한다."""
+    sdk = FakeSDK()
+    sdk.profiles = {
+        "color": [FakeProfile(1280, 720, 30, "MJPG"), FakeProfile(1920, 1080, 10, "MJPG"), FakeProfile(1280, 720, 10, "MJPG")],
+        "depth": [FakeProfile(1280, 800, 30, "Y16"), FakeProfile(1280, 800, 10, "Y16")],
+        "ir": [FakeProfile(1280, 800, 30, "Y8"), FakeProfile(1280, 800, 10, "Y8")],
+    }
+    camera = OrbbecGemini2(default_fps=10, sdk=sdk)
+    camera.open({})
+    applied = camera.applied_config()
+    assert {k: v["fps"] for k, v in applied["profiles"].items()} == {"color": 10, "depth": 10, "ir": 10}
+    assert applied["profiles"]["color"]["width"] == 1280  # 목록 첫 항목(1920x1080)으로 새지 않는다
+    assert applied["default_fps"] == 10 and applied["requested_fps"] is None
+    camera.open({"fps": 30})  # 세션이 준 값이 기본값보다 우선
+    assert camera.applied_config()["profiles"]["depth"]["fps"] == 30
+    camera.close()
+    sensors = build_sensors(Settings.from_env(sensor_mode="real", v4l2_devices=()))
+    assert next(s for s in sensors if s.sensor_id == "cam_depth_0")._default_fps == 10
+
+
 def test_read_converts_color_depth_and_ir_with_independent_data_and_metadata():
     sdk = FakeSDK()
     camera = OrbbecGemini2(sdk=sdk)
@@ -313,6 +334,12 @@ def test_timeout_missing_streams_receive_error_and_bad_scale():
     pipeline.next_frames.append(FakeFrameset(depth=FakeFrame(b"\x01\x02", fmt="RLE", scale=1)))
     with pytest.raises(SensorError, match="연속"):
         camera.read()
+    # 시작 후 첫 프레임이 끝내 안 온 스트림이 있으면 시작 실패로 보고 다시 연다(실기기 관측)
+    camera._opened_at = time.monotonic() - orbbec_mod.STREAM_START_SEC - 1
+    pipeline.next_frames.append(FakeFrameset(depth=FakeFrame(np.array([1, 2], dtype="<u2").tobytes(), fmt="Y16", scale=1)))
+    with pytest.raises(SensorError, match="시작 후.*color, ir"):
+        camera.read()
+    camera._stream_seen = {"color", "depth", "ir"}
     # 한 스트림만 계속 안 오면(color만 수신) 무응답으로 보고 다시 연다
     camera._bad_frames["depth"] = 0
     camera._stream_last["ir"] = time.monotonic() - orbbec_mod.STREAM_SILENCE_SEC - 1

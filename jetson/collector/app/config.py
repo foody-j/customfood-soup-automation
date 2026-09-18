@@ -87,6 +87,9 @@ class Settings:
     v4l2_devices: tuple[str, ...] = ("/dev/video4",)
     #: 여러 Orbbec 장치가 연결된 경우 사용할 Gemini 2 시리얼. 비우면 첫 Gemini 2.
     orbbec_serial: str = ""
+    #: 세션 설정에 fps가 없을 때 Gemini 2 세 스트림에 쓸 기본 fps. 0이면 SDK 기본(30).
+    #: 30 fps는 depth+IR만 약 115 MB/s를 써서 긴 조리 세션에 맞지 않는다(D-026).
+    orbbec_fps: int = 10
     #: 센서 탐색(probe) 결과 캐시 수명. status는 2초마다 오므로 매번 탐색하지 않는다.
     probe_ttl_sec: float = 10.0
 
@@ -181,6 +184,7 @@ class Settings:
             sensor_mode=_env_str("COLLECTOR_SENSOR_MODE", SENSOR_MODE_MOCK),
             v4l2_devices=tuple(d.strip() for d in devices.split(",") if d.strip()),
             orbbec_serial=_env_str("COLLECTOR_ORBBEC_SERIAL", ""),
+            orbbec_fps=_env_int("COLLECTOR_ORBBEC_FPS", 10),
             probe_ttl_sec=_env_float("COLLECTOR_PROBE_TTL", 10.0),
             i2c_thermal_bus=_env_opt_int("COLLECTOR_I2C_THERMAL_BUS", None),
             i2c_thermal_mux_addr=_env_opt_int("COLLECTOR_I2C_THERMAL_MUX_ADDR", 0x70),

@@ -50,6 +50,7 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 | `COLLECTOR_SENSOR_MODE` | `mock` | `mock` 모의만 / `auto` 실기기+미지원 보고+`mock_*` / `real` 실기기만 |
 | `COLLECTOR_V4L2_DEVICES` | `/dev/video4` | ISX031F 노드(쉼표 구분) → `cam_rgb_0`, `cam_rgb_1`… |
 | `COLLECTOR_ORBBEC_SERIAL` | (없음) | Gemini 2가 여러 대일 때 선택할 USB 장치 시리얼 |
+| `COLLECTOR_ORBBEC_FPS` | 10 | 세션 설정에 `fps`가 없을 때 Gemini 2 세 스트림의 기본 fps. 0이면 SDK 기본(30 — depth+IR 약 115 MB/s) |
 | `COLLECTOR_I2C_THERMAL_BUS` / `I2C_POINT_BUS` | **(없음)** | 열화상·비접촉 온도 버스의 **실측** `/dev/i2c-N` 번호. 비우면 해당 센서는 `connected:false` + 이유 |
 | `COLLECTOR_I2C_THERMAL_MUX_ADDR` / `I2C_POINT_MUX_ADDR` | `0x70` | 그 버스의 TCA9548A 주소. `none`이면 mux 없이 직결(단독 시험) |
 | `COLLECTOR_THERMAL_CHANNELS` / `POINT_CHANNELS` | `0,1` | `thermal_0,1` / `point_temp_0,1` 순서의 mux 채널 |
