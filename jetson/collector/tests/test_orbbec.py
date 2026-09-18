@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+import app.sensors.orbbec as orbbec_mod
 from app.sensors.base import SensorError
 from app.sensors.orbbec import OrbbecGemini2
 from app.sensors.registry import build_sensors
@@ -301,8 +302,22 @@ def test_timeout_missing_streams_receive_error_and_bad_scale():
     pipeline.next_frames.append(None)
     with pytest.raises(SensorError, match="10초 이상 없음"):
         camera.read()
+    # 변환 실패 1건은 무효 샘플로 기록하고 계속 읽는다(세 스트림을 모두 끊지 않는다)
     pipeline.next_frames.append(FakeFrameset(depth=FakeFrame(np.array([1, 2], dtype="<u2").tobytes(), fmt="Y16", scale=0)))
-    with pytest.raises(SensorError, match="scale 오류"):
+    bad = camera.read()
+    assert len(bad) == 1 and bad[0].valid is False and bad[0].data is None and "scale 오류" in bad[0].invalid_reason
+    pipeline.next_frames.append(FakeFrameset(depth=FakeFrame(b"\x01\x02\x03", fmt="RLE", scale=1)))  # 실기기 관측: 해제 전 RLE
+    assert "Y16이어야" in camera.read()[0].invalid_reason
+    # 연속으로 쌓이면 다시 연다
+    camera._bad_frames["depth"] = orbbec_mod.BAD_FRAME_LIMIT - 1
+    pipeline.next_frames.append(FakeFrameset(depth=FakeFrame(b"\x01\x02", fmt="RLE", scale=1)))
+    with pytest.raises(SensorError, match="연속"):
+        camera.read()
+    # 한 스트림만 계속 안 오면(color만 수신) 무응답으로 보고 다시 연다
+    camera._bad_frames["depth"] = 0
+    camera._stream_last["ir"] = time.monotonic() - orbbec_mod.STREAM_SILENCE_SEC - 1
+    pipeline.next_frames.append(FakeFrameset(depth=FakeFrame(np.array([1, 2], dtype="<u2").tobytes(), fmt="Y16", scale=1)))
+    with pytest.raises(SensorError, match="스트림 무응답.*ir"):
         camera.read()
     camera.close()
     with pytest.raises(SensorError, match="열리지 않음"):

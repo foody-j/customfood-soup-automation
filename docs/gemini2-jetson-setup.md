@@ -61,6 +61,13 @@ sudo /home/ubuntu/collector-venv/bin/python "$SDK_SETUP"
 `scripts/env_setup/setup_env.py`와 인접한 규칙 파일을 사용한다. SDK import와
 udev 규칙 확인은 장치 프레임 수신과 별개의 확인 단계다.
 
+> **2026-09-18 실기기 메모:** 규칙 설치 전에는 SDK가 `usbEnumerator openUsbDevice failed!`로 장치를 열지
+> 못했다. `sudo`는 비밀번호 입력이 되는 **실제 터미널**에서 실행한다(에이전트·`!` 실행에는 TTY가 없다).
+> 스크립트 대신 `sudo cp <pyorbbecsdk>/shared/99-obsensor-libusb.rules /etc/udev/rules.d/` →
+> `sudo udevadm control --reload-rules && sudo udevadm trigger` → USB 재연결로도 된다. 성공하면
+> `/dev/Gemini_2` 링크가 생긴다. 30 fps 기본 프로필은 depth+IR만 약 115 MB/s를 쓰므로 긴 세션은
+> `"fps": 10` 등으로 낮춘다.
+
 ## 2. USB와 서비스 계정 확인
 
 Gemini 2를 Jetson의 USB 3 포트에 데이터용 케이블로 직접 연결한 뒤 Jetson에서 실행한다.

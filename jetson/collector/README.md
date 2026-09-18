@@ -74,7 +74,7 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 | sensor_id | kind | 스트림 | 상태(2026-09-18) |
 |---|---|---|---|
 | `cam_rgb_0` | rgb_gmsl2 | `rgb` (UYVY→JPEG 프레임 파일, 또는 raw) | 어댑터 있음. **실기기 검증 전**(GMSL 링크 미확립 상태에서 ioctl 경로만 확인) |
-| `cam_depth_0` | depth_usb | `color`(JPEG 또는 BGR raw) / `depth`(mm, uint16) / `ir`(intensity, uint16) | 어댑터 구현. **Jetson 실기기 검증 전** — SDK·USB 장치 필요 |
+| `cam_depth_0` | depth_usb | `color`(JPEG 또는 BGR raw) / `depth`(mm, uint16) / `ir`(intensity, uint16) | 어댑터 구현. **2026-09-18 실기기 단기 촬영 확인**(30 fps 드롭 0, 미리보기 OK). 30분 연속·저장량 대책은 미완 — `notes/data/experiments/20260918_gemini2-jetson-first-capture.md` |
 | `thermal_0` / `thermal_1` | thermal_i2c | `temp_array` (24×32 float32 ℃) | MLX90640 55° / 110°. 어댑터 있음. **실물 검증 전**(미배선 — 가짜 드라이버 테스트만) |
 | `point_temp_0` / `point_temp_1` | point_temp_i2c | `temp` `{object_c, ambient_c}` | MLX90614 5° / 35°. 위와 같음 |
 | `pt100_0` | rtd_spi | `temp` `{temp_c, resistance_ohm, rtd_raw}` | MAX31865 + PT100 3선식. 위와 같음 |

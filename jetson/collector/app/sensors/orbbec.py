@@ -18,6 +18,12 @@ from ..clock import DeviceStamp, HostStamp
 from .base import DATA_ARRAY, DATA_IMAGE, KIND_DEPTH_USB, Sample, SensorAdapter, SensorError, SensorProbe, StreamSpec
 
 
+#: 켠 스트림 하나가 이 시간 동안 프레임을 안 주면(다른 스트림은 오더라도) 장치를 다시 연다.
+STREAM_SILENCE_SEC = 10.0
+#: 한 스트림의 변환 실패가 연속으로 이만큼 쌓이면 일시적 오류가 아니라고 보고 다시 연다.
+BAD_FRAME_LIMIT = 30
+
+
 def _sdk_module():
     try:
         return importlib.import_module("pyorbbecsdk")
@@ -134,6 +140,8 @@ class OrbbecGemini2(SensorAdapter):
         self._applied: dict[str, Any] = {}
         self._seq = 0
         self._last_frame_at = 0.0
+        self._stream_last: dict[str, float] = {}
+        self._bad_frames: dict[str, int] = {}
         self._encoding = "jpeg"
 
     def _module(self) -> Any:
@@ -191,11 +199,13 @@ class OrbbecGemini2(SensorAdapter):
                int(default.get_fps()) == int(p.get_fps()) and
                default.get_format() == p.get_format() for p in matches):
             return default
-        # Otherwise prefer the default pixel format over an unrelated format.
-        for p in matches:
-            if p.get_format() == default.get_format():
-                return p
-        return matches[0]
+        # Otherwise stay as close to the SDK default as the request allows: same pixel format first,
+        # then same size. (실기기: fps만 10으로 요청했더니 목록 첫 항목인 1920x1080이 골라져 해상도까지 바뀌었다.)
+        def closeness(p: Any) -> tuple[bool, bool]:
+            same_size = (int(p.get_width()) == int(default.get_width()) and
+                         int(p.get_height()) == int(default.get_height()))
+            return p.get_format() == default.get_format(), same_size
+        return max(matches, key=closeness)
 
     def open(self, config: dict[str, Any]) -> None:
         self.close()
@@ -247,6 +257,8 @@ class OrbbecGemini2(SensorAdapter):
         self._encoding = encoding
         self._seq = 0
         self._last_frame_at = time.monotonic()
+        self._stream_last = {stream: self._last_frame_at for stream in selected}
+        self._bad_frames = {stream: 0 for stream in selected}
 
     def read(self) -> list[Sample]:
         if self._pipeline is None:
@@ -287,10 +299,25 @@ class OrbbecGemini2(SensorAdapter):
                     flags["raw_format"] = fmt
                     pixel_format = "IR_U16"
             except (ValueError, SensorError) as exc:
-                raise SensorError(f"{self.sensor_id}/{stream}: {exc}") from exc
+                # 실기기에서 SDK가 드물게 해제 전 RLE 깊이 프레임을 그대로 준다(2026-09-18 관측).
+                # 프레임 하나 때문에 세 스트림을 모두 끊지 않고 무효 샘플로 기록한다.
+                self._bad_frames[stream] = self._bad_frames.get(stream, 0) + 1
+                if self._bad_frames[stream] >= BAD_FRAME_LIMIT:
+                    raise SensorError(f"{self.sensor_id}/{stream}: 연속 {self._bad_frames[stream]}회 변환 실패 — {exc}") from exc
+                self._stream_last[stream] = self._last_frame_at
+                result.append(Sample(stream, seq, host, _frame_stamp(frame), None, valid=False,
+                                     invalid_reason=f"convert_failed: {exc}", width=w, height=h,
+                                     seq_is_device=from_device, flags=flags))
+                continue
+            self._bad_frames[stream] = 0
+            self._stream_last[stream] = self._last_frame_at
             result.append(Sample(stream, seq, host, _frame_stamp(frame), data,
                                  width=w, height=h, pixel_format=pixel_format,
                                  seq_is_device=from_device, flags=flags))
+        silent = [st for st, at in self._stream_last.items() if self._last_frame_at - at >= STREAM_SILENCE_SEC]
+        if silent:
+            # 시작 직후 일부 스트림만 안 나오는 경우가 있었다(color만 수신, depth·IR 0) — 다시 열어 복구한다
+            raise SensorError(f"{self.sensor_id}: 스트림 무응답 {STREAM_SILENCE_SEC:.0f}초 이상: {', '.join(silent)}")
         return result
 
     def close(self) -> None:
