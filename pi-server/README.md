@@ -256,7 +256,7 @@ curl -X PUT localhost:8100/api/identity -H 'content-type: application/json' \
 
 ![카메라 미리보기](../docs/img/pi-camera-preview-20260918.png)
 
-*2026-09-18 실제 Jetson + Gemini 2(Depth 선택). GMSL2는 카메라 미연결이라 "프레임 없음".*
+*2026-09-18 실제 Jetson + Gemini 2(Depth 선택, `depth_max_mm=1000`). GMSL2 ①·②는 카메라 미연결이라 "프레임 없음".*
 
 **촬영과 원본 저장은 Jetson 수집기가 한다.** 이 모듈은 Jetson의 저속 JPEG 미리보기를 받아 보여 주고,
 스트림 전환·갱신·연결 상태만 관리한다. 스트림(Color/Depth/IR)을 바꿔도 Jetson에는 조회(GET)만 나간다.

@@ -25,6 +25,11 @@
   화면 증거: `docs/img/pi-camera-preview-20260918.png`. **점검 세션 원본이 Jetson에 남아 있다** — 필요 없으면 삭제.
 - (리베이스 후속) Jetson에 `preview.depth_max_mm`(깊이 의사색 범위, 59eebf0)이 추가돼 Pi 실험 설정 `preview`에도 같은 선택 필드(100~65535)를
   넣었다 — `PUT /api/config`로 저장해 두면 화면의 시작 버튼이 그 값을 유지한 채 `enabled`·`max_fps`만 얹는다.
+- **리베이스 후 실기기 재확인**: `PUT /api/config`에 `preview.depth_max_mm=1000`을 저장하고 **화면의 촬영 시작 버튼**으로 시작
+  (`sess-20260918T093125Z-4b4d`) — 박제된 설정 `preview={enabled:true, max_fps:2, depth_max_mm:1000}`(저장값 유지 확인),
+  기본 3면에서 Gemini 2 Color→Depth→IR 모두 "수신 중"(이번엔 시작 5초 안에 세 스트림 다 들어옴), GMSL2 ①·②는 "프레임 없음",
+  깊이 색이 0~1 m 범위로 바뀌어 냄비·작업대가 구분됨. 중지 후 요청 0건. 원본 141프레임·234 MB·드롭 0·`ok:true`.
+  화면 증거 사진을 이 실행의 것으로 교체. 이 점검 세션 원본도 Jetson에 남아 있다.
 - 테스트 9건 추가, Pi 서버 전체 39 passed. 이 Pi의 헤드리스 Chromium은 로컬 서버에 접속하지 못하고 멈춰(원인 미확인) Firefox를 썼다.
 - 남은 것: GMSL2 실물 미리보기 확인(카메라 보드 연결 후), 온도·열화상 패널(미리보기 API 대상 아님 — 별도 작업),
   Jetson 주소가 문서·env 기본값(192.168.0.51)과 실제 직결 주소(10.42.0.52)가 다름 — systemd env 설치 시 맞출 것.
