@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import socket
 from dataclasses import dataclass, replace
@@ -25,6 +26,57 @@ MODE_HTTP = "http"  # 실제 Jetson 수집 서비스 HTTP API
 # 전원 제어 모드
 POWER_UNSUPPORTED = "unsupported"  # 회로 미구성 — 조작 불가로 표시 (기본값)
 POWER_MOCK = "mock"  # 모의 전원. 실제 전원을 제어하는 것처럼 보이게 하지 않는다.
+
+
+#: 미리보기 컴포넌트 기본 카메라 3면. `sensor_id`·스트림 ID는 Jetson 수집 서비스
+#: (`jetson/collector/app/sensors/registry.py`)가 쓰는 이름과 같아야 한다.
+DEFAULT_PREVIEW_CAMERAS: list[dict] = [
+    {"id": "gmsl2_1", "label": "GMSL2 ①", "sensor_id": "cam_rgb_0",
+     "streams": [{"id": "rgb", "label": "RGB"}]},
+    {"id": "gmsl2_2", "label": "GMSL2 ②", "sensor_id": "cam_rgb_1",
+     "streams": [{"id": "rgb", "label": "RGB"}]},
+    {"id": "gemini2", "label": "Gemini 2", "sensor_id": "cam_depth_0",
+     "streams": [{"id": "color", "label": "Color"}, {"id": "depth", "label": "Depth"},
+                 {"id": "ir", "label": "IR"}]},
+]
+
+
+def parse_preview_cameras(raw: str) -> list[dict]:
+    """`SOUP_PREVIEW_CAMERAS`(JSON) → 정규화된 카메라 목록. 형식이 틀리면 ValueError.
+
+    스트림은 `"rgb"` 같은 문자열로도, `{"id": "rgb", "label": "RGB"}`로도 쓸 수 있다.
+    """
+    if not raw.strip():
+        return [dict(cam) for cam in DEFAULT_PREVIEW_CAMERAS]
+    try:
+        data = json.loads(raw)
+    except ValueError as exc:
+        raise ValueError(f"JSON이 아님: {exc}") from exc
+    if not isinstance(data, list) or not data:
+        raise ValueError("비어 있지 않은 배열이어야 함")
+    cameras: list[dict] = []
+    for i, cam in enumerate(data):
+        if not isinstance(cam, dict) or not isinstance(cam.get("sensor_id"), str) or not cam["sensor_id"]:
+            raise ValueError(f"[{i}] sensor_id가 필요함")
+        streams = []
+        for st in cam.get("streams") or []:
+            if isinstance(st, str) and st:
+                streams.append({"id": st, "label": st})
+            elif isinstance(st, dict) and isinstance(st.get("id"), str) and st["id"]:
+                streams.append({"id": st["id"], "label": str(st.get("label") or st["id"])})
+            else:
+                raise ValueError(f"[{i}] streams 항목은 문자열 또는 {{id, label}}")
+        if not streams:
+            raise ValueError(f"[{i}] streams가 비어 있음")
+        cameras.append({
+            "id": str(cam.get("id") or cam["sensor_id"]),
+            "label": str(cam.get("label") or cam["sensor_id"]),
+            "sensor_id": cam["sensor_id"],
+            "streams": streams,
+        })
+    if len({cam["id"] for cam in cameras}) != len(cameras):
+        raise ValueError("카메라 id가 중복됨")
+    return cameras
 
 
 def _env_str(name: str, default: str) -> str:
@@ -91,6 +143,13 @@ class Settings:
     host: str = "0.0.0.0"
     port: int = 8100
 
+    # ── 카메라 미리보기 컴포넌트 ────────────────────────────────────────────
+    #: 화면에 띄울 카메라 목록(JSON 배열). 비우면 `DEFAULT_PREVIEW_CAMERAS`.
+    #: 카메라를 바꾸거나 늘릴 때 **코드가 아니라 이 값만** 바꾼다.
+    preview_cameras_json: str = ""
+    #: 미리보기 갱신 주기(ms). Jetson이 최대 2fps로만 갱신하므로 500 미만은 의미가 없다.
+    preview_interval_ms: int = 1000
+
     #: 이 서버 자신의 표시용 이름(여러 대 운용 시 구분)
     site_name: str = "국·탕 실험장치 관리 서버"
 
@@ -147,6 +206,8 @@ class Settings:
             mock_shutdown_sec=_env_float("SOUP_MOCK_SHUTDOWN", 4.0),
             host=_env_str("SOUP_HOST", "0.0.0.0"),
             port=_env_int("SOUP_PORT", 8100),
+            preview_cameras_json=_env_str("SOUP_PREVIEW_CAMERAS", ""),
+            preview_interval_ms=_env_int("SOUP_PREVIEW_INTERVAL_MS", 1000),
             site_name=_env_str("SOUP_SITE_NAME", "국·탕 실험장치 관리 서버"),
             project_id=_env_str("SOUP_PROJECT_ID", "customfood-soup"),
             device_id=_env_str("SOUP_DEVICE_ID", socket.gethostname()),

@@ -1,0 +1,52 @@
+/* 카메라 미리보기 컴포넌트(camera-preview.js) 전용 스타일. 접두사 `.cpv-`만 쓴다.
+ * 색은 바깥 화면의 디자인 토큰이 있으면 그것을, 없으면 뒤의 기본값을 쓴다 — 단독으로도 동작. */
+/* 카메라 수와 자리 너비에 맞춰 칸 수가 정해진다(3대·넓은 화면이면 3칸, 좁으면 1칸). */
+.cpv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+
+.cpv-panel { margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.cpv-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cpv-title { font-size: 13.5px; font-weight: 600; }
+
+.cpv-badge {
+  font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap;
+  color: var(--gray-700, #4A515A); background: var(--gray-100, #EEEEF1);
+}
+.cpv-badge::before {
+  content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  margin-right: 6px; vertical-align: 1px; background: currentColor;
+}
+.cpv-badge[data-state="live"] { color: #1F7A45; background: var(--green-bg, rgba(67, 182, 111, .12)); }
+.cpv-badge[data-state="loading"] { color: #2A6E93; background: var(--blue-bg, rgba(60, 145, 190, .12)); }
+.cpv-badge[data-state="stale"],
+.cpv-badge[data-state="noframe"] { color: #A35A0B; background: var(--orange-bg, rgba(239, 146, 49, .14)); }
+.cpv-badge[data-state="jetson_down"],
+.cpv-badge[data-state="server_down"] { color: #B5382D; background: var(--coral-bg, rgba(235, 85, 72, .12)); }
+
+.cpv-stage {
+  position: relative; aspect-ratio: 16 / 10; overflow: hidden; border-radius: var(--r-sm, 12px);
+  background: #15131A; display: grid; place-items: center;
+}
+.cpv-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.cpv-panel:not([data-state="live"]) .cpv-img { opacity: .35; }
+.cpv-note {
+  position: relative; color: #D9D4E4; font-size: 12.5px; line-height: 1.5;
+  padding: 12px 16px; text-align: center; overflow-wrap: anywhere;
+}
+
+.cpv-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; min-height: 32px; }
+.cpv-meta { font-size: 11.5px; color: var(--gray-700, #4A515A); font-variant-numeric: tabular-nums; }
+
+/* 스트림 전환(Color/Depth/IR) */
+.cpv-seg { display: inline-flex; }
+.cpv-seg-btn {
+  font: inherit; font-size: 12.5px; font-weight: 500; padding: 6px 14px; cursor: pointer;
+  color: var(--ink, #171717); background: #FFF; border: 1px solid var(--gray-300, #D5D7DB); margin-left: -1px;
+}
+.cpv-seg-btn:first-child { margin-left: 0; border-radius: 9px 0 0 9px; }
+.cpv-seg-btn:last-child { border-radius: 0 9px 9px 0; }
+.cpv-seg-btn:hover { background: var(--gray-200, #F1F3F6); }
+.cpv-seg-btn.is-on {
+  position: relative; color: #FFF; font-weight: 600;
+  background: var(--purple-600, #9558B2); border-color: var(--purple-600, #9558B2);
+}
+.cpv-seg-btn:focus-visible { outline: 2px solid var(--purple-800, #69328A); outline-offset: 1px; z-index: 1; }

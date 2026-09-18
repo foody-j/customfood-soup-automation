@@ -27,17 +27,29 @@ from ..models import (
     StorageResult,
 )
 from ..util import utcnow_iso
-from .base import JetsonUnreachable
+from .base import JetsonUnreachable, PreviewFrame
 
 # 실물 보유 목록 기준(docs/handover-reconciliation-2026-09-11.md §A).
 # 전부 simulated=True — 이 목록은 "연결돼 있다"가 아니라 "붙일 예정"을 뜻한다.
 MOCK_SENSORS = [
     ("cam_rgb_0", "rgb_gmsl2", "Sensing ISX031F (FG12-4CH /dev/video4)"),
     ("cam_rgb_1", "rgb_gmsl2", "Sensing ISX031F 2번 (position=Video_1100)"),
-    ("cam_depth_0", "depth_usb", "Orbbec Gemini 2 (USB3, SDK v2 미연동)"),
+    ("cam_depth_0", "depth_usb", "Orbbec Gemini 2 (USB3, 모의)"),
     ("thermal_0", "thermal_i2c", "MLX90640 32x24 (FOV 미확정)"),
     ("point_temp_0", "point_temp_i2c", "MLX90614 중심온도"),
 ]
+
+#: 센서별 스트림 ID — 실물 수집 서비스(`jetson/collector`)의 어댑터와 같은 이름.
+MOCK_STREAMS = {
+    "cam_rgb_0": ["rgb"],
+    "cam_rgb_1": ["rgb"],
+    "cam_depth_0": ["color", "depth", "ir"],
+    "thermal_0": ["temp_array"],
+    "point_temp_0": ["temp"],
+}
+#: 실물과 같은 미리보기 대상(jetson/collector/app/session.py `_PREVIEW_STREAMS`).
+_PREVIEW_STREAMS = frozenset({"rgb", "color", "depth", "ir", "left_ir", "right_ir"})
+_PREVIEW_TINT = {"rgb": "#3b6ea5", "color": "#3b6ea5", "depth": "#7a3ba5", "ir": "#4b4b4b"}
 
 _TOTAL_BYTES = 456 * 1000**3  # 실측 NVMe 456GB
 _BYTES_PER_SEC = 90 * 1000**2  # 대략적인 원본 기록 속도(모의)
@@ -227,6 +239,46 @@ class MockJetsonClient:
         self._capture_started_mono = None
         return CaptureAck(
             accepted=True, session_id=self._capture.session_id, state=CaptureState.STOPPED
+        )
+
+    async def fetch_preview(
+        self, *, sensor_id: str, stream_id: str, session_id: str | None = None
+    ) -> PreviewFrame | None:
+        """실물과 같은 조건에서만 그림을 준다: 미리보기를 켠 진행 중 세션 + 미리보기 대상 스트림.
+
+        그림은 의존성 없이 만드는 **모의 표지(SVG)** 다 — 실물은 축소 JPEG를 준다.
+        """
+        if not self._api_up:
+            raise JetsonUnreachable("모의 Jetson 수집 서비스 무응답")
+        preview = self._capture_config.get("preview")
+        enabled = preview is True or (isinstance(preview, dict) and preview.get("enabled") is True)
+        if (
+            not enabled
+            or self._capture.state is not CaptureState.RUNNING
+            or (session_id and session_id != self._capture.session_id)
+            or stream_id not in _PREVIEW_STREAMS
+            or stream_id not in MOCK_STREAMS.get(sensor_id, [])
+        ):
+            return None
+        self._tick()
+        seq = self._capture.frames_written
+        now = utcnow_iso()
+        x = 40 + (seq * 7) % 240  # 프레임이 갱신되는지 눈으로 보이게 움직이는 표식
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">'
+            f'<rect width="320" height="200" fill="{_PREVIEW_TINT.get(stream_id, "#333")}"/>'
+            f'<circle cx="{x}" cy="120" r="14" fill="#fff" fill-opacity=".8"/>'
+            '<g fill="#fff" font-family="monospace">'
+            f'<text x="12" y="28" font-size="18">MOCK {sensor_id}/{stream_id}</text>'
+            f'<text x="12" y="52" font-size="12">seq {seq} · {now}</text>'
+            "</g></svg>"
+        )
+        return PreviewFrame(
+            content=svg.encode(),
+            media_type="image/svg+xml",
+            session_id=self._capture.session_id,
+            host_utc=now,
+            sequence=str(seq),
         )
 
     async def request_shutdown(self) -> CaptureAck:

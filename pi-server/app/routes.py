@@ -29,9 +29,10 @@ from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from .capture import CaptureConflict, CaptureService, CaptureUnavailable, SessionNotFound
-from .config import Settings
+from .config import DEFAULT_PREVIEW_CAMERAS, Settings, parse_preview_cameras
 from .db import SCHEMA_VERSION, Database
 from .identity import Identity
+from .jetson.base import JetsonError, JetsonUnreachable
 from .jetson.mock import MockJetsonClient
 from .models import (
     EventInfo,
@@ -224,6 +225,66 @@ async def capture_stop(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except CaptureUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 미리보기 (Jetson 저속 JPEG 중계)
+# ─────────────────────────────────────────────────────────────────────────────
+@router.get("/preview/config")
+async def preview_config(request: Request) -> dict[str, Any]:
+    """카메라 미리보기 컴포넌트(`static/camera-preview.js`)에 넘길 설정.
+
+    컴포넌트는 카메라 목록·API 주소를 **설정으로만** 받는다 — 이 값을 그대로 넘기면 된다.
+    `SOUP_PREVIEW_CAMERAS`가 잘못돼 있으면 기본 목록으로 띄우고 `config_error`에 이유를 적는다.
+    """
+    settings = _settings(request)
+    error = None
+    try:
+        cameras = parse_preview_cameras(settings.preview_cameras_json)
+    except ValueError as exc:
+        cameras = [dict(cam) for cam in DEFAULT_PREVIEW_CAMERAS]
+        error = f"SOUP_PREVIEW_CAMERAS 무시(기본 목록 사용): {exc}"
+    return {
+        "api_base": "/api/preview",
+        "interval_ms": max(500, settings.preview_interval_ms),
+        "cameras": cameras,
+        "config_error": error,
+    }
+
+
+@router.get("/preview/{sensor_id}/{stream_id}")
+async def preview(request: Request, sensor_id: str, stream_id: str) -> Response:
+    """진행 중 세션의 최근 미리보기 1장을 Jetson에서 받아 **그대로 중계**한다.
+
+    브라우저는 Jetson에 직접 닿지 못할 수 있으므로(Pi↔Jetson 직결망) Pi가 대신 읽는다.
+    Jetson의 기존 `GET /api/v1/capture/preview/...`만 쓰며 **원본 수집·저장에는 영향이 없다.**
+    Pi는 이 그림을 저장하지 않고, 화면이 자주 부르므로 이벤트도 남기지 않는다.
+    어떤 스트림을 보는지는 화면의 선택일 뿐 Jetson 설정을 바꾸지 않는다.
+    """
+    active = _capture(request).active()
+    if active is None:
+        raise HTTPException(status_code=404, detail="진행 중인 세션이 없습니다")
+    try:
+        frame = await request.app.state.jetson.fetch_preview(
+            sensor_id=sensor_id, stream_id=stream_id, session_id=active.session_id
+        )
+    except JetsonUnreachable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except JetsonError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if frame is None:
+        raise HTTPException(
+            status_code=404,
+            detail="미리보기 프레임 없음 — 미리보기를 켜고 시작한 세션인지, 센서가 프레임을 내는지 확인",
+        )
+    headers = {"Cache-Control": "no-store"}
+    if frame.session_id:
+        headers["X-Preview-Session-Id"] = frame.session_id
+    if frame.host_utc:
+        headers["X-Preview-Host-Utc"] = frame.host_utc
+    if frame.sequence:
+        headers["X-Preview-Sequence"] = frame.sequence
+    return Response(content=frame.content, media_type=frame.media_type, headers=headers)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

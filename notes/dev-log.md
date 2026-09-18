@@ -2,6 +2,33 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-09-18 — Pi 관리 화면에 카메라 미리보기 컴포넌트 추가 (Pi에서 작업)
+
+- 역할 분담: **촬영·원본 저장은 계속 Jetson 수집기**가 맡고, Pi 쪽 이 모듈은 Jetson의 기존 저속 JPEG 미리보기 API를
+  받아 표시하고 **화면 전환·갱신·연결 상태**만 관리한다. 별도 대시보드를 만들지 않고 기존 관리 화면
+  (`pi-server/app/static`)에 끼워 넣는 **독립 컴포넌트**(`camera-preview.js` + `camera-preview.css`)로 구현(D-027).
+- 카메라 3면: GMSL2 ①(`cam_rgb_0/rgb`) · GMSL2 ②(`cam_rgb_1/rgb`) · Gemini 2(`cam_depth_0`, **Color/Depth/IR 전환 버튼**).
+  전환은 "무엇을 볼지"만 바꾼다 — Jetson에는 GET 조회만 나가고 수집 설정은 바뀌지 않는다(고른 스트림 1개만 요청).
+- Pi 서버: `GET /api/preview/{sensor_id}/{stream_id}`(Jetson `capture/preview` 중계, 저장·이벤트 기록 없음,
+  JPEG/PNG가 아닌 본문은 거절) · `GET /api/preview/config`(카메라 목록·API 주소·주기 — `SOUP_PREVIEW_CAMERAS`,
+  `SOUP_PREVIEW_INTERVAL_MS`). `JetsonClient.fetch_preview` 추가(http·mock). 실험 설정에 `preview{enabled,max_fps≤2}` 추가.
+  화면의 "카메라 미리보기 켜기"(기본 켜짐)를 체크하고 시작하면 저장된 설정에 `preview`만 얹어 보내고, 스냅샷에 함께 박제된다.
+- 요청 중단: 컴포넌트가 화면 밖(스크롤·`display:none`·DOM 제거)이거나 탭이 숨겨지거나 세션이 없으면 **타이머 자체를 끈다**.
+  실패가 이어지면 주기를 1→2→4→8배로 늘린다. 상태 배지: 대기/연결 중/수신 중/지연/프레임 없음/Jetson 무응답/서버 무응답/일시 중지.
+- **검증(헤드리스 Firefox로 실제 화면 구동, 서버 접속 로그로 요청 수 계수)** — 모의 Jetson: 세션 없음 0건 → 시작 후 5초 15건
+  (3면×1 Hz) → Depth·IR 전환 시 해당 스트림만 요청 → 스크롤로 가림 4초 0건 → 복귀 3초 9건 → `display:none` 3초 0건 →
+  링크 단절 시 "Jetson 무응답" + 8초 3건(백오프) → 복구 후 수신 중 → 중지 후 0건 → `destroy()` 후 DOM·타이머 없음.
+- **실제 Jetson(직결 랜 10.42.0.52:8000, Gemini 2 실물)**: Pi 서버 http 모드로 15초 세션(`sess-20260918T085539Z-e43d`,
+  `cam_depth_0`만) — 중계로 color JPEG 29.8 KB 수신, 화면에서 Color→Depth→IR 전환 모두 "수신 중". 시작 7초 시점에는
+  depth·IR이 404였다가 몇 초 뒤 나왔다(이미 기록된 Gemini 2 시작 실패→5초 감시 재오픈과 같은 양상). 원본은 그대로 저장됨:
+  159프레임·206 MB·드롭 0·`ok:true`. GMSL2는 Jetson에 V4L2 노드가 없어 "프레임 없음"으로 표시(실물 미확인).
+  화면 증거: `docs/img/pi-camera-preview-20260918.png`. **점검 세션 원본이 Jetson에 남아 있다** — 필요 없으면 삭제.
+- (리베이스 후속) Jetson에 `preview.depth_max_mm`(깊이 의사색 범위, 59eebf0)이 추가돼 Pi 실험 설정 `preview`에도 같은 선택 필드(100~65535)를
+  넣었다 — `PUT /api/config`로 저장해 두면 화면의 시작 버튼이 그 값을 유지한 채 `enabled`·`max_fps`만 얹는다.
+- 테스트 9건 추가, Pi 서버 전체 39 passed. 이 Pi의 헤드리스 Chromium은 로컬 서버에 접속하지 못하고 멈춰(원인 미확인) Firefox를 썼다.
+- 남은 것: GMSL2 실물 미리보기 확인(카메라 보드 연결 후), 온도·열화상 패널(미리보기 API 대상 아님 — 별도 작업),
+  Jetson 주소가 문서·env 기본값(192.168.0.51)과 실제 직결 주소(10.42.0.52)가 다름 — systemd env 설치 시 맞출 것.
+
 ## 2026-09-18 — 깊이 미리보기 색 범위를 세션 설정으로 (`preview.depth_max_mm`)
 
 - Pi 대시보드 3화면(GMSL2 ×2 + Gemini 2, 1 fps JPEG 폴링) 연결은 Pi 쪽 세션에서 개발 중 — Jetson 쪽은

@@ -265,6 +265,8 @@ curl -X PUT localhost:8100/api/identity -H 'content-type: application/json' \
 | `SOUP_PROBE_INTERVAL` | `2` | 감시 주기(초) |
 | `SOUP_STALE_AFTER` | `8` | 이 시간 넘으면 "갱신 중단" 표시(초) |
 | `SOUP_LINK_LOST_CONFIRM` | `20` | 무응답 확정까지 대기(초) |
+| `SOUP_PREVIEW_CAMERAS` | (기본 3면) | 미리보기 카메라 목록(JSON 배열) — 위 "카메라 미리보기" 참고 |
+| `SOUP_PREVIEW_INTERVAL_MS` | `1000` | 미리보기 갱신 주기(ms, 하한 500 — Jetson이 최대 2fps) |
 | `SOUP_PORT` | `8100` | 서버 포트 |
 | `SOUP_DB_PATH` | `data/pi-server.db` | SQLite 경로 |
 | `SOUP_LOG_LEVEL` | `INFO` | 로그 레벨 |
@@ -308,7 +310,9 @@ journalctl -u soup-pi-server -f
 | GET | `/api/metrics`, POST `/api/metrics/sample` | Pi 운영 지표 |
 | GET | `/api/identity`, PUT `/api/identity` | 과제·장치 식별자 |
 | GET | `/api/backup` | **일관된 DB 스냅샷** 내려받기 |
-| GET·PUT | `/api/config` | 실험 설정 |
+| GET·PUT | `/api/config` | 실험 설정(`preview{enabled,max_fps}` 포함) |
+| GET | `/api/preview/{sensor_id}/{stream_id}` | **진행 중 세션의 미리보기 1장**(Jetson 저속 JPEG 중계). 없으면 404, Jetson 무응답 503 |
+| GET | `/api/preview/config` | 미리보기 컴포넌트 설정(카메라 목록·API 주소·주기) |
 | GET | `/api/power`, POST `/api/power/{on,shutdown,force-off}` | 전원(미지원 시 501) |
 | POST | `/api/mock/jetson/{power,link}` | 모의 장치 조작(모의 모드에서만 등록) |
 

@@ -10,14 +10,14 @@ from __future__ import annotations
 import asyncio
 import socket
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import httpx
 from pydantic import ValidationError
 
 from ..config import Settings
 from ..models import CaptureAck, JetsonReport
-from .base import JetsonError, JetsonUnreachable
+from .base import JetsonError, JetsonUnreachable, PreviewFrame
 
 
 class HttpJetsonClient:
@@ -95,6 +95,31 @@ class HttpJetsonClient:
             json={"session_id": session_id, "reason": reason},
         )
         return self._ack(payload, session_id)
+
+    async def fetch_preview(
+        self, *, sensor_id: str, stream_id: str, session_id: str | None = None
+    ) -> PreviewFrame | None:
+        """`GET /api/v1/capture/preview/{sensor_id}/{stream_id}` — 본문이 JSON이 아니라 JPEG다."""
+        path = f"/api/v1/capture/preview/{quote(sensor_id, safe='')}/{quote(stream_id, safe='')}"
+        params = {"session_id": session_id} if session_id else None
+        try:
+            response = await self._client.get(path, params=params)
+        except httpx.HTTPError as exc:
+            raise JetsonUnreachable(f"GET {path} 실패: {exc}") from exc
+        if response.status_code == 404:  # 프레임이 아직 없거나 미리보기를 켜지 않은 세션
+            return None
+        if response.status_code >= 400:
+            raise JetsonError(f"미리보기 오류 {response.status_code}: {response.text[:200]}")
+        media_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
+        if media_type not in ("image/jpeg", "image/png"):  # 그림이 아닌 본문은 중계하지 않는다
+            raise JetsonError(f"미리보기 형식이 그림이 아님: {media_type or '없음'}")
+        return PreviewFrame(
+            content=response.content,
+            media_type=media_type,
+            session_id=response.headers.get("x-preview-session-id"),
+            host_utc=response.headers.get("x-preview-host-utc"),
+            sequence=response.headers.get("x-preview-sequence"),
+        )
 
     async def request_shutdown(self) -> CaptureAck:
         payload = await self._request("POST", "/api/v1/system/shutdown")

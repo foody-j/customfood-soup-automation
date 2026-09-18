@@ -566,3 +566,122 @@ def test_restart_keeps_experiment_records_and_flags_open_session(client_factory)
     # boot_id가 달라져 재시작을 구분할 수 있다
     boots = {m["boot_id"] for m in second.get("/api/metrics").json()}
     assert second.get("/api/health").json()["boot_id"] not in {""} and boots is not None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 미리보기 중계
+# ─────────────────────────────────────────────────────────────────────────────
+PREVIEW_ON = {"sensors": ["cam_depth_0"], "fps": 10, "preview": {"enabled": True, "max_fps": 2}}
+
+
+def test_preview_requires_active_session(client):
+    assert client.get("/api/preview/cam_depth_0/color").status_code == 404
+
+
+def test_preview_relays_each_gemini_stream(client):
+    sess = client.post("/api/capture/start", json={"name": "미리보기", "config": PREVIEW_ON}).json()
+    for stream in ("color", "depth", "ir"):
+        res = client.get(f"/api/preview/cam_depth_0/{stream}")
+        assert res.status_code == 200, stream
+        assert res.headers["content-type"].startswith("image/")
+        assert res.headers["cache-control"] == "no-store"
+        assert res.headers["x-preview-session-id"] == sess["session_id"]
+        assert f"cam_depth_0/{stream}".encode() in res.content
+    # 미리보기 대상이 아닌 스트림·없는 센서는 그림이 없다
+    assert client.get("/api/preview/thermal_0/temp_array").status_code == 404
+    assert client.get("/api/preview/nope/color").status_code == 404
+
+
+def test_preview_off_session_has_no_frame_and_config_untouched(client):
+    """미리보기를 켜지 않은 세션은 404. 미리보기 조회는 세션 설정·이벤트를 바꾸지 않는다."""
+    sess = client.post(
+        "/api/capture/start", json={"name": "원본만", "config": {"sensors": ["cam_depth_0"]}}
+    ).json()
+    before = len(client.get("/api/events?limit=1000").json())
+    assert client.get("/api/preview/cam_depth_0/depth").status_code == 404
+    assert len(client.get("/api/events?limit=1000").json()) == before
+    assert client.get(f"/api/sessions/{sess['session_id']}").json()["config"] == {
+        "sensors": ["cam_depth_0"]
+    }
+
+
+def test_preview_unreachable_is_503(client):
+    client.post("/api/capture/start", json={"name": "끊김", "config": PREVIEW_ON})
+    client.post("/api/mock/jetson/link", json={"cut": True})
+    assert client.get("/api/preview/cam_depth_0/color").status_code == 503
+
+
+def test_preview_setting_is_validated_and_snapshotted(client):
+    saved = client.put("/api/config", json=PREVIEW_ON).json()
+    assert saved["preview"] == {"enabled": True, "max_fps": 2.0}  # 비운 선택값은 저장하지 않는다
+    assert client.put("/api/config", json={"preview": {"enabled": True, "max_fps": 5}}).status_code == 422
+    assert client.put("/api/config", json={"preview": {"enabled": True, "depth_max_mm": 50}}).status_code == 422
+    ranged = client.put("/api/config", json={**PREVIEW_ON, "preview": {"enabled": True, "max_fps": 2, "depth_max_mm": 1000}})
+    assert ranged.json()["preview"]["depth_max_mm"] == 1000
+    # 시작 요청에 config를 안 실으면 저장된 설정(미리보기 포함)이 그대로 박제된다
+    sess = client.post("/api/capture/start", json={"name": "박제"}).json()
+    assert sess["config"]["preview"]["enabled"] is True
+    assert client.get("/api/preview/cam_depth_0/ir").status_code == 200
+
+
+def test_preview_component_config_default_three_cameras(client):
+    cfg = client.get("/api/preview/config").json()
+    assert cfg["api_base"] == "/api/preview" and cfg["config_error"] is None
+    assert [(c["sensor_id"], [s["id"] for s in c["streams"]]) for c in cfg["cameras"]] == [
+        ("cam_rgb_0", ["rgb"]), ("cam_rgb_1", ["rgb"]), ("cam_depth_0", ["color", "depth", "ir"]),
+    ]
+
+
+def test_preview_component_config_from_env_value(client_factory):
+    custom = '[{"sensor_id": "cam_depth_0", "label": "깊이", "streams": ["depth", {"id": "ir", "label": "IR"}]}]'
+    cfg = client_factory(preview_cameras_json=custom, preview_interval_ms=100).get("/api/preview/config").json()
+    assert cfg["interval_ms"] == 500  # Jetson이 2fps 상한이라 더 빨리 부르지 않는다
+    assert cfg["cameras"] == [{
+        "id": "cam_depth_0", "label": "깊이", "sensor_id": "cam_depth_0",
+        "streams": [{"id": "depth", "label": "depth"}, {"id": "ir", "label": "IR"}],
+    }]
+
+
+def test_preview_component_config_bad_value_falls_back(client_factory):
+    cfg = client_factory(preview_cameras_json="{not json").get("/api/preview/config").json()
+    assert len(cfg["cameras"]) == 3 and "SOUP_PREVIEW_CAMERAS" in cfg["config_error"]
+
+
+def test_http_client_preview_maps_jetson_responses(tmp_path):
+    """실물 클라이언트: JPEG는 헤더와 함께 중계, 404는 '프레임 없음', 그림이 아닌 본문은 거절."""
+    import asyncio
+
+    import httpx
+    import pytest
+
+    from app.jetson.base import JetsonError
+    from app.jetson.http_client import HttpJetsonClient
+
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        if request.url.path.endswith("/cam_depth_0/depth"):
+            return httpx.Response(200, content=b"\xff\xd8jpeg", headers={
+                "content-type": "image/jpeg", "x-preview-session-id": "s1",
+                "x-preview-host-utc": "2026-09-18T00:00:00.000Z", "x-preview-sequence": "7"})
+        if request.url.path.endswith("/cam_depth_0/ir"):
+            return httpx.Response(200, text="<html>", headers={"content-type": "text/html"})
+        return httpx.Response(404, json={"detail": "없음"})
+
+    async def run():
+        from conftest import make_settings
+
+        client = HttpJetsonClient(make_settings(tmp_path, jetson_base_url="http://jetson:8000"))
+        await client._client.aclose()
+        client._client = httpx.AsyncClient(base_url=client.base_url, transport=httpx.MockTransport(handler))
+        frame = await client.fetch_preview(sensor_id="cam_depth_0", stream_id="depth", session_id="s1")
+        assert (frame.content, frame.media_type, frame.session_id, frame.sequence) == (
+            b"\xff\xd8jpeg", "image/jpeg", "s1", "7")
+        assert await client.fetch_preview(sensor_id="cam_depth_0", stream_id="color") is None
+        with pytest.raises(JetsonError):
+            await client.fetch_preview(sensor_id="cam_depth_0", stream_id="ir")
+        await client.close()
+
+    asyncio.run(run())
+    assert seen[0] == "http://jetson:8000/api/v1/capture/preview/cam_depth_0/depth?session_id=s1"

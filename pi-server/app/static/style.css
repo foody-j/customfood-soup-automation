@@ -304,3 +304,9 @@ input:focus {
 /* 실험 이력 표 */
 .sessions td { vertical-align: middle; }
 .sessions a { font-size: 12px; }
+
+/* ── 카메라 미리보기 카드 (컴포넌트 자체 스타일은 camera-preview.css) ───── */
+#camera-preview { margin-top: 12px; }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; margin-top: 12px; cursor: pointer; }
+.check input { margin-top: 3px; accent-color: var(--purple-600); }
+.check input { width: auto; flex: none; padding: 0; }

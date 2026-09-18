@@ -253,6 +253,19 @@ class StopCaptureRequest(BaseModel):
     reason: str | None = None
 
 
+class PreviewConfig(BaseModel):
+    """저속 JPEG 미리보기(`docs/pi-jetson-api.md`). **원본 수집·저장과 별개**다.
+
+    켜도 저장되는 원본의 스트림·fps·해상도는 바뀌지 않는다 — Jetson이 들어온 프레임을
+    `max_fps`(상한 2) 이하로 축소 JPEG로 따로 들고 있을 뿐이다.
+    """
+
+    enabled: bool = False
+    max_fps: float = Field(default=1.0, gt=0, le=2.0)
+    #: 깊이 미리보기 의사색 범위(mm). 비우면 Jetson 기본(4000). 작업 거리 0.5 m면 1000~1500이 보기 좋다.
+    depth_max_mm: int | None = Field(default=None, ge=100, le=65535)
+
+
 class ExperimentConfig(BaseModel):
     """실험 설정. 값은 Jetson이 해석하며 Pi는 보관·전달만 한다."""
 
@@ -262,6 +275,8 @@ class ExperimentConfig(BaseModel):
     exposure: str | None = None
     lighting: str | None = None
     note: str | None = None
+    #: 미리보기 설정(선택). 비우면 Jetson 기본(꺼짐).
+    preview: PreviewConfig | None = None
     extra: dict[str, Any] = Field(default_factory=dict)
 
 

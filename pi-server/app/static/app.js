@@ -41,6 +41,8 @@ const MARK_VIEW = {
 
 const UNKNOWN = '미확인';
 let busy = false;
+/** 카메라 미리보기 컴포넌트 핸들. 이 화면은 "볼 세션이 있는지"만 알려 준다. */
+let cameraView = null;
 
 // ── 공통 ───────────────────────────────────────────────────────────────────
 async function api(path, options) {
@@ -197,6 +199,17 @@ function renderSession(s) {
     </div>`;
 }
 
+/** 미리보기 컴포넌트에 **요청을 돌릴지 말지**만 알려 준다(그리기·폴링은 컴포넌트가 한다). */
+function renderCameraPreviewGate(s) {
+  if (!cameraView) return;
+  const sess = s.active_session;
+  const pv = sess && sess.config && sess.config.preview;
+  const on = pv === true || !!(pv && pv.enabled === true);
+  if (!sess) cameraView.setActive(false, '진행 중인 세션 없음');
+  else if (!on) cameraView.setActive(false, '미리보기를 켜지 않고 시작한 세션입니다. 원본은 정상 저장 중입니다.');
+  else cameraView.setActive(true);  // Jetson 끊김 표시는 컴포넌트가 응답 코드로 직접 한다
+}
+
 function renderEvents(rows) {
   $('event-rows').innerHTML = rows.length
     ? rows.map((e) => {
@@ -267,6 +280,7 @@ function render(s) {
   $('stale-warning').classList.toggle('hidden', !s.link.stale || s.link.state === 'unknown');
 
   renderSession(s);
+  renderCameraPreviewGate(s);
   const canStart = s.jetson_status === 'online' && !s.active_session;
   $('btn-start').disabled = !canStart || busy;
   $('btn-stop').disabled = !s.active_session || busy;
@@ -361,6 +375,14 @@ function bind() {
       ingredients: $('in-ingredients').value || null,
       conditions: $('in-conditions').value || null,
     };
+    try { localStorage.setItem('soup.previewOn', $('in-preview').checked ? '1' : '0'); } catch (_) { /* 무시 */ }
+    if ($('in-preview').checked) {
+      // 저장된 실험 설정에 미리보기만 얹는다 — 수집 대상 센서·fps·해상도는 건드리지 않는다.
+      // 이 값도 시작 시점 설정 스냅샷에 함께 박제된다.
+      // 저장된 preview의 다른 값(예: depth_max_mm — 깊이 의사색 범위)은 유지한다.
+      const saved = await api('/api/config');
+      body.config = { ...saved, preview: { ...(saved.preview || {}), enabled: true, max_fps: 2 } };
+    }
     const sess = await api('/api/capture/start', { method: 'POST', body: JSON.stringify(body) });
     loadSessions();
     return `촬영 시작됨: ${sess.session_id}`;
@@ -435,7 +457,21 @@ async function loadConfig() {
   } catch (_) { /* 설정 없음 — 기본값 유지 */ }
 }
 
+async function mountCameraPreview() {
+  try {
+    const cfg = await api('/api/preview/config');
+    if (cfg.config_error) console.warn(cfg.config_error);
+    cameraView = window.CameraPreview.mount($('camera-preview'),
+      window.CameraPreview.fromServerConfig(cfg, { headers: { 'X-Soup-Client': 'ui' } }));
+    cameraView.setActive(false, '상태 확인 중…');
+  } catch (err) {
+    $('camera-preview').textContent = `미리보기 설정을 읽지 못했습니다: ${err.message}`;
+  }
+}
+
 bind();
+try { $('in-preview').checked = localStorage.getItem('soup.previewOn') !== '0'; } catch (_) { /* 기본 켜짐 */ }
+mountCameraPreview();
 loadConfig();
 loadSessions();
 loadMarks();

@@ -206,7 +206,7 @@ Pi와의 연결은 관리 경로일 뿐 수집의 전제가 아니다(플랜 §4
 | 항목 | 상태 |
 |---|---|
 | `sensors[].stats` · `last_session_summary` | **Jetson 구현됨(2026-09-12)** — §2.1. `stats`는 진행 중 세션의 스트림 통계를 센서 단위로 합산(세션 없으면 null), `last_session_summary`는 파일 close·manifest 기록 후 확정(`ok=false`면 `note`에 사유) |
-| 저해상 미리보기 | **Jetson 구현됨(2026-09-18)** — 아래 `GET /api/v1/capture/preview/{sensor_id}/{stream_id}`. 활성 세션에서 요청 시에만 사용, 원본 저장과 분리 |
+| 저해상 미리보기 | **Jetson 구현됨(2026-09-18), Pi 연동됨(2026-09-18)** — 아래 `GET /api/v1/capture/preview/{sensor_id}/{stream_id}`. 활성 세션에서 요청 시에만 사용, 원본 저장과 분리. Pi는 `GET /api/preview/{sensor_id}/{stream_id}`로 그대로 중계하고(저장 안 함) 시작 요청의 `config.preview`로 켠다 — 계약 변경 없음 |
 | 센서별 설정 조회/변경 (`/api/v1/sensors/...`) | 미정의 — 4단계 |
 | 인증 | 없음(로컬 유선망 전제). 운영 전 재검토 |
 | 시계 오프셋 보고 | 확장 필드 `clock`으로 1차 제공(NTP 오프셋은 timesyncd가 노출하지 않아 null). 장치 간 보정은 5단계 |
