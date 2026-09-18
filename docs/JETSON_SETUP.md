@@ -3,6 +3,8 @@
 발행자(publisher) 겸 AI 추론 노드인 **Jetson Orin Nano Super**의 소프트웨어 스택 셋업.
 센서가 없어도 여기까지는 끝낼 수 있다. 실행은 **Jetson에서** 한다.
 
+센서 5대의 배선 검증·프로그램 개발 순서는 [센서 개발·검증 지침서](jetson-five-sensor-guide.md)를 참고한다.
+
 ## 확인된 스택 (JetPack 6.2.2)
 | 구성 | 버전 |
 |------|------|
