@@ -173,6 +173,9 @@ class OrbbecGemini2(SensorAdapter):
         matches = []
         for i in range(len(profiles)):
             p = profiles[i]
+            # 목록 인덱싱은 기반형 StreamProfile을 줄 수 있다(get_width 없음) — 영상 프로필로 내려받는다
+            if not hasattr(p, "get_width") and hasattr(p, "as_video_stream_profile"):
+                p = p.as_video_stream_profile()
             if width is not None and int(p.get_width()) != int(width):
                 continue
             if height is not None and int(p.get_height()) != int(height):

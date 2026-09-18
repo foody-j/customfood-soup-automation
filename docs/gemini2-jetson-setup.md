@@ -23,10 +23,17 @@ uname -m                      # aarch64 기대
 python3 --version             # 사용 중인 JetPack Python 확인
 python3 -m venv /home/ubuntu/collector-venv --system-site-packages
 /home/ubuntu/collector-venv/bin/python -m pip install -r jetson/collector/requirements.txt
-/home/ubuntu/collector-venv/bin/python -m pip install pyorbbecsdk2
+/home/ubuntu/collector-venv/bin/python -m pip install --no-deps pyorbbecsdk2   # --no-deps 필수(아래 설명)
 /home/ubuntu/collector-venv/bin/python -c 'import pyorbbecsdk; print(pyorbbecsdk.__file__)'
 /home/ubuntu/collector-venv/bin/python -m pip show pyorbbecsdk2
 ```
+
+**`--no-deps`를 빼지 않는다(2026-09-18 이 Jetson에서 확인, pyorbbecsdk2 2.1.2).** wheel이 예제용
+의존성(`opencv-python`, `open3d`, `pygame`, `av`, `pynput`)을 끌어오는데, `opencv-python`은 venv에서
+JetPack의 cv2를 가리고, 의존성 빌드가 `packaging>=24.2` 문제로 실패해 설치 자체가 중단된다.
+수집 서비스가 쓰는 것은 numpy(<2)와 JetPack cv2뿐이며 둘 다 이미 있다. 설치 후
+`python -c 'import cv2; print(cv2.__file__)'`가 `/usr/lib/python3.10/dist-packages/`를 가리키는지 확인한다.
+SDK는 실행 디렉터리에 `Log/OrbbecSDK.log.txt`를 만든다(저장소에서는 gitignore됨).
 
 `pyorbbecsdk2`가 **설치 패키지 이름**, `pyorbbecsdk`가 **Python import 이름**이다.
 Orbbec의 [Python SDK 안내](https://github.com/orbbec/pyorbbecsdk/blob/v2-main/README.md)는

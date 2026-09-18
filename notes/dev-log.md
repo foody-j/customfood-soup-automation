@@ -2,6 +2,29 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-09-18 — Gemini 2 커밋(e747a9c) Jetson 확인 + 센서 5대 작업과 병합
+
+- 원격 `e747a9c`(Windows에서 작성)와 로컬 센서 5대 커밋이 같은 부모에서 갈라져, 로컬 커밋을 원격 위로
+  리베이스했다. 충돌 6개 파일 해결: `registry.py`는 **Orbbec 어댑터 + 센서 5대 어댑터를 모두 등록**,
+  두 커밋이 스텁을 나눠 지워 빈 껍데기가 된 `unsupported.py`는 삭제. 결정 번호가 겹쳐 원격의
+  D-023(Gemini 2)을 유지하고 센서 쪽을 **D-024(버스 잠금·기본값 없음) / D-025(MLX90640 2 Hz·refresh 8 Hz)** 로 재부여.
+- **Windows에서 못 돌린 전체 collector 테스트를 Jetson에서 실행: 43 passed, 1 skipped**(skip은 V4L2 실기기 노드 없음).
+  Gemini 2 어댑터·미리보기 9건 포함.
+- 지시서대로 `pip install pyorbbecsdk2`를 하면 **실패**한다: 예제용 의존성(opencv-python·open3d·pygame·av·pynput)을
+  끌어오다 빌드 오류(`packaging>=24.2`)로 중단되고, 성공했더라도 pip의 opencv-python이 JetPack cv2를 가린다.
+  `--no-deps`로 2.1.2(cp310 aarch64 wheel) 설치 성공, cv2는 JetPack 4.8.0 그대로 — 지시서 §1 수정.
+- 실제 wheel로 어댑터가 가정한 SDK API를 대조: `Context/DeviceList/DeviceInfo/Pipeline/Config/FrameSet/VideoFrame/
+  DepthFrame`의 메서드와 `OBSensorType.IR_SENSOR`, `StreamProfileList.__len__/__getitem__` 모두 존재.
+  단 기반형 `StreamProfile`에는 `get_width`가 없어, 목록 인덱싱 결과를 `as_video_stream_profile()`로
+  내려받는 방어 코드를 `_profile()`에 추가했다(장치 없이는 실제 반환형을 확인할 수 없음).
+- `Context().query_devices()` = 0대, `lsusb`에 Orbbec(2bc5) 없음 — **Gemini 2 미연결**. status의 `cam_depth_0`는
+  `connected:false`(`Gemini 2 USB 장치 없음`)로 나간다. 프레임 수신·FPS·IR 센서 종류·depth scale은 **미검증**.
+- SDK가 실행 디렉터리에 `Log/`를 만들어 `.gitignore`에 추가.
+- 남은 확인거리(실물 연결 후): ① 전역 `fps`가 color·depth·IR 세 프로필에 그대로 적용돼 Gemini 2가 지원하지 않는
+  값(예: 20)이면 open이 계속 실패한다 — GMSL 카메라와 함께 쓸 때는 `per_sensor.cam_depth_0.fps`로 분리.
+  ② depth scale이 1.0이 아니면 mm 반올림 저장이 원시 Z16과 달라진다(flags에 scale은 남음).
+  ③ probe가 10초마다 `Context()`를 새로 만든다 — 장치 연결 상태에서 부하·로그량 확인.
+
 ## 2026-09-18 — 센서 5대 실물 어댑터·단독 진단 도구 구현 (지침서 1fe42d8 기준, Jetson에서 작업)
 
 - `jetson/collector`에 실물 어댑터 3종을 추가하고 MLX 미지원 스텁을 교체했다(D-022 이행).
