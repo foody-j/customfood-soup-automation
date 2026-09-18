@@ -252,6 +252,40 @@ curl -X PUT localhost:8100/api/identity -H 'content-type: application/json' \
   sudo systemctl restart systemd-journald
   ```
 
+## 카메라 미리보기 (독립 컴포넌트)
+
+![카메라 미리보기](../docs/img/pi-camera-preview-20260918.png)
+
+*2026-09-18 실제 Jetson + Gemini 2(Depth 선택). GMSL2는 카메라 미연결이라 "프레임 없음".*
+
+**촬영과 원본 저장은 Jetson 수집기가 한다.** 이 모듈은 Jetson의 저속 JPEG 미리보기를 받아 보여 주고,
+스트림 전환·갱신·연결 상태만 관리한다. 스트림(Color/Depth/IR)을 바꿔도 Jetson에는 조회(GET)만 나간다.
+
+```
+브라우저 camera-preview.js ──GET /api/preview/{sensor}/{stream}──▶ Pi 서버 ──GET /api/v1/capture/preview/…──▶ Jetson
+```
+
+- `static/camera-preview.js` + `camera-preview.css` — 바깥 화면을 모르는 독립 모듈. 다른 화면에 끼울 때:
+  ```html
+  <link rel="stylesheet" href="/static/camera-preview.css"><script src="/static/camera-preview.js"></script>
+  <script>
+    fetch('/api/preview/config').then(r => r.json()).then(cfg => {
+      const view = CameraPreview.mount(document.getElementById('slot'), CameraPreview.fromServerConfig(cfg));
+      // view.setActive(false, '세션 없음') · view.destroy()
+    });
+  </script>
+  ```
+  설정을 직접 줘도 된다: `{ apiBase, cameras: [{id, label, sensor_id, streams: [{id, label}]}], intervalMs }`.
+- **미리보기는 `preview.enabled=true`로 시작한 세션에서만 나온다.** 촬영 카드의 "카메라 미리보기 켜기"(기본 켜짐)가
+  저장된 실험 설정에 `preview: {enabled: true, max_fps: 2}`만 얹어 보낸다. 끄고 시작한 세션은 "프레임 없음"이 정상이다.
+  깊이 의사색 범위는 `PUT /api/config`의 `preview.depth_max_mm`(100~65535, 비우면 Jetson 기본 4000)로 저장해 두면
+  유지된다 — 작업 거리 0.5 m면 1000~1500.
+- **요청이 멈추는 때:** 컴포넌트가 화면 밖(스크롤·`display:none`·DOM 제거), 브라우저 탭 숨김, 진행 중 세션 없음, `destroy()`.
+  실패가 이어지면 주기를 최대 8배까지 늘린다.
+- 카메라 목록은 `SOUP_PREVIEW_CAMERAS`(JSON)로 바꾼다. 기본은 GMSL2 ①(`cam_rgb_0`)·②(`cam_rgb_1`)·Gemini 2(`cam_depth_0`: color/depth/ir).
+  형식이 틀리면 기본 목록으로 뜨고 `/api/preview/config`의 `config_error`에 이유가 나온다.
+- Pi는 미리보기 그림을 저장하지 않고, 조회를 이벤트로 남기지도 않는다.
+
 ## 설정 (환경변수)
 
 전체 목록과 기본값은 `systemd/soup-pi-server.env` 참고. 자주 쓰는 것:
