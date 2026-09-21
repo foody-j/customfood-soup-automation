@@ -22,6 +22,11 @@
   Sensing 커널에서 fzcam이 안 되면 `sudo apt install --reinstall nvidia-l4t-kernel nvidia-l4t-kernel-oot-modules`로 순정 복원.
   ② 실제로 Sensing SG4A 보드로 바꾼 것이라면 그쪽 `quick_bring_up.sh` 절차(max96712.ko → sgx-yuv-gmsl2.ko)로 진행.
 - 그 밖: 재부팅으로 수동 실행하던 수집 서버(8000)가 내려갔고, Gemini 2는 현재 USB에 보이지 않는다(분리된 듯).
+- **정정(같은 날, 재부팅 후 재조회):** 사용자가 어댑터를 **Sensing SG4A-NONX-G2Y-A1로 교체해 쓰는 것**이 맞다. 재부팅 뒤에는
+  버스 9의 **0x6b(Sensing MAX96712)가 응답**하고 버스 10의 0x29는 무응답으로 바뀌었다 — 위의 "실물은 FG12" 판단은 교체 전
+  (또는 보드 전원 인가 전) 상태를 본 것이다. 따라서 9/12의 Sensing 부팅 설정(오버레이·커널)은 **현재 하드웨어와 일치**하며 되돌릴
+  필요가 없다. 남은 원인은 Sensing 드라이버 미적재뿐: `ko/max96712.ko` → `ko/sgx-yuv-gmsl2.ko GMSLMODE_1=…`를 insmod해야
+  `/dev/video0~3`이 생긴다(재부팅마다 필요 — 자동 적재 미설정). `fzcam_cfg` 서비스와 `/etc/fzcam_cfg.ini`는 이 보드에서는 쓰이지 않는다.
 
 ## 2026-09-18 — Pi 관리 화면에 카메라 미리보기 컴포넌트 추가 (Pi에서 작업)
 
