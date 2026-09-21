@@ -2,6 +2,27 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-09-21 — GMSL2 카메라 연결 후 점검: 부팅 설정(Sensing)과 실물 보드(FG12) 불일치 발견 (Jetson, 읽기 전용 진단)
+
+- 사용자가 GMSL2 카메라를 연결하고 재부팅했으나 `/dev/video*`가 하나도 없다. 수집 서비스의 `cam_rgb_0`가 계속
+  "V4L2 노드 없음(드라이버 미적재)"였던 원인을 추적했다. **아무것도 바꾸지 않았다**(sudo 불가, 조회만).
+- 실물: `i2cdetect -y -r 10 0x29 0x29` → **0x29 응답**(MAX96712). 이는 `cam-adaptor/FG12-4CH-설치방법.md`의 7/27 성공
+  기록과 같은 위치(버스 10 = GMSL2 그룹 = `/dev/video4~7`) — 꽂혀 있는 보드는 **Fangzhu FG12-4CH**로 보인다.
+  Sensing 보드의 디시리얼라이저 주소(버스 9의 0x6b)는 무응답.
+- 부팅 설정: `/boot/extlinux/extlinux.conf`가 **2026-09-12 16:44에 `Jetson Sensing YUV GMSLx4`
+  (`tegra234-camera-yuv-gmslx4-overlay.dtbo`)로 바뀌어 있다.** `~/SG4A_NONX_G2Y_A1_ORIN_NANO_YUV_JP6.2_L4TR36.4.3/install.sh`가
+  실행된 흔적이며, 이 스크립트는 **`/boot/Image`(커널)·`tegra-camera.ko`·`nvhost-nvcsi-t194.ko`를 Sensing 빌드로 덮어쓰고
+  `max9295/max9296.ko`를 지웠다**(`dpkg -V nvidia-l4t-kernel*`로 확인, 백업 없음. 현재 커널 빌드 날짜 2025-11-17 CST).
+- 결과: 장치 트리의 카메라 노드가 `sensing,sgx-yuv-gmsl2-*`(버스 9의 0x1a~0x1d, 0x6b)뿐이라 `fzcam.ko`가 붙을 노드가 없고
+  (모듈 미적재, 9-001x `driver: none`), `fzcam_cfg` 서비스는 부팅 때 `Video[4-5-6-7] No channel locked / Link satus:0-0-0-0`.
+  Sensing 드라이버(`sgx-yuv-gmsl2.ko`, `max96712.ko`)도 적재돼 있지 않다 — 어느 스택으로도 카메라가 뜨지 않는 상태.
+- `/etc/fzcam_cfg.ini`는 `[GMSL2] position=Video_1000`(LinkA 1대). 카메라 2대면 문서대로 `Video_1100`이어야 한다.
+- 복구 후보(사용자 결정·sudo 필요): ① FG12 보드가 맞다면 jetson-io에서 "Camera FG12-4CH-4Lanes-YUV"로 되돌리고
+  (`/boot/tegra234-p3767-camera-p3768-fzcam-fg12-4ch-4lanes.dtbo` 존재) `position=Video_1100` → 재부팅 → `fzcam_cfg` 링크 확인.
+  Sensing 커널에서 fzcam이 안 되면 `sudo apt install --reinstall nvidia-l4t-kernel nvidia-l4t-kernel-oot-modules`로 순정 복원.
+  ② 실제로 Sensing SG4A 보드로 바꾼 것이라면 그쪽 `quick_bring_up.sh` 절차(max96712.ko → sgx-yuv-gmsl2.ko)로 진행.
+- 그 밖: 재부팅으로 수동 실행하던 수집 서버(8000)가 내려갔고, Gemini 2는 현재 USB에 보이지 않는다(분리된 듯).
+
 ## 2026-09-18 — Pi 관리 화면에 카메라 미리보기 컴포넌트 추가 (Pi에서 작업)
 
 - 역할 분담: **촬영·원본 저장은 계속 Jetson 수집기**가 맡고, Pi 쪽 이 모듈은 Jetson의 기존 저속 JPEG 미리보기 API를
