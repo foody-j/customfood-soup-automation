@@ -78,6 +78,9 @@ class Sample:
     gain: Any = None
     #: 장치 순번이 실제 하드웨어 시퀀스인지(누락 감지에 쓸 수 있는지)
     seq_is_device: bool = False
+    #: 어댑터가 직접 센 "직전 저장 샘플 이후 실제로 빠진 장치 프레임 수". 어댑터가 일부러 추려 낸(decimation)
+    #: 프레임은 포함하지 않는다. 주어지면 기록기는 seq 차이로 추정하지 않고 이 값을 누락으로 센다.
+    device_gap: int | None = None
     #: 드라이버 오류 플래그 등 그 밖의 사실
     flags: dict[str, Any] = field(default_factory=dict)
 

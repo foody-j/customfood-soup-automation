@@ -1,0 +1,23 @@
+# Sensing SG4A-NONX-G2Y-A1 GMSL 어댑터 드라이버를 부팅 때 올린다.
+# SDK(~/SG4A_NONX_G2Y_A1_ORIN_NANO_YUV_JP6.2_L4TR36.4.3)는 자동 적재를 설정해 주지 않아 재부팅마다 insmod가 필요하다.
+#
+# 설치:  sudo cp sensing-gmsl.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now sensing-gmsl
+# 확인:  ls /dev/video*  ·  journalctl -k | grep "been detected"
+# GMSLMODE_1 = 포트 0~3의 카메라 종류 (0=GMSL, 1=GMSL2/6G, 2=GMSL2/3G). ISX031F + MAX96717F는 3G라 2 (2026-09-21 실기기 확인).
+[Unit]
+Description=Sensing SG4A GMSL camera drivers (max96712 + sgx-yuv-gmsl2)
+After=nvpmodel.service
+Before=jetson-collector.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=SDK=/home/ubuntu/SG4A_NONX_G2Y_A1_ORIN_NANO_YUV_JP6.2_L4TR36.4.3
+ExecStart=/bin/sh -c 'lsmod | grep -q "^max96712 " || insmod ${SDK}/ko/max96712.ko'
+ExecStart=/bin/sh -c 'lsmod | grep -q "^sgx_yuv_gmsl2 " || insmod ${SDK}/ko/sgx-yuv-gmsl2.ko GMSLMODE_1=2,2,2,2'
+# SDK의 clock_config.sh와 같은 내용: nvcsi 클록을 고정한다(미실행 상태에서 corr_err 프레임 오류 플래그가 관측됨)
+ExecStart=/bin/sh -c 'echo 1 > /sys/kernel/debug/bpmp/debug/clk/nvcsi/mrq_rate_locked; echo 214300000 > /sys/kernel/debug/bpmp/debug/clk/nvcsi/rate'
+ExecStop=/bin/sh -c 'rmmod sgx_yuv_gmsl2; rmmod max96712'
+
+[Install]
+WantedBy=multi-user.target

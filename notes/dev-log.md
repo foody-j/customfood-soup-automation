@@ -2,6 +2,27 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-09-21 — GMSL2 카메라 2대 실기기 연동(Sensing SG4A) + 카메라 3대 동시 촬영 확인
+
+- 사용자가 SDK 드라이버를 insmod(`max96712.ko`, `sgx-yuv-gmsl2.ko GMSLMODE_1=2,2,2,2`)한 뒤 포트 0·1의 ISX031F가 감지됐다.
+  Gemini 2가 `/dev/video0~5`를 먼저 차지해 GMSL은 `/dev/video6·7`로 밀렸다(9/18에 예상한 번호 충돌이 실제로 발생).
+- `app/sensors/v4l2.py`를 Sensing 보드에 맞게 고쳤다(FG12 경로는 유지):
+  - 장치 지정 **`gmsl:<포트>`** — 노드 이름(`sgx-yuv-gmsl2 9-001a`…)으로 매번 다시 찾는다. 이 장비는 `gmsl:0,gmsl:1`.
+  - 해상도는 **`sensor_mode` 컨트롤**로 설정(포맷만 바꾸면 1080p에 머묾), 요청과 다르게 열리면 실패 처리.
+  - 링크 판정: 이 보드에는 `fzcam_cfg`가 없어 **짧은 시험 캡처**로 연결을 본다(성공 시 60초 캐시, 수집 중에는 생략).
+  - CSI 노드가 아닌 경로(예: 옛 기본값 `/dev/video4` = 지금은 Gemini UVC)는 연결로 보고하지 않는다.
+  - 드라이버 ERROR 플래그 프레임은 버리지 않고 `flags.driver_error_flag`로 표시해 저장(영상 정상, 비율 15~77 %).
+- **버그 2건 수정**: ① `V4L2Capture.dequeue()`가 QBUF 뒤에 메타데이터를 읽어 순번·장치 시각·플래그가 전부 0이었다.
+  ② 순번이 살아나자 30→10 fps 추림의 seq 간격이 누락으로 세어졌다(30초에 576건) → `Sample.device_gap` 추가,
+  어댑터가 전체 속도 스트림에서 센 실제 누락만 기록기에 전달.
+- **실기기 결과**: 카메라 3대 동시 60초 — GMSL 각 587장(1920×1536 JPEG) 갭·드롭 0, Gemini depth·IR 639장, CPU 46 %.
+  미리보기 `cam_rgb_0/rgb`·`cam_rgb_1/rgb`·`cam_depth_0/{color,depth}` 모두 200. 상세는
+  `notes/data/experiments/20260921_gmsl2-sensing-3cam-first-capture.md`.
+- `systemd/sensing-gmsl.service` 추가(부팅 시 드라이버 적재 + nvcsi 클록 고정, 설치는 sudo로 사용자가). env 기본을 `gmsl:0,gmsl:1`로.
+- 테스트 6건 추가(실기기 회귀 시험 포함), 전체 52 passed. 수집 서버는 포트 8000에서 `gmsl:0,gmsl:1`로 실행 중(수동 기동).
+- 남은 것: `clock_config.sh` 적용 후 ERROR 플래그 비율 재측정, GMSL ① 고정, 30분 연속 3대 운전과 저장량(60초 3.2 GB ≈ 시간당 190 GB),
+  Pi 화면에서 3면 확인(Pi 쪽 `SOUP_PREVIEW_CAMERAS` 기본이 `cam_rgb_0/1`·`cam_depth_0`이라 그대로 맞는다).
+
 ## 2026-09-21 — GMSL2 카메라 연결 후 점검: 부팅 설정(Sensing)과 실물 보드(FG12) 불일치 발견 (Jetson, 읽기 전용 진단)
 
 - 사용자가 GMSL2 카메라를 연결하고 재부팅했으나 `/dev/video*`가 하나도 없다. 수집 서비스의 `cam_rgb_0`가 계속

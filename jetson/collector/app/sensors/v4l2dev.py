@@ -222,19 +222,22 @@ class V4L2Capture:
             fcntl.ioctl(self._fd, VIDIOC_DQBUF, buf)
         except BlockingIOError:
             return None
+        # ★ 메타데이터는 QBUF **전에** 꺼낸다. QBUF ioctl은 같은 구조체를 덮어써서(flags=QUEUED, sequence·timestamp=0)
+        #   뒤에 읽으면 순번·장치 시각·오류 플래그가 전부 사라진다(2026-09-21 실기기에서 발견).
+        flags, sequence = int(buf.flags), int(buf.sequence)
+        ts_ns = buf.timestamp.tv_sec * 1_000_000_000 + buf.timestamp.tv_usec * 1000
         try:
             used = buf.bytesused or self.sizeimage
             data = bytes(self._maps[buf.index][:used])
         finally:
             fcntl.ioctl(self._fd, VIDIOC_QBUF, buf)
-        ts_kind = buf.flags & V4L2_BUF_FLAG_TIMESTAMP_MASK
+        ts_kind = flags & V4L2_BUF_FLAG_TIMESTAMP_MASK
         clock = "host_monotonic" if ts_kind == V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC else (
             "copy" if ts_kind == V4L2_BUF_FLAG_TIMESTAMP_COPY else "unknown"
         )
         return DqFrame(
-            data=data, bytesused=used, sequence=buf.sequence,
-            timestamp_ns=buf.timestamp.tv_sec * 1_000_000_000 + buf.timestamp.tv_usec * 1000,
-            timestamp_clock=clock, error_flag=bool(buf.flags & V4L2_BUF_FLAG_ERROR), flags=buf.flags,
+            data=data, bytesused=used, sequence=sequence, timestamp_ns=ts_ns,
+            timestamp_clock=clock, error_flag=bool(flags & V4L2_BUF_FLAG_ERROR), flags=flags,
         )
 
     def stop(self) -> None:

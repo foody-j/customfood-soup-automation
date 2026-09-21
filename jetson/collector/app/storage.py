@@ -144,7 +144,10 @@ class StreamWriter(threading.Thread):
             if sample.seq_is_device:
                 if self.stats.gaps_detected is None:
                     self.stats.gaps_detected = 0
-                if self.stats.last_seq is not None and sample.seq > self.stats.last_seq + 1:
+                if sample.device_gap is not None:
+                    # 어댑터가 전체 속도 스트림에서 센 실제 누락 — 추림으로 생긴 seq 간격을 누락으로 오인하지 않는다
+                    self.stats.gaps_detected += sample.device_gap
+                elif self.stats.last_seq is not None and sample.seq > self.stats.last_seq + 1:
                     self.stats.gaps_detected += sample.seq - self.stats.last_seq - 1
             self.stats.last_seq = sample.seq
             if self.stats.first_host_utc is None:

@@ -48,7 +48,7 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 | 변수 | 기본 | 뜻 |
 |---|---|---|
 | `COLLECTOR_SENSOR_MODE` | `mock` | `mock` 모의만 / `auto` 실기기+미지원 보고+`mock_*` / `real` 실기기만 |
-| `COLLECTOR_V4L2_DEVICES` | `/dev/video4` | ISX031F 노드(쉼표 구분) → `cam_rgb_0`, `cam_rgb_1`… |
+| `COLLECTOR_V4L2_DEVICES` | `/dev/video4` | ISX031F 지정(쉼표 구분) → `cam_rgb_0`, `cam_rgb_1`… 경로 또는 **`gmsl:<포트>`**(Sensing SG4A — 노드 번호가 Gemini 2 때문에 밀려도 포트로 찾는다). 현재 장비는 `gmsl:0,gmsl:1` |
 | `COLLECTOR_ORBBEC_SERIAL` | (없음) | Gemini 2가 여러 대일 때 선택할 USB 장치 시리얼 |
 | `COLLECTOR_ORBBEC_FPS` | 10 | 세션 설정에 `fps`가 없을 때 Gemini 2 세 스트림의 기본 fps. 0이면 SDK 기본(30 — depth+IR 약 115 MB/s) |
 | `COLLECTOR_I2C_THERMAL_BUS` / `I2C_POINT_BUS` | **(없음)** | 열화상·비접촉 온도 버스의 **실측** `/dev/i2c-N` 번호. 비우면 해당 센서는 `connected:false` + 이유 |
@@ -74,7 +74,7 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 
 | sensor_id | kind | 스트림 | 상태(2026-09-18) |
 |---|---|---|---|
-| `cam_rgb_0` | rgb_gmsl2 | `rgb` (UYVY→JPEG 프레임 파일, 또는 raw) | 어댑터 있음. **실기기 검증 전**(GMSL 링크 미확립 상태에서 ioctl 경로만 확인) |
+| `cam_rgb_0` / `cam_rgb_1` | rgb_gmsl2 | `rgb` (UYVY→JPEG 프레임 파일, 또는 raw) | ISX031F ×2, Sensing SG4A 보드. **2026-09-21 실기기 확인**(1920×1536, 30→10 fps 추림, 60초 3대 동시 드롭·갭 0). 재부팅마다 드라이버 적재 필요 → `systemd/sensing-gmsl.service` |
 | `cam_depth_0` | depth_usb | `color`(JPEG 또는 BGR raw) / `depth`(mm, uint16) / `ir`(intensity, uint16) | 어댑터 구현. **2026-09-18 실기기 단기 촬영 확인**(30 fps 드롭 0, 미리보기 OK). 30분 연속·저장량 대책은 미완 — `notes/data/experiments/20260918_gemini2-jetson-first-capture.md` |
 | `thermal_0` / `thermal_1` | thermal_i2c | `temp_array` (24×32 float32 ℃) | MLX90640 55° / 110°. 어댑터 있음. **실물 검증 전**(미배선 — 가짜 드라이버 테스트만) |
 | `point_temp_0` / `point_temp_1` | point_temp_i2c | `temp` `{object_c, ambient_c}` | MLX90614 5° / 35°. 위와 같음 |
