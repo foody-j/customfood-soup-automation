@@ -110,10 +110,6 @@ class Settings:
     #: getFrame의 일시적 ValueError/RuntimeError 재시도 횟수(지침서 §5-2).
     thermal_read_retries: int = 2
     #: 비접촉 온도 버스(J12 27/28번, 100 kHz)의 실측 번호·mux 주소·채널.
-    i2c_point_bus: int | None = None
-    i2c_point_mux_addr: int | None = 0x70
-    point_channels: tuple[int, ...] = (0, 1)
-    point_rate_hz: float = 1.0
     #: MAX31865 CS로 쓸 Blinka 핀 이름(예: J12 물리 15번 = `D22`). 하드웨어 CS0(24번) 금지.
     pt100_cs_pin: str = ""
     #: MAX31865 보드의 **실물** 기준 저항(Ω). 430을 가정하지 않는다.
@@ -192,10 +188,6 @@ class Settings:
             thermal_rate_hz=_env_float("COLLECTOR_THERMAL_RATE_HZ", 2.0),
             thermal_refresh_hz=_env_float("COLLECTOR_THERMAL_REFRESH_HZ", 8.0),
             thermal_read_retries=_env_int("COLLECTOR_THERMAL_READ_RETRIES", 2),
-            i2c_point_bus=_env_opt_int("COLLECTOR_I2C_POINT_BUS", None),
-            i2c_point_mux_addr=_env_opt_int("COLLECTOR_I2C_POINT_MUX_ADDR", 0x70),
-            point_channels=_env_int_tuple("COLLECTOR_POINT_CHANNELS", (0, 1)),
-            point_rate_hz=_env_float("COLLECTOR_POINT_RATE_HZ", 1.0),
             pt100_cs_pin=_env_str("COLLECTOR_PT100_CS_PIN", ""),
             pt100_ref_ohms=_env_opt_float("COLLECTOR_PT100_REF_OHMS", None),
             pt100_nominal_ohms=_env_float("COLLECTOR_PT100_NOMINAL_OHMS", 100.0),

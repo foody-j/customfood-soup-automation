@@ -14,7 +14,7 @@ Pi 관리 서버(`pi-server/`)의 상대편이며, 접점은 계약 문서 `docs
 | API | Python 3.10 + FastAPI (`app/routes.py`, `app/main.py`) |
 | 세션 상태기계 | `app/session.py` — starting → running → stopping → stopped / failed |
 | 저장 | `app/storage.py` — 세션 디렉터리·index.jsonl·records.bin·manifest.json·복구·체크섬 |
-| 센서 어댑터 | `app/sensors/` — mock · v4l2(ISX031F) · Orbbec Gemini 2 · MLX90640×2 · MLX90614×2 · MAX31865/PT100(`i2cmux.py` 버스 잠금) |
+| 센서 어댑터 | `app/sensors/` — mock · v4l2(ISX031F) · Orbbec Gemini 2 · MLX90640 · MAX31865/PT100(`i2cmux.py` 버스 잠금) |
 | 시스템 상태 | `app/sysmon.py` — CPU·GPU·메모리·온도·디스크 (기본 5초) |
 | 자동 실행 | `systemd/jetson-collector.service` |
 
@@ -51,10 +51,10 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 | `COLLECTOR_V4L2_DEVICES` | `/dev/video4` | ISX031F 지정(쉼표 구분) → `cam_rgb_0`, `cam_rgb_1`… 경로 또는 **`gmsl:<포트>`**(Sensing SG4A — 노드 번호가 Gemini 2 때문에 밀려도 포트로 찾는다). 현재 장비는 `gmsl:0,gmsl:1` |
 | `COLLECTOR_ORBBEC_SERIAL` | (없음) | Gemini 2가 여러 대일 때 선택할 USB 장치 시리얼 |
 | `COLLECTOR_ORBBEC_FPS` | 10 | 세션 설정에 `fps`가 없을 때 Gemini 2 세 스트림의 기본 fps. 0이면 SDK 기본(30 — depth+IR 약 115 MB/s) |
-| `COLLECTOR_I2C_THERMAL_BUS` / `I2C_POINT_BUS` | **(없음)** | 열화상·비접촉 온도 버스의 **실측** `/dev/i2c-N` 번호. 비우면 해당 센서는 `connected:false` + 이유 |
-| `COLLECTOR_I2C_THERMAL_MUX_ADDR` / `I2C_POINT_MUX_ADDR` | `0x70` | 그 버스의 TCA9548A 주소. `none`이면 mux 없이 직결(단독 시험) |
-| `COLLECTOR_THERMAL_CHANNELS` / `POINT_CHANNELS` | `0,1` | `thermal_0,1` / `point_temp_0,1` 순서의 mux 채널 |
-| `COLLECTOR_THERMAL_RATE_HZ` / `POINT_RATE_HZ` / `PT100_RATE_HZ` | 2 / 1 / 1 | 센서별 목표 주기(초기 시험 목표). 세션에서는 `per_sensor.<id>.rate_hz` |
+| `COLLECTOR_I2C_THERMAL_BUS` | **(없음)** | 열화상 버스의 **실측** `/dev/i2c-N` 번호(J12 3/5번 = `i2c-7`). 비우면 `connected:false` + 이유 |
+| `COLLECTOR_I2C_THERMAL_MUX_ADDR` | `0x70` | 그 버스의 TCA9548A 주소. **현재 구성은 `none`**(D-031 — D55 1대 직결) |
+| `COLLECTOR_THERMAL_CHANNELS` | `0,1` | `thermal_0,1` 순서의 mux 채널. mux 없이 1대만 쓰면 `0` |
+| `COLLECTOR_THERMAL_RATE_HZ` / `PT100_RATE_HZ` | 2 / 1 | 센서별 목표 주기(초기 시험 목표). 세션에서는 `per_sensor.<id>.rate_hz` |
 | `COLLECTOR_THERMAL_REFRESH_HZ` / `THERMAL_READ_RETRIES` | 8 / 2 | MLX90640 장치 refresh rate(서브페이지 주기) / 일시적 프레임 오류 재시도 |
 | `COLLECTOR_PT100_CS_PIN` / `PT100_REF_OHMS` | **(없음)** | MAX31865 별도 GPIO CS의 Blinka 핀 이름(예 `D22`) / 보드 **실물** 기준 저항 Ω |
 | `COLLECTOR_PT100_WIRES` / `PT100_NOMINAL_OHMS` | 3 / 100 | RTD 결선 수 / 공칭 저항 |
@@ -77,7 +77,6 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 | `cam_rgb_0` / `cam_rgb_1` | rgb_gmsl2 | `rgb` (UYVY→JPEG 프레임 파일, 또는 raw) | ISX031F ×2, Sensing SG4A 보드. **2026-09-21 실기기 확인**(1920×1536, 30→10 fps 추림, 60초 3대 동시 드롭·갭 0). 재부팅마다 드라이버 적재 필요 → `systemd/sensing-gmsl.service` |
 | `cam_depth_0` | depth_usb | `color`(JPEG 또는 BGR raw) / `depth`(mm, uint16) / `ir`(intensity, uint16) | 어댑터 구현. **2026-09-18 실기기 단기 촬영 확인**(30 fps 드롭 0, 미리보기 OK). 30분 연속·저장량 대책은 미완 — `notes/data/experiments/20260918_gemini2-jetson-first-capture.md` |
 | `thermal_0` / `thermal_1` | thermal_i2c | `temp_array` (24×32 float32 ℃) | MLX90640 55° / 110°. **D55 1대만 사용(D-031)** — i2c-7 직결·mux 없음, 2 Hz 3분 360/360, 취득 96~221 ms. `thermal_1`은 예비(D110). 1.5 m 배선은 미검증 |
-| `point_temp_0` / `point_temp_1` | point_temp_i2c | `temp` `{object_c, ambient_c}` | MLX90614 5° / 35°. **2026-09-23 계획에서 제외(D-030)** — 솥 내장 온도센서로 대체. 어댑터는 보류 상태로 남겨 둠 |
 | `pt100_0` | rtd_spi | `temp` `{temp_c, resistance_ohm, rtd_raw}` | MAX31865 + PT100 3선식. 어댑터 있음, **실물 검증 전**(미배선 — 가짜 드라이버 테스트만) |
 | `mock_*` (auto) / 위 ID 그대로 (mock) | — | 위와 같은 스트림 구조 | 모의, 항상 `simulated:true` |
 
@@ -189,7 +188,6 @@ PY=~/collector-venv/bin/python
 $PY tools/sensor_check.py buses                                # 장치 파일·버스 클록(스캔 없음)
 $PY tools/sensor_check.py mux --bus <N> --expect 0:0x33 1:0x33 # mux + 채널별 예상 주소만 확인
 $PY tools/sensor_check.py thermal --bus <N> --channel 0 --count 20 --out thermal0.json   # + thermal0.npy
-$PY tools/sensor_check.py point --bus <N> --channel 0 --count 30
 $PY tools/sensor_check.py pt100 --cs-pin <핀> --ref-ohms <Ω> --jetson-model JETSON_ORIN_NANO --count 30
 ```
 

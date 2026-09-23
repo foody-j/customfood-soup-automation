@@ -1,4 +1,4 @@
-"""I²C·SPI 센서 5대 단독 진단 도구 (docs/jetson-five-sensor-guide.md §3·§5).
+"""I²C·SPI 센서 단독 진단 도구 (docs/jetson-five-sensor-guide.md §3·§5).
 
 수집 서비스와 **같은 어댑터**로 읽는다 — 여기서 검증한 읽기 경로가 그대로 운영에 쓰인다.
 수집 서비스가 같은 버스를 쓰는 중에는 돌리지 않는다(프로세스 간에는 mux 잠금이 없다).
@@ -7,7 +7,6 @@
     $PY tools/sensor_check.py buses                                   # 장치 파일·버스 클록 목록(스캔 없음)
     $PY tools/sensor_check.py mux --bus 7 --expect 0:0x33 1:0x33       # mux와 채널별 예상 주소만 확인
     $PY tools/sensor_check.py thermal --bus 7 --channel 0 --count 20 --out thermal0.json
-    $PY tools/sensor_check.py point --bus 1 --channel 0 --count 30
     $PY tools/sensor_check.py pt100 --cs-pin D22 --ref-ohms 430 --count 30
 
 버스 번호·CS 핀·기준 저항에는 기본값이 없다 — 실물에서 확인한 값을 직접 준다.
@@ -32,7 +31,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.clock import utcnow_iso  # noqa: E402
 from app.sensors.base import SensorAdapter, SensorError  # noqa: E402
 from app.sensors.i2cmux import get_bus  # noqa: E402
-from app.sensors.point_mlx90614 import Mlx90614PointTemp  # noqa: E402
 from app.sensors.rtd_max31865 import Max31865Rtd  # noqa: E402
 from app.sensors.thermal_mlx90640 import Mlx90640Thermal  # noqa: E402
 
@@ -161,7 +159,7 @@ def main() -> int:
     mux.add_argument("--mux-addr", type=_int, default=0x70)
     mux.add_argument("--expect", nargs="+", required=True, metavar="CH:ADDR", help="예: 0:0x33 1:0x33")
     readers = {}
-    for name in ("thermal", "point", "pt100"):
+    for name in ("thermal", "pt100"):
         p = readers[name] = sub.add_parser(name, parents=[common])
         p.add_argument("--count", type=int, default=20)
         p.add_argument("--rate", type=float, default=None, help="목표 주기(Hz). 기본: 열화상 2, 나머지 1")
@@ -189,9 +187,6 @@ def main() -> int:
                 sensor: SensorAdapter = Mlx90640Thermal(args.sensor_id or f"thermal_{args.channel}", bus_no=args.bus,
                                                         mux_addr=args.mux_addr, channel=channel, refresh_hz=args.refresh,
                                                         retries=args.retries)
-            elif args.cmd == "point":
-                sensor = Mlx90614PointTemp(args.sensor_id or f"point_temp_{args.channel}", bus_no=args.bus,
-                                           mux_addr=args.mux_addr, channel=channel)
             else:
                 sensor = Max31865Rtd(args.sensor_id or "pt100_0", cs_pin=args.cs_pin, ref_ohms=args.ref_ohms,
                                      wires=args.wires, jetson_model_name=args.jetson_model)
@@ -202,7 +197,7 @@ def main() -> int:
     if args.out:
         Path(args.out).write_text(json.dumps({"command": args.cmd, "args": vars(args), **result}, ensure_ascii=False, indent=1, default=str))
         print(f"저장: {args.out}")
-    if args.cmd in ("thermal", "point", "pt100"):
+    if args.cmd in ("thermal", "pt100"):
         return 0 if (result.get("summary") or {}).get("valid") else 1
     return 0
 

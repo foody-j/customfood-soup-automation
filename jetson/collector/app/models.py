@@ -56,7 +56,7 @@ class StorageResult(BaseModel):
 
 class SensorInfo(BaseModel):
     sensor_id: str
-    kind: str  # rgb_gmsl2 | depth_usb | thermal_i2c | point_temp_i2c | rtd_spi
+    kind: str  # rgb_gmsl2 | depth_usb | thermal_i2c | rtd_spi
     connected: bool
     simulated: bool = False
     detail: str | None = None

@@ -2,6 +2,18 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-09-23 — MLX90614 어댑터 코드 제거(D-030 이행)
+
+- 수집기에서 `point_temp_*`를 **완전히 걷어냈다**: `app/sensors/point_mlx90614.py` 삭제, `registry.py`의 POINT_UNITS·생성 루프,
+  `mock.py`의 `MockPointTemp`, `base.py`의 `KIND_POINT_TEMP_I2C`, `config.py`의 `COLLECTOR_I2C_POINT_*`·`POINT_CHANNELS`·
+  `POINT_RATE_HZ`, `tools/sensor_check.py`의 `point` 하위명령, README의 해당 행.
+- 테스트: 비접촉 온도 단독 테스트 삭제, "5대 통합" 테스트를 **thermal_1이 실패하는 시나리오**로 바꿔 격리 검증은 유지
+  (`test_sensors_in_service_with_one_failing`). 전체 **52건 통과**(+1 skip).
+- 실기기 확인: 서비스 재기동 후 status의 센서 목록이 `cam_rgb_0`·`cam_depth_0`·`thermal_0`·`pt100_0`으로 줄었고,
+  열화상 세션·미리보기는 그대로 동작(24.3~35.0 ℃).
+- 남긴 것: 설계 문서 서술(`docs/model-architecture.md`·`data-schema.md`·`pi-jetson-api.md`)과 `pi-server/`의 `point_temp_i2c` 언급.
+  **Pi 쪽은 다른 세션 담당**이라 건드리지 않았다 — 그쪽 정리는 사용자가 따로 진행한다.
+
 ## 2026-09-23 — 열화상 실측 비교로 D55 확정(D-031), 뜨거운 물 첫 관측
 
 - 실시간 화면(`/viewer`)으로 **뜨거운 물을 처음 찍었다**: 최고 52.7 ℃, 중심 51.4 ℃, 평균 32.8 ℃(배경 24 ℃).

@@ -1,4 +1,4 @@
-"""I²C·SPI 센서 5대 어댑터 테스트 — 가짜 버스·가짜 드라이버(실물 없음).
+"""I²C·SPI 센서 어댑터 테스트 — 가짜 버스·가짜 드라이버(실물 없음).
 
 여기서 검증하는 것은 **어댑터·서비스의 논리**다(버스 직렬화, 채널↔ID 대응, 재시도,
 실패 기록, 한 센서 장애 격리, Pi 계약). 실제 배선·버스 번호·속도는 실기기에서 따로 검증한다.
@@ -13,12 +13,10 @@ import time
 import numpy as np
 import pytest
 
-import app.sensors.point_mlx90614 as point_mod
 import app.sensors.rtd_max31865 as rtd_mod
 import app.sensors.thermal_mlx90640 as thermal_mod
 from app.sensors import i2cmux
 from app.sensors.base import KIND_RTD_SPI, SensorError
-from app.sensors.point_mlx90614 import Mlx90614PointTemp
 from app.sensors.rtd_max31865 import Max31865Rtd, _Max31865Handle, rtd_resistance_to_c
 from app.sensors.thermal_mlx90640 import Mlx90640Thermal
 
@@ -82,21 +80,6 @@ class FakeMlx90640:
         finally:
             bus.leave()
 
-
-class FakeMlx90614:
-    def __init__(self, i2c: FakeChannel, addr: int) -> None:
-        self.i2c = i2c
-        self.fail = False
-
-    @property
-    def object_temperature(self):
-        if self.fail:
-            raise OSError(121, "Remote I/O error")
-        return 80.0 + (self.i2c.channel or 0)
-
-    @property
-    def ambient_temperature(self):
-        return 24.5
 
 
 class FakeMax31865:
@@ -238,22 +221,6 @@ def test_thermal_io_errors_recover_bus_and_escalate_to_reconnect(fake_buses):
         s.read()
 
 
-# ── 비접촉 온도 ───────────────────────────────────────────────────────────
-def test_point_temp_values_and_range_check(fake_buses):
-    fake_buses(1)
-    made = []
-
-    def factory(i2c, addr):
-        made.append(FakeMlx90614(i2c, addr))
-        return made[-1]
-
-    s = Mlx90614PointTemp("point_temp_1", bus_no=1, mux_addr=0x70, channel=1, rate_hz=10, driver_factory=factory)
-    s.open({})
-    smp = s.read()[0]
-    assert smp.valid and smp.data == {"object_c": 81.0, "ambient_c": 24.5}
-    made[0].fail = True
-    assert s.read()[0].invalid_reason.startswith("i2c_error")
-
 
 # ── PT100 ─────────────────────────────────────────────────────────────────
 def test_rtd_conversion_matches_iec60751_points():
@@ -290,30 +257,29 @@ def test_rtd_dead_spi_is_not_reported_connected():
         s.open({})
 
 
-# ── 5대 통합: 한 센서 장애가 나머지를 멈추지 않는다 + Pi 계약 ────────────────
-def test_five_sensors_in_service_with_one_failing(client_factory, fake_buses, monkeypatch, tmp_path, pi_models):
+# ── 통합: 한 센서 장애가 나머지를 멈추지 않는다 + Pi 계약 ────────────────────
+def test_sensors_in_service_with_one_failing(client_factory, fake_buses, monkeypatch, tmp_path, pi_models):
     fake_buses(7, present={(0, 0x33), (1, 0x33)})
-    fake_buses(1, present={(0, 0x5A), (1, 0x5A)})
 
-    def point_driver(i2c, addr):
-        dev = FakeMlx90614(i2c, addr)
-        dev.fail = i2c.channel == 1  # point_temp_1만 계속 I²C 오류
+    def thermal_driver(i2c, addr):
+        dev = FakeMlx90640(i2c, addr)
+        if i2c.channel == 1:  # thermal_1만 계속 I²C 오류
+            dev.script = [OSError(121, "Remote I/O error")] * 500
         return dev
 
-    monkeypatch.setattr(thermal_mod, "_adafruit_driver", FakeMlx90640)
-    monkeypatch.setattr(point_mod, "_adafruit_driver", point_driver)
+    monkeypatch.setattr(thermal_mod, "_adafruit_driver", thermal_driver)
     monkeypatch.setattr(rtd_mod, "_adafruit_driver", lambda *a: _Max31865Handle(FakeMax31865(), lambda: None))
-    client = client_factory(sensor_mode="real", v4l2_devices=(), i2c_thermal_bus=7, i2c_point_bus=1,
-                            pt100_cs_pin="D22", pt100_ref_ohms=430.0, thermal_rate_hz=10.0, point_rate_hz=10.0,
+    client = client_factory(sensor_mode="real", v4l2_devices=(), i2c_thermal_bus=7,
+                            pt100_cs_pin="D22", pt100_ref_ohms=430.0, thermal_rate_hz=10.0,
                             pt100_rate_hz=10.0, sensor_fail_limit=3)
     rep = pi_models.JetsonReport.model_validate(status(client))
     by_id = {s.sensor_id: s for s in rep.sensors}
-    ids = ["thermal_0", "thermal_1", "point_temp_0", "point_temp_1", "pt100_0"]
+    ids = ["thermal_0", "thermal_1", "pt100_0"]
     assert all(by_id[i].connected and not by_id[i].simulated for i in ids)
     assert by_id["pt100_0"].kind == "rtd_spi" and rep.mock is False
 
-    start(client, sid="sess-five", sensors=ids)
-    d = tmp_path / "data" / "sess-five"
+    start(client, sid="sess-multi", sensors=ids)
+    d = tmp_path / "data" / "sess-multi"
 
     def lines(sensor, stream):
         p = d / sensor / stream / "index.jsonl"
@@ -323,15 +289,15 @@ def test_five_sensors_in_service_with_one_failing(client_factory, fake_buses, mo
                                   for l in (d / "events.jsonl").read_text().splitlines()), timeout=8)
     assert wait_until(lambda: status(client)["capture"]["frames_written"] > 20, timeout=8)
     assert status(client)["capture"]["state"] == "running"
-    client.post("/api/v1/capture/stop", json={"session_id": "sess-five"})
+    client.post("/api/v1/capture/stop", json={"session_id": "sess-multi"})
 
-    for sensor, stream in (("thermal_0", "temp_array"), ("thermal_1", "temp_array"), ("point_temp_0", "temp"), ("pt100_0", "temp")):
+    for sensor, stream in (("thermal_0", "temp_array"), ("pt100_0", "temp")):
         assert sum(1 for l in lines(sensor, stream) if l["valid"]) > 3, sensor
-    failed = lines("point_temp_1", "temp")
+    failed = lines("thermal_1", "temp_array")
     assert failed and not any(l["valid"] for l in failed) and failed[0]["invalid_reason"].startswith("i2c_error")
     pt = next(l for l in lines("pt100_0", "temp") if l["valid"])
     assert set(pt["value"]) == {"temp_c", "resistance_ohm", "rtd_raw"} and pt["device_ts"] is None
     meta = json.loads((d / "session.json").read_text())
     t1 = next(s for s in meta["sensors"] if s["sensor_id"] == "thermal_1")
     assert t1["probe_facts"]["fov_deg"] == 110 and t1["applied_config"]["mux_channel"] == 1
-    assert pi_models.JetsonReport.model_validate(status(client)).last_session_summary.session_id == "sess-five"
+    assert pi_models.JetsonReport.model_validate(status(client)).last_session_summary.session_id == "sess-multi"

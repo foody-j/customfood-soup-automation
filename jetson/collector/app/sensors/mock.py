@@ -21,7 +21,6 @@ from .base import (
     DATA_IMAGE,
     DATA_SCALAR,
     KIND_DEPTH_USB,
-    KIND_POINT_TEMP_I2C,
     KIND_RGB_GMSL2,
     KIND_THERMAL_I2C,
     Sample,
@@ -193,17 +192,6 @@ class MockThermalArray(_MockBase):
         return [Sample("temp_array", seq, host, None, arr, flags={"unit": "degC"})]
 
 
-class MockPointTemp(_MockBase):
-    """MLX90614 자리의 모의 점온도."""
-
-    kind = KIND_POINT_TEMP_I2C
-    default_rate = 4.0
-    streams = (StreamSpec("temp", DATA_SCALAR, unit="degC", dtype="float32", description="mock object/ambient temp"),)
-
-    def _make(self, seq: int, host: HostStamp) -> list[Sample]:
-        obj = 30.0 + min(70.0, seq * 0.05)
-        return [Sample("temp", seq, host, None, {"object_c": round(obj, 2), "ambient_c": 24.5}, flags={"unit": "degC"})]
-
 
 # 실물 보유 목록 기준(docs/handover-reconciliation-2026-09-11.md §A) — Pi mock과 같은 ID 체계.
 def build_mock_sensors() -> list[SensorAdapter]:
@@ -212,5 +200,4 @@ def build_mock_sensors() -> list[SensorAdapter]:
         MockRgbCamera("cam_rgb_1", "mock — Sensing ISX031F 2번 자리"),
         MockDepthCamera("cam_depth_0", "mock — Orbbec Gemini 2 자리"),
         MockThermalArray("thermal_0", "mock — MLX90640 32x24 자리"),
-        MockPointTemp("point_temp_0", "mock — MLX90614 자리"),
     ]
