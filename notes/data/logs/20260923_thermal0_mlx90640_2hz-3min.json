@@ -1,0 +1,6909 @@
+{
+ "command": "thermal",
+ "args": {
+  "cmd": "thermal",
+  "out": "/tmp/claude-1000/-home-ubuntu-customfood-soup-automation/4e6bc137-fc50-4ad6-b344-02d40adb79c9/scratchpad/thermal_bus7_3min.json",
+  "count": 360,
+  "rate": 2.0,
+  "sensor_id": null,
+  "bus": 7,
+  "mux_addr": null,
+  "channel": 0,
+  "refresh": 8.0,
+  "retries": 2
+ },
+ "sensor_id": "thermal_0",
+ "kind": "thermal_i2c",
+ "started_utc": "2026-09-23T00:23:41.561Z",
+ "probe": {
+  "connected": true,
+  "reason": null,
+  "facts": {
+   "i2c_bus": 7,
+   "mux_addr": null,
+   "mux_channel": null,
+   "i2c_addr": "0x33",
+   "fov_deg": null,
+   "module": null
+  }
+ },
+ "versions": {
+  "driver": "adafruit_mlx90640",
+  "adafruit_mlx90640": "1.3.9",
+  "adafruit_tca9548a": "0.8.6",
+  "adafruit_blinka": "9.2.0"
+ },
+ "samples": [
+  {
+   "seq": 1,
+   "host_recv_utc": "2026-09-23T00:23:41.768Z",
+   "host_recv_mono_ns": 72243260345219,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72243114755425,
+    "acquire_ms": 145.58,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.886518478393555,
+    "max_c": 25.935731887817383,
+    "mean_c": 24.43641471862793,
+    "center_c": 24.36494255065918
+   }
+  },
+  {
+   "seq": 2,
+   "host_recv_utc": "2026-09-23T00:23:42.279Z",
+   "host_recv_mono_ns": 72243771315796,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72243614896389,
+    "acquire_ms": 156.41,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.88302993774414,
+    "max_c": 25.693593978881836,
+    "mean_c": 24.282922744750977,
+    "center_c": 24.04045867919922
+   }
+  },
+  {
+   "seq": 3,
+   "host_recv_utc": "2026-09-23T00:23:42.786Z",
+   "host_recv_mono_ns": 72244278364140,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72244116213165,
+    "acquire_ms": 162.14,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.96526336669922,
+    "max_c": 26.593217849731445,
+    "mean_c": 24.570974349975586,
+    "center_c": 24.480073928833008
+   }
+  },
+  {
+   "seq": 4,
+   "host_recv_utc": "2026-09-23T00:23:43.296Z",
+   "host_recv_mono_ns": 72244789006738,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72244614879875,
+    "acquire_ms": 174.12,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.23125457763672,
+    "max_c": 26.473594665527344,
+    "mean_c": 24.66664695739746,
+    "center_c": 24.483163833618164
+   }
+  },
+  {
+   "seq": 5,
+   "host_recv_utc": "2026-09-23T00:23:43.806Z",
+   "host_recv_mono_ns": 72245298338256,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72245114881569,
+    "acquire_ms": 183.45,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.040090560913086,
+    "max_c": 26.303136825561523,
+    "mean_c": 24.6828670501709,
+    "center_c": 24.4611873626709
+   }
+  },
+  {
+   "seq": 6,
+   "host_recv_utc": "2026-09-23T00:23:44.316Z",
+   "host_recv_mono_ns": 72245808698893,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72245614874655,
+    "acquire_ms": 193.81,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.845186233520508,
+    "max_c": 26.000934600830078,
+    "mean_c": 24.18366050720215,
+    "center_c": 24.09107208251953
+   }
+  },
+  {
+   "seq": 7,
+   "host_recv_utc": "2026-09-23T00:23:44.826Z",
+   "host_recv_mono_ns": 72246318335955,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72246114853340,
+    "acquire_ms": 203.47,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.715557098388672,
+    "max_c": 26.005584716796875,
+    "mean_c": 24.40656089782715,
+    "center_c": 24.147733688354492
+   }
+  },
+  {
+   "seq": 8,
+   "host_recv_utc": "2026-09-23T00:23:45.336Z",
+   "host_recv_mono_ns": 72246828845875,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72246614860441,
+    "acquire_ms": 213.97,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.14470863342285,
+    "max_c": 25.885021209716797,
+    "mean_c": 24.423391342163086,
+    "center_c": 24.0570068359375
+   }
+  },
+  {
+   "seq": 9,
+   "host_recv_utc": "2026-09-23T00:23:45.719Z",
+   "host_recv_mono_ns": 72247211554902,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72247114881975,
+    "acquire_ms": 96.66,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.81412124633789,
+    "max_c": 26.641281127929688,
+    "mean_c": 25.0637149810791,
+    "center_c": 24.67824935913086
+   }
+  },
+  {
+   "seq": 10,
+   "host_recv_utc": "2026-09-23T00:23:46.229Z",
+   "host_recv_mono_ns": 72247721115320,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72247614866163,
+    "acquire_ms": 106.24,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.314838409423828,
+    "max_c": 26.182815551757812,
+    "mean_c": 24.880155563354492,
+    "center_c": 24.588947296142578
+   }
+  },
+  {
+   "seq": 11,
+   "host_recv_utc": "2026-09-23T00:23:46.738Z",
+   "host_recv_mono_ns": 72248230314704,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72248114878543,
+    "acquire_ms": 115.42,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.734148025512695,
+    "max_c": 25.974830627441406,
+    "mean_c": 24.40093994140625,
+    "center_c": 24.22897720336914
+   }
+  },
+  {
+   "seq": 12,
+   "host_recv_utc": "2026-09-23T00:23:47.248Z",
+   "host_recv_mono_ns": 72248740305855,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72248614885003,
+    "acquire_ms": 125.41,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.148250579833984,
+    "max_c": 26.519235610961914,
+    "mean_c": 24.686920166015625,
+    "center_c": 24.265378952026367
+   }
+  },
+  {
+   "seq": 13,
+   "host_recv_utc": "2026-09-23T00:23:47.759Z",
+   "host_recv_mono_ns": 72249251615574,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72249114897254,
+    "acquire_ms": 136.71,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.24881935119629,
+    "max_c": 26.28459930419922,
+    "mean_c": 24.786134719848633,
+    "center_c": 24.512264251708984
+   }
+  },
+  {
+   "seq": 14,
+   "host_recv_utc": "2026-09-23T00:23:48.270Z",
+   "host_recv_mono_ns": 72249762265560,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72249614881889,
+    "acquire_ms": 147.37,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.699068069458008,
+    "max_c": 25.974193572998047,
+    "mean_c": 24.38871192932129,
+    "center_c": 23.99295425415039
+   }
+  },
+  {
+   "seq": 15,
+   "host_recv_utc": "2026-09-23T00:23:48.780Z",
+   "host_recv_mono_ns": 72250272106946,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72250114883643,
+    "acquire_ms": 157.21,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.238920211791992,
+    "max_c": 26.603296279907227,
+    "mean_c": 24.77828025817871,
+    "center_c": 24.30301284790039
+   }
+  },
+  {
+   "seq": 16,
+   "host_recv_utc": "2026-09-23T00:23:49.290Z",
+   "host_recv_mono_ns": 72250782260308,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72250614879925,
+    "acquire_ms": 167.37,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.363494873046875,
+    "max_c": 26.100414276123047,
+    "mean_c": 24.74139404296875,
+    "center_c": 24.435993194580078
+   }
+  },
+  {
+   "seq": 17,
+   "host_recv_utc": "2026-09-23T00:23:49.799Z",
+   "host_recv_mono_ns": 72251291819732,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72251114880303,
+    "acquire_ms": 176.93,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.165395736694336,
+    "max_c": 26.923715591430664,
+    "mean_c": 24.755956649780273,
+    "center_c": 24.709081649780273
+   }
+  },
+  {
+   "seq": 18,
+   "host_recv_utc": "2026-09-23T00:23:50.308Z",
+   "host_recv_mono_ns": 72251800697214,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72251614875848,
+    "acquire_ms": 185.81,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.887924194335938,
+    "max_c": 25.477689743041992,
+    "mean_c": 24.085500717163086,
+    "center_c": 24.194292068481445
+   }
+  },
+  {
+   "seq": 19,
+   "host_recv_utc": "2026-09-23T00:23:50.818Z",
+   "host_recv_mono_ns": 72252310323359,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72252114883490,
+    "acquire_ms": 195.43,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.313331604003906,
+    "max_c": 26.341320037841797,
+    "mean_c": 24.51408576965332,
+    "center_c": 24.362157821655273
+   }
+  },
+  {
+   "seq": 20,
+   "host_recv_utc": "2026-09-23T00:23:51.327Z",
+   "host_recv_mono_ns": 72252819203177,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72252614846009,
+    "acquire_ms": 204.35,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.452585220336914,
+    "max_c": 26.157873153686523,
+    "mean_c": 24.66716766357422,
+    "center_c": 24.35959243774414
+   }
+  },
+  {
+   "seq": 21,
+   "host_recv_utc": "2026-09-23T00:23:51.838Z",
+   "host_recv_mono_ns": 72253330036750,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72253114870194,
+    "acquire_ms": 215.16,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.189422607421875,
+    "max_c": 25.856069564819336,
+    "mean_c": 24.553611755371094,
+    "center_c": 24.36280059814453
+   }
+  },
+  {
+   "seq": 22,
+   "host_recv_utc": "2026-09-23T00:23:52.219Z",
+   "host_recv_mono_ns": 72253711324834,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72253614872906,
+    "acquire_ms": 96.44,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.364635467529297,
+    "max_c": 26.057010650634766,
+    "mean_c": 24.669973373413086,
+    "center_c": 24.514297485351562
+   }
+  },
+  {
+   "seq": 23,
+   "host_recv_utc": "2026-09-23T00:23:52.730Z",
+   "host_recv_mono_ns": 72254222045539,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72254114865793,
+    "acquire_ms": 107.17,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.995174407958984,
+    "max_c": 26.39859962463379,
+    "mean_c": 24.5540771484375,
+    "center_c": 24.53902244567871
+   }
+  },
+  {
+   "seq": 24,
+   "host_recv_utc": "2026-09-23T00:23:53.238Z",
+   "host_recv_mono_ns": 72254730948524,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72254614866040,
+    "acquire_ms": 116.07,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.72230339050293,
+    "max_c": 26.884592056274414,
+    "mean_c": 24.519241333007812,
+    "center_c": 24.090456008911133
+   }
+  },
+  {
+   "seq": 25,
+   "host_recv_utc": "2026-09-23T00:23:53.750Z",
+   "host_recv_mono_ns": 72255242387682,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72255114867087,
+    "acquire_ms": 127.51,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.03850555419922,
+    "max_c": 26.139902114868164,
+    "mean_c": 24.44745635986328,
+    "center_c": 24.156856536865234
+   }
+  },
+  {
+   "seq": 26,
+   "host_recv_utc": "2026-09-23T00:23:54.258Z",
+   "host_recv_mono_ns": 72255750779066,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72255614853733,
+    "acquire_ms": 135.92,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.385568618774414,
+    "max_c": 26.4349308013916,
+    "mean_c": 24.733070373535156,
+    "center_c": 24.417024612426758
+   }
+  },
+  {
+   "seq": 27,
+   "host_recv_utc": "2026-09-23T00:23:54.769Z",
+   "host_recv_mono_ns": 72256261369206,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72256114853403,
+    "acquire_ms": 146.51,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.140764236450195,
+    "max_c": 25.994794845581055,
+    "mean_c": 24.337987899780273,
+    "center_c": 23.83897590637207
+   }
+  },
+  {
+   "seq": 28,
+   "host_recv_utc": "2026-09-23T00:23:55.278Z",
+   "host_recv_mono_ns": 72256770853775,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72256614861489,
+    "acquire_ms": 155.98,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.93645477294922,
+    "max_c": 25.956254959106445,
+    "mean_c": 24.346450805664062,
+    "center_c": 23.992040634155273
+   }
+  },
+  {
+   "seq": 29,
+   "host_recv_utc": "2026-09-23T00:23:55.788Z",
+   "host_recv_mono_ns": 72257280604432,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72257114843205,
+    "acquire_ms": 165.75,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.2418212890625,
+    "max_c": 25.98682975769043,
+    "mean_c": 24.555343627929688,
+    "center_c": 24.435138702392578
+   }
+  },
+  {
+   "seq": 30,
+   "host_recv_utc": "2026-09-23T00:23:56.299Z",
+   "host_recv_mono_ns": 72257791309806,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72257614871515,
+    "acquire_ms": 176.43,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.70993995666504,
+    "max_c": 26.226099014282227,
+    "mean_c": 24.825531005859375,
+    "center_c": 24.874610900878906
+   }
+  },
+  {
+   "seq": 31,
+   "host_recv_utc": "2026-09-23T00:23:56.807Z",
+   "host_recv_mono_ns": 72258299942348,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72258114893072,
+    "acquire_ms": 185.04,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.086477279663086,
+    "max_c": 26.052438735961914,
+    "mean_c": 24.525514602661133,
+    "center_c": 24.154109954833984
+   }
+  },
+  {
+   "seq": 32,
+   "host_recv_utc": "2026-09-23T00:23:57.318Z",
+   "host_recv_mono_ns": 72258810296031,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72258614859523,
+    "acquire_ms": 195.43,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.813037872314453,
+    "max_c": 25.922420501708984,
+    "mean_c": 24.2462215423584,
+    "center_c": 23.991077423095703
+   }
+  },
+  {
+   "seq": 33,
+   "host_recv_utc": "2026-09-23T00:23:57.827Z",
+   "host_recv_mono_ns": 72259319890905,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72259114863895,
+    "acquire_ms": 205.02,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.13112449645996,
+    "max_c": 25.77468490600586,
+    "mean_c": 24.418533325195312,
+    "center_c": 24.294023513793945
+   }
+  },
+  {
+   "seq": 34,
+   "host_recv_utc": "2026-09-23T00:23:58.337Z",
+   "host_recv_mono_ns": 72259829860735,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72259614877163,
+    "acquire_ms": 214.98,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.882648468017578,
+    "max_c": 26.56647491455078,
+    "mean_c": 24.497848510742188,
+    "center_c": 24.2202091217041
+   }
+  },
+  {
+   "seq": 35,
+   "host_recv_utc": "2026-09-23T00:23:58.720Z",
+   "host_recv_mono_ns": 72260212040234,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72260114842140,
+    "acquire_ms": 97.19,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.41126251220703,
+    "max_c": 26.06613540649414,
+    "mean_c": 24.6605224609375,
+    "center_c": 24.532487869262695
+   }
+  },
+  {
+   "seq": 36,
+   "host_recv_utc": "2026-09-23T00:23:59.230Z",
+   "host_recv_mono_ns": 72260722078449,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72260614854991,
+    "acquire_ms": 107.21,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.306795120239258,
+    "max_c": 26.031965255737305,
+    "mean_c": 24.56522560119629,
+    "center_c": 24.2989501953125
+   }
+  },
+  {
+   "seq": 37,
+   "host_recv_utc": "2026-09-23T00:23:59.740Z",
+   "host_recv_mono_ns": 72261232558086,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72261114876034,
+    "acquire_ms": 117.67,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 24.040145874023438,
+    "max_c": 26.66919708251953,
+    "mean_c": 25.08561134338379,
+    "center_c": 24.609580993652344
+   }
+  },
+  {
+   "seq": 38,
+   "host_recv_utc": "2026-09-23T00:24:00.249Z",
+   "host_recv_mono_ns": 72261741826164,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72261614864980,
+    "acquire_ms": 126.95,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.81235694885254,
+    "max_c": 25.81928253173828,
+    "mean_c": 24.305328369140625,
+    "center_c": 23.791065216064453
+   }
+  },
+  {
+   "seq": 39,
+   "host_recv_utc": "2026-09-23T00:24:00.759Z",
+   "host_recv_mono_ns": 72262251708213,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72262114885958,
+    "acquire_ms": 136.81,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.257938385009766,
+    "max_c": 26.162906646728516,
+    "mean_c": 24.612939834594727,
+    "center_c": 24.100181579589844
+   }
+  },
+  {
+   "seq": 40,
+   "host_recv_utc": "2026-09-23T00:24:01.269Z",
+   "host_recv_mono_ns": 72262761828510,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72262614864150,
+    "acquire_ms": 146.96,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.564401626586914,
+    "max_c": 26.24336814880371,
+    "mean_c": 24.66703224182129,
+    "center_c": 24.419143676757812
+   }
+  },
+  {
+   "seq": 41,
+   "host_recv_utc": "2026-09-23T00:24:01.779Z",
+   "host_recv_mono_ns": 72263271300690,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72263114860038,
+    "acquire_ms": 156.43,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.015750885009766,
+    "max_c": 25.99641227722168,
+    "mean_c": 24.365324020385742,
+    "center_c": 24.11747169494629
+   }
+  },
+  {
+   "seq": 42,
+   "host_recv_utc": "2026-09-23T00:24:02.290Z",
+   "host_recv_mono_ns": 72263782848997,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72263614866167,
+    "acquire_ms": 167.97,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.196821212768555,
+    "max_c": 26.82617950439453,
+    "mean_c": 24.56233787536621,
+    "center_c": 24.157621383666992
+   }
+  },
+  {
+   "seq": 43,
+   "host_recv_utc": "2026-09-23T00:24:02.799Z",
+   "host_recv_mono_ns": 72264291162452,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72264114879367,
+    "acquire_ms": 176.27,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.119123458862305,
+    "max_c": 25.97633934020996,
+    "mean_c": 24.3151912689209,
+    "center_c": 24.349628448486328
+   }
+  },
+  {
+   "seq": 44,
+   "host_recv_utc": "2026-09-23T00:24:03.310Z",
+   "host_recv_mono_ns": 72264802259065,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72264614850134,
+    "acquire_ms": 187.4,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.22503662109375,
+    "max_c": 26.149328231811523,
+    "mean_c": 24.40297508239746,
+    "center_c": 24.24915885925293
+   }
+  },
+  {
+   "seq": 45,
+   "host_recv_utc": "2026-09-23T00:24:03.819Z",
+   "host_recv_mono_ns": 72265311417570,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72265114855973,
+    "acquire_ms": 196.55,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.613994598388672,
+    "max_c": 25.700382232666016,
+    "mean_c": 24.09112548828125,
+    "center_c": 23.872451782226562
+   }
+  },
+  {
+   "seq": 46,
+   "host_recv_utc": "2026-09-23T00:24:04.329Z",
+   "host_recv_mono_ns": 72265821939156,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72265614822899,
+    "acquire_ms": 207.11,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.21523666381836,
+    "max_c": 26.191246032714844,
+    "mean_c": 24.58451271057129,
+    "center_c": 24.277652740478516
+   }
+  },
+  {
+   "seq": 47,
+   "host_recv_utc": "2026-09-23T00:24:04.840Z",
+   "host_recv_mono_ns": 72266332158972,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72266114814753,
+    "acquire_ms": 217.33,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.22085952758789,
+    "max_c": 25.989871978759766,
+    "mean_c": 24.55531120300293,
+    "center_c": 24.578533172607422
+   }
+  },
+  {
+   "seq": 48,
+   "host_recv_utc": "2026-09-23T00:24:05.222Z",
+   "host_recv_mono_ns": 72266714133597,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72266614801551,
+    "acquire_ms": 99.32,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.29418182373047,
+    "max_c": 26.634002685546875,
+    "mean_c": 24.714569091796875,
+    "center_c": 24.389219284057617
+   }
+  },
+  {
+   "seq": 49,
+   "host_recv_utc": "2026-09-23T00:24:05.730Z",
+   "host_recv_mono_ns": 72267222812406,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72267114862975,
+    "acquire_ms": 107.94,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.347135543823242,
+    "max_c": 26.33282470703125,
+    "mean_c": 24.710603713989258,
+    "center_c": 24.504825592041016
+   }
+  },
+  {
+   "seq": 50,
+   "host_recv_utc": "2026-09-23T00:24:06.242Z",
+   "host_recv_mono_ns": 72267734110878,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72267614860364,
+    "acquire_ms": 119.24,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.09503173828125,
+    "max_c": 26.53851318359375,
+    "mean_c": 24.762521743774414,
+    "center_c": 24.613462448120117
+   }
+  },
+  {
+   "seq": 51,
+   "host_recv_utc": "2026-09-23T00:24:06.751Z",
+   "host_recv_mono_ns": 72268243622864,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72268114862777,
+    "acquire_ms": 128.75,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.22381019592285,
+    "max_c": 26.25299835205078,
+    "mean_c": 24.579668045043945,
+    "center_c": 24.380714416503906
+   }
+  },
+  {
+   "seq": 52,
+   "host_recv_utc": "2026-09-23T00:24:07.261Z",
+   "host_recv_mono_ns": 72268753490699,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72268614869542,
+    "acquire_ms": 138.61,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.098398208618164,
+    "max_c": 26.249454498291016,
+    "mean_c": 24.583589553833008,
+    "center_c": 24.34789276123047
+   }
+  },
+  {
+   "seq": 53,
+   "host_recv_utc": "2026-09-23T00:24:07.770Z",
+   "host_recv_mono_ns": 72269262576975,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72269114873266,
+    "acquire_ms": 147.69,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.840028762817383,
+    "max_c": 26.103626251220703,
+    "mean_c": 24.876123428344727,
+    "center_c": 24.714641571044922
+   }
+  },
+  {
+   "seq": 54,
+   "host_recv_utc": "2026-09-23T00:24:08.281Z",
+   "host_recv_mono_ns": 72269773276644,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72269614848093,
+    "acquire_ms": 158.42,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.8543643951416,
+    "max_c": 26.146554946899414,
+    "mean_c": 24.434892654418945,
+    "center_c": 24.324329376220703
+   }
+  },
+  {
+   "seq": 55,
+   "host_recv_utc": "2026-09-23T00:24:08.790Z",
+   "host_recv_mono_ns": 72270282646639,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72270114831496,
+    "acquire_ms": 167.8,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.008638381958008,
+    "max_c": 26.330718994140625,
+    "mean_c": 24.532373428344727,
+    "center_c": 24.097291946411133
+   }
+  },
+  {
+   "seq": 56,
+   "host_recv_utc": "2026-09-23T00:24:09.301Z",
+   "host_recv_mono_ns": 72270793665933,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72270614841363,
+    "acquire_ms": 178.81,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.093124389648438,
+    "max_c": 26.328699111938477,
+    "mean_c": 24.684057235717773,
+    "center_c": 24.33237648010254
+   }
+  },
+  {
+   "seq": 57,
+   "host_recv_utc": "2026-09-23T00:24:09.810Z",
+   "host_recv_mono_ns": 72271302664652,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72271114837406,
+    "acquire_ms": 187.82,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.29002571105957,
+    "max_c": 25.727210998535156,
+    "mean_c": 24.395410537719727,
+    "center_c": 24.16645050048828
+   }
+  },
+  {
+   "seq": 58,
+   "host_recv_utc": "2026-09-23T00:24:10.319Z",
+   "host_recv_mono_ns": 72271811894482,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72271614866665,
+    "acquire_ms": 197.02,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.982812881469727,
+    "max_c": 25.849302291870117,
+    "mean_c": 24.28385353088379,
+    "center_c": 24.161014556884766
+   }
+  },
+  {
+   "seq": 59,
+   "host_recv_utc": "2026-09-23T00:24:10.830Z",
+   "host_recv_mono_ns": 72272322259386,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72272114857011,
+    "acquire_ms": 207.39,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.929412841796875,
+    "max_c": 25.852516174316406,
+    "mean_c": 24.39546775817871,
+    "center_c": 24.04852294921875
+   }
+  },
+  {
+   "seq": 60,
+   "host_recv_utc": "2026-09-23T00:24:11.339Z",
+   "host_recv_mono_ns": 72272831811722,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72272614855581,
+    "acquire_ms": 216.95,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.270193099975586,
+    "max_c": 26.317752838134766,
+    "mean_c": 24.547088623046875,
+    "center_c": 24.449264526367188
+   }
+  },
+  {
+   "seq": 61,
+   "host_recv_utc": "2026-09-23T00:24:11.722Z",
+   "host_recv_mono_ns": 72273214284534,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72273114887911,
+    "acquire_ms": 99.39,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.175865173339844,
+    "max_c": 26.14398193359375,
+    "mean_c": 24.72798728942871,
+    "center_c": 24.51947593688965
+   }
+  },
+  {
+   "seq": 62,
+   "host_recv_utc": "2026-09-23T00:24:12.233Z",
+   "host_recv_mono_ns": 72273725084491,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72273614857679,
+    "acquire_ms": 110.22,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.029380798339844,
+    "max_c": 26.494033813476562,
+    "mean_c": 24.67356300354004,
+    "center_c": 24.43859100341797
+   }
+  },
+  {
+   "seq": 63,
+   "host_recv_utc": "2026-09-23T00:24:12.742Z",
+   "host_recv_mono_ns": 72274234113833,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72274114838679,
+    "acquire_ms": 119.27,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.218961715698242,
+    "max_c": 26.199573516845703,
+    "mean_c": 24.663108825683594,
+    "center_c": 24.32903289794922
+   }
+  },
+  {
+   "seq": 64,
+   "host_recv_utc": "2026-09-23T00:24:13.251Z",
+   "host_recv_mono_ns": 72274743869085,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72274614841759,
+    "acquire_ms": 129.02,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.178192138671875,
+    "max_c": 25.944124221801758,
+    "mean_c": 24.67597007751465,
+    "center_c": 24.440357208251953
+   }
+  },
+  {
+   "seq": 65,
+   "host_recv_utc": "2026-09-23T00:24:13.762Z",
+   "host_recv_mono_ns": 72275254437449,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72275114845767,
+    "acquire_ms": 139.58,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.946430206298828,
+    "max_c": 26.379032135009766,
+    "mean_c": 24.67957305908203,
+    "center_c": 24.313854217529297
+   }
+  },
+  {
+   "seq": 66,
+   "host_recv_utc": "2026-09-23T00:24:14.273Z",
+   "host_recv_mono_ns": 72275765324479,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72275614871727,
+    "acquire_ms": 150.44,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.186182022094727,
+    "max_c": 26.956581115722656,
+    "mean_c": 24.93747901916504,
+    "center_c": 24.566736221313477
+   }
+  },
+  {
+   "seq": 67,
+   "host_recv_utc": "2026-09-23T00:24:14.782Z",
+   "host_recv_mono_ns": 72276274468287,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72276114874838,
+    "acquire_ms": 159.58,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.99629783630371,
+    "max_c": 26.492143630981445,
+    "mean_c": 24.572572708129883,
+    "center_c": 24.443357467651367
+   }
+  },
+  {
+   "seq": 68,
+   "host_recv_utc": "2026-09-23T00:24:15.291Z",
+   "host_recv_mono_ns": 72276783713378,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72276614854941,
+    "acquire_ms": 168.85,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.087629318237305,
+    "max_c": 25.930023193359375,
+    "mean_c": 24.622970581054688,
+    "center_c": 24.420507431030273
+   }
+  },
+  {
+   "seq": 69,
+   "host_recv_utc": "2026-09-23T00:24:15.802Z",
+   "host_recv_mono_ns": 72277294782588,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72277114875971,
+    "acquire_ms": 179.9,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.302114486694336,
+    "max_c": 25.911096572875977,
+    "mean_c": 24.49440574645996,
+    "center_c": 24.293598175048828
+   }
+  },
+  {
+   "seq": 70,
+   "host_recv_utc": "2026-09-23T00:24:16.311Z",
+   "host_recv_mono_ns": 72277803489390,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72277614871145,
+    "acquire_ms": 188.61,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.473278045654297,
+    "max_c": 26.000349044799805,
+    "mean_c": 24.534103393554688,
+    "center_c": 24.068971633911133
+   }
+  },
+  {
+   "seq": 71,
+   "host_recv_utc": "2026-09-23T00:24:16.822Z",
+   "host_recv_mono_ns": 72278314126234,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72278114881199,
+    "acquire_ms": 199.23,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.725170135498047,
+    "max_c": 25.79374122619629,
+    "mean_c": 24.27301025390625,
+    "center_c": 24.300695419311523
+   }
+  },
+  {
+   "seq": 72,
+   "host_recv_utc": "2026-09-23T00:24:17.331Z",
+   "host_recv_mono_ns": 72278823758215,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72278614835859,
+    "acquire_ms": 208.91,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.92547035217285,
+    "max_c": 26.00232696533203,
+    "mean_c": 24.562454223632812,
+    "center_c": 24.541725158691406
+   }
+  },
+  {
+   "seq": 73,
+   "host_recv_utc": "2026-09-23T00:24:17.841Z",
+   "host_recv_mono_ns": 72279333566906,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72279114824312,
+    "acquire_ms": 218.73,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.50399398803711,
+    "max_c": 26.106576919555664,
+    "mean_c": 24.676912307739258,
+    "center_c": 24.725566864013672
+   }
+  },
+  {
+   "seq": 74,
+   "host_recv_utc": "2026-09-23T00:24:18.223Z",
+   "host_recv_mono_ns": 72279715394415,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72279614824636,
+    "acquire_ms": 100.56,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.926551818847656,
+    "max_c": 26.179031372070312,
+    "mean_c": 24.48981285095215,
+    "center_c": 24.614110946655273
+   }
+  },
+  {
+   "seq": 75,
+   "host_recv_utc": "2026-09-23T00:24:18.734Z",
+   "host_recv_mono_ns": 72280226277921,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72280114848097,
+    "acquire_ms": 111.42,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.89884376525879,
+    "max_c": 26.02822494506836,
+    "mean_c": 24.391977310180664,
+    "center_c": 24.209674835205078
+   }
+  },
+  {
+   "seq": 76,
+   "host_recv_utc": "2026-09-23T00:24:19.243Z",
+   "host_recv_mono_ns": 72280735200183,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72280614868966,
+    "acquire_ms": 120.32,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.17206573486328,
+    "max_c": 25.910476684570312,
+    "mean_c": 24.650728225708008,
+    "center_c": 24.540790557861328
+   }
+  },
+  {
+   "seq": 77,
+   "host_recv_utc": "2026-09-23T00:24:19.754Z",
+   "host_recv_mono_ns": 72281246357073,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72281114858345,
+    "acquire_ms": 131.49,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.024150848388672,
+    "max_c": 25.83712387084961,
+    "mean_c": 24.372291564941406,
+    "center_c": 24.241785049438477
+   }
+  },
+  {
+   "seq": 78,
+   "host_recv_utc": "2026-09-23T00:24:20.263Z",
+   "host_recv_mono_ns": 72281755101761,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72281614865452,
+    "acquire_ms": 140.23,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.34074592590332,
+    "max_c": 25.883047103881836,
+    "mean_c": 24.565187454223633,
+    "center_c": 24.29654884338379
+   }
+  },
+  {
+   "seq": 79,
+   "host_recv_utc": "2026-09-23T00:24:20.774Z",
+   "host_recv_mono_ns": 72282266173880,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72282114863983,
+    "acquire_ms": 151.3,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.01946258544922,
+    "max_c": 25.846851348876953,
+    "mean_c": 24.343490600585938,
+    "center_c": 24.066436767578125
+   }
+  },
+  {
+   "seq": 80,
+   "host_recv_utc": "2026-09-23T00:24:21.282Z",
+   "host_recv_mono_ns": 72282774734593,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72282614871729,
+    "acquire_ms": 159.85,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.73405647277832,
+    "max_c": 26.010284423828125,
+    "mean_c": 24.490934371948242,
+    "center_c": 24.307506561279297
+   }
+  },
+  {
+   "seq": 81,
+   "host_recv_utc": "2026-09-23T00:24:21.792Z",
+   "host_recv_mono_ns": 72283284868314,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72283114846355,
+    "acquire_ms": 170.01,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.294090270996094,
+    "max_c": 25.862686157226562,
+    "mean_c": 24.493255615234375,
+    "center_c": 24.298320770263672
+   }
+  },
+  {
+   "seq": 82,
+   "host_recv_utc": "2026-09-23T00:24:22.302Z",
+   "host_recv_mono_ns": 72283794709258,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72283614839668,
+    "acquire_ms": 179.86,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.336429595947266,
+    "max_c": 26.230609893798828,
+    "mean_c": 24.585859298706055,
+    "center_c": 24.346107482910156
+   }
+  },
+  {
+   "seq": 83,
+   "host_recv_utc": "2026-09-23T00:24:22.813Z",
+   "host_recv_mono_ns": 72284305099627,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72284114850454,
+    "acquire_ms": 190.24,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.339019775390625,
+    "max_c": 25.83731460571289,
+    "mean_c": 24.60382080078125,
+    "center_c": 24.73572540283203
+   }
+  },
+  {
+   "seq": 84,
+   "host_recv_utc": "2026-09-23T00:24:23.322Z",
+   "host_recv_mono_ns": 72284814962586,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72284614802325,
+    "acquire_ms": 200.15,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.925146102905273,
+    "max_c": 26.072141647338867,
+    "mean_c": 24.523550033569336,
+    "center_c": 24.403757095336914
+   }
+  },
+  {
+   "seq": 85,
+   "host_recv_utc": "2026-09-23T00:24:23.832Z",
+   "host_recv_mono_ns": 72285324319994,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72285114837207,
+    "acquire_ms": 209.47,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.26756477355957,
+    "max_c": 25.88445281982422,
+    "mean_c": 24.4322452545166,
+    "center_c": 24.197999954223633
+   }
+  },
+  {
+   "seq": 86,
+   "host_recv_utc": "2026-09-23T00:24:24.342Z",
+   "host_recv_mono_ns": 72285834086502,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72285615129632,
+    "acquire_ms": 218.95,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.786579132080078,
+    "max_c": 26.288619995117188,
+    "mean_c": 24.916290283203125,
+    "center_c": 24.53744125366211
+   }
+  },
+  {
+   "seq": 87,
+   "host_recv_utc": "2026-09-23T00:24:24.724Z",
+   "host_recv_mono_ns": 72286216736177,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72286114867480,
+    "acquire_ms": 101.86,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.976335525512695,
+    "max_c": 26.78187370300293,
+    "mean_c": 24.66510009765625,
+    "center_c": 24.380508422851562
+   }
+  },
+  {
+   "seq": 88,
+   "host_recv_utc": "2026-09-23T00:24:25.234Z",
+   "host_recv_mono_ns": 72286726108977,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72286614865527,
+    "acquire_ms": 111.24,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.106470108032227,
+    "max_c": 25.88750648498535,
+    "mean_c": 24.447067260742188,
+    "center_c": 24.404541015625
+   }
+  },
+  {
+   "seq": 89,
+   "host_recv_utc": "2026-09-23T00:24:25.746Z",
+   "host_recv_mono_ns": 72287238731507,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72287114870615,
+    "acquire_ms": 123.85,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.68642234802246,
+    "max_c": 26.201580047607422,
+    "mean_c": 24.850677490234375,
+    "center_c": 24.551830291748047
+   }
+  },
+  {
+   "seq": 90,
+   "host_recv_utc": "2026-09-23T00:24:26.254Z",
+   "host_recv_mono_ns": 72287746215160,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72287614854997,
+    "acquire_ms": 131.35,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.35575294494629,
+    "max_c": 26.44191551208496,
+    "mean_c": 24.77748680114746,
+    "center_c": 24.448104858398438
+   }
+  },
+  {
+   "seq": 91,
+   "host_recv_utc": "2026-09-23T00:24:26.764Z",
+   "host_recv_mono_ns": 72288256994497,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72288114868020,
+    "acquire_ms": 142.12,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 21.862035751342773,
+    "max_c": 25.62975311279297,
+    "mean_c": 24.14154624938965,
+    "center_c": 24.0064697265625
+   }
+  },
+  {
+   "seq": 92,
+   "host_recv_utc": "2026-09-23T00:24:27.275Z",
+   "host_recv_mono_ns": 72288767083253,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72288614808848,
+    "acquire_ms": 152.26,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.467910766601562,
+    "max_c": 26.280536651611328,
+    "mean_c": 24.622121810913086,
+    "center_c": 24.379703521728516
+   }
+  },
+  {
+   "seq": 93,
+   "host_recv_utc": "2026-09-23T00:24:27.783Z",
+   "host_recv_mono_ns": 72289275921506,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72289114835951,
+    "acquire_ms": 161.08,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.139135360717773,
+    "max_c": 26.158567428588867,
+    "mean_c": 24.697023391723633,
+    "center_c": 24.52522850036621
+   }
+  },
+  {
+   "seq": 94,
+   "host_recv_utc": "2026-09-23T00:24:28.294Z",
+   "host_recv_mono_ns": 72289786659593,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72289614833644,
+    "acquire_ms": 171.82,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.370882034301758,
+    "max_c": 26.490070343017578,
+    "mean_c": 24.727384567260742,
+    "center_c": 24.519535064697266
+   }
+  },
+  {
+   "seq": 95,
+   "host_recv_utc": "2026-09-23T00:24:28.803Z",
+   "host_recv_mono_ns": 72290295364338,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72290114856714,
+    "acquire_ms": 180.5,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.7874755859375,
+    "max_c": 26.34109878540039,
+    "mean_c": 24.89521598815918,
+    "center_c": 24.711544036865234
+   }
+  },
+  {
+   "seq": 96,
+   "host_recv_utc": "2026-09-23T00:24:29.314Z",
+   "host_recv_mono_ns": 72290806381185,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72290614864103,
+    "acquire_ms": 191.51,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.977296829223633,
+    "max_c": 25.66044044494629,
+    "mean_c": 24.381921768188477,
+    "center_c": 24.211671829223633
+   }
+  },
+  {
+   "seq": 97,
+   "host_recv_utc": "2026-09-23T00:24:29.823Z",
+   "host_recv_mono_ns": 72291315046951,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72291114868227,
+    "acquire_ms": 200.17,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.11144256591797,
+    "max_c": 25.744739532470703,
+    "mean_c": 24.51513671875,
+    "center_c": 24.203702926635742
+   }
+  },
+  {
+   "seq": 98,
+   "host_recv_utc": "2026-09-23T00:24:30.333Z",
+   "host_recv_mono_ns": 72291825771852,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72291614861247,
+    "acquire_ms": 210.9,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.2204647064209,
+    "max_c": 25.852651596069336,
+    "mean_c": 24.539400100708008,
+    "center_c": 24.250850677490234
+   }
+  },
+  {
+   "seq": 99,
+   "host_recv_utc": "2026-09-23T00:24:30.843Z",
+   "host_recv_mono_ns": 72292335215786,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72292114866778,
+    "acquire_ms": 220.34,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.81780242919922,
+    "max_c": 26.402433395385742,
+    "mean_c": 25.070343017578125,
+    "center_c": 24.860919952392578
+   }
+  },
+  {
+   "seq": 100,
+   "host_recv_utc": "2026-09-23T00:24:31.225Z",
+   "host_recv_mono_ns": 72292717979060,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72292614876150,
+    "acquire_ms": 103.09,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.552221298217773,
+    "max_c": 26.0900936126709,
+    "mean_c": 24.56954002380371,
+    "center_c": 24.36433219909668
+   }
+  },
+  {
+   "seq": 101,
+   "host_recv_utc": "2026-09-23T00:24:31.735Z",
+   "host_recv_mono_ns": 72293227572470,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72293114876177,
+    "acquire_ms": 112.69,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.94313621520996,
+    "max_c": 26.876707077026367,
+    "mean_c": 24.706491470336914,
+    "center_c": 24.631088256835938
+   }
+  },
+  {
+   "seq": 102,
+   "host_recv_utc": "2026-09-23T00:24:32.246Z",
+   "host_recv_mono_ns": 72293738484127,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72293614846635,
+    "acquire_ms": 123.63,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.226890563964844,
+    "max_c": 25.986148834228516,
+    "mean_c": 24.619287490844727,
+    "center_c": 24.417190551757812
+   }
+  },
+  {
+   "seq": 103,
+   "host_recv_utc": "2026-09-23T00:24:32.755Z",
+   "host_recv_mono_ns": 72294247076961,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72294114881958,
+    "acquire_ms": 132.19,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.268054962158203,
+    "max_c": 25.577266693115234,
+    "mean_c": 24.477127075195312,
+    "center_c": 24.333410263061523
+   }
+  },
+  {
+   "seq": 104,
+   "host_recv_utc": "2026-09-23T00:24:33.265Z",
+   "host_recv_mono_ns": 72294757247571,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72294615099975,
+    "acquire_ms": 142.14,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.338319778442383,
+    "max_c": 26.12285614013672,
+    "mean_c": 24.66416358947754,
+    "center_c": 24.4228572845459
+   }
+  },
+  {
+   "seq": 105,
+   "host_recv_utc": "2026-09-23T00:24:33.774Z",
+   "host_recv_mono_ns": 72295266856756,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72295115128609,
+    "acquire_ms": 151.72,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.340652465820312,
+    "max_c": 26.408222198486328,
+    "mean_c": 24.579992294311523,
+    "center_c": 24.376708984375
+   }
+  },
+  {
+   "seq": 106,
+   "host_recv_utc": "2026-09-23T00:24:34.285Z",
+   "host_recv_mono_ns": 72295777254316,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72295614860978,
+    "acquire_ms": 162.38,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.205942153930664,
+    "max_c": 25.976734161376953,
+    "mean_c": 24.540231704711914,
+    "center_c": 24.414344787597656
+   }
+  },
+  {
+   "seq": 107,
+   "host_recv_utc": "2026-09-23T00:24:34.794Z",
+   "host_recv_mono_ns": 72296286561699,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72296114867627,
+    "acquire_ms": 171.69,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.743961334228516,
+    "max_c": 26.37434196472168,
+    "mean_c": 24.60381507873535,
+    "center_c": 24.62775993347168
+   }
+  },
+  {
+   "seq": 108,
+   "host_recv_utc": "2026-09-23T00:24:35.304Z",
+   "host_recv_mono_ns": 72296796595247,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72296614860611,
+    "acquire_ms": 181.72,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.604833602905273,
+    "max_c": 26.022178649902344,
+    "mean_c": 24.753761291503906,
+    "center_c": 24.341381072998047
+   }
+  },
+  {
+   "seq": 109,
+   "host_recv_utc": "2026-09-23T00:24:35.814Z",
+   "host_recv_mono_ns": 72297306637243,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72297114847003,
+    "acquire_ms": 191.78,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.23818016052246,
+    "max_c": 26.016857147216797,
+    "mean_c": 24.668853759765625,
+    "center_c": 24.536415100097656
+   }
+  },
+  {
+   "seq": 110,
+   "host_recv_utc": "2026-09-23T00:24:36.324Z",
+   "host_recv_mono_ns": 72297816111958,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72297614820178,
+    "acquire_ms": 201.28,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.738658905029297,
+    "max_c": 26.28627586364746,
+    "mean_c": 24.8642635345459,
+    "center_c": 24.707918167114258
+   }
+  },
+  {
+   "seq": 111,
+   "host_recv_utc": "2026-09-23T00:24:36.834Z",
+   "host_recv_mono_ns": 72298326292198,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72298114835849,
+    "acquire_ms": 211.45,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.95305633544922,
+    "max_c": 25.936243057250977,
+    "mean_c": 24.387784957885742,
+    "center_c": 24.136878967285156
+   }
+  },
+  {
+   "seq": 112,
+   "host_recv_utc": "2026-09-23T00:24:37.218Z",
+   "host_recv_mono_ns": 72298710836868,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72298614803392,
+    "acquire_ms": 96.03,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.296409606933594,
+    "max_c": 25.936208724975586,
+    "mean_c": 24.6619873046875,
+    "center_c": 24.79841423034668
+   }
+  },
+  {
+   "seq": 113,
+   "host_recv_utc": "2026-09-23T00:24:37.726Z",
+   "host_recv_mono_ns": 72299218126650,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72299114857720,
+    "acquire_ms": 103.26,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.04720115661621,
+    "max_c": 26.16864776611328,
+    "mean_c": 24.784507751464844,
+    "center_c": 24.572216033935547
+   }
+  },
+  {
+   "seq": 114,
+   "host_recv_utc": "2026-09-23T00:24:38.236Z",
+   "host_recv_mono_ns": 72299728324522,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72299614872911,
+    "acquire_ms": 113.44,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.386842727661133,
+    "max_c": 26.13660430908203,
+    "mean_c": 24.734567642211914,
+    "center_c": 24.69034767150879
+   }
+  },
+  {
+   "seq": 115,
+   "host_recv_utc": "2026-09-23T00:24:38.746Z",
+   "host_recv_mono_ns": 72300238055594,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72300114875269,
+    "acquire_ms": 123.17,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.122140884399414,
+    "max_c": 26.308847427368164,
+    "mean_c": 24.638952255249023,
+    "center_c": 24.536497116088867
+   }
+  },
+  {
+   "seq": 116,
+   "host_recv_utc": "2026-09-23T00:24:39.256Z",
+   "host_recv_mono_ns": 72300748979759,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72300614868250,
+    "acquire_ms": 134.1,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.227554321289062,
+    "max_c": 25.601686477661133,
+    "mean_c": 24.415178298950195,
+    "center_c": 24.29962921142578
+   }
+  },
+  {
+   "seq": 117,
+   "host_recv_utc": "2026-09-23T00:24:39.766Z",
+   "host_recv_mono_ns": 72301258059579,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72301114875632,
+    "acquire_ms": 143.17,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.911441802978516,
+    "max_c": 25.766494750976562,
+    "mean_c": 24.3339786529541,
+    "center_c": 24.211484909057617
+   }
+  },
+  {
+   "seq": 118,
+   "host_recv_utc": "2026-09-23T00:24:40.275Z",
+   "host_recv_mono_ns": 72301767462257,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72301614840612,
+    "acquire_ms": 152.61,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.141630172729492,
+    "max_c": 26.123779296875,
+    "mean_c": 24.57691192626953,
+    "center_c": 24.465251922607422
+   }
+  },
+  {
+   "seq": 119,
+   "host_recv_utc": "2026-09-23T00:24:40.786Z",
+   "host_recv_mono_ns": 72302278829090,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72302114835288,
+    "acquire_ms": 163.98,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.155250549316406,
+    "max_c": 26.648569107055664,
+    "mean_c": 24.755624771118164,
+    "center_c": 24.419052124023438
+   }
+  },
+  {
+   "seq": 120,
+   "host_recv_utc": "2026-09-23T00:24:41.298Z",
+   "host_recv_mono_ns": 72302790277014,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72302614818604,
+    "acquire_ms": 175.45,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.033342361450195,
+    "max_c": 26.04582977294922,
+    "mean_c": 24.534093856811523,
+    "center_c": 24.269540786743164
+   }
+  },
+  {
+   "seq": 121,
+   "host_recv_utc": "2026-09-23T00:24:41.805Z",
+   "host_recv_mono_ns": 72303297259552,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72303114857985,
+    "acquire_ms": 182.39,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.00033950805664,
+    "max_c": 26.10249900817871,
+    "mean_c": 24.3818302154541,
+    "center_c": 24.457534790039062
+   }
+  },
+  {
+   "seq": 122,
+   "host_recv_utc": "2026-09-23T00:24:42.315Z",
+   "host_recv_mono_ns": 72303807182340,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72303614852436,
+    "acquire_ms": 192.32,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.29485321044922,
+    "max_c": 26.075164794921875,
+    "mean_c": 24.563444137573242,
+    "center_c": 24.574424743652344
+   }
+  },
+  {
+   "seq": 123,
+   "host_recv_utc": "2026-09-23T00:24:42.825Z",
+   "host_recv_mono_ns": 72304317300078,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72304114864680,
+    "acquire_ms": 202.42,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.798633575439453,
+    "max_c": 26.010652542114258,
+    "mean_c": 24.704748153686523,
+    "center_c": 24.299551010131836
+   }
+  },
+  {
+   "seq": 124,
+   "host_recv_utc": "2026-09-23T00:24:43.336Z",
+   "host_recv_mono_ns": 72304828455191,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72304614868091,
+    "acquire_ms": 213.58,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.25176239013672,
+    "max_c": 26.06058692932129,
+    "mean_c": 24.567419052124023,
+    "center_c": 24.30966567993164
+   }
+  },
+  {
+   "seq": 125,
+   "host_recv_utc": "2026-09-23T00:24:43.719Z",
+   "host_recv_mono_ns": 72305211815789,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72305114867086,
+    "acquire_ms": 96.94,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.611881256103516,
+    "max_c": 26.5023250579834,
+    "mean_c": 24.70599365234375,
+    "center_c": 24.49571990966797
+   }
+  },
+  {
+   "seq": 126,
+   "host_recv_utc": "2026-09-23T00:24:44.227Z",
+   "host_recv_mono_ns": 72305719307589,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72305614873888,
+    "acquire_ms": 104.43,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.2703914642334,
+    "max_c": 26.144136428833008,
+    "mean_c": 24.50836181640625,
+    "center_c": 24.093509674072266
+   }
+  },
+  {
+   "seq": 127,
+   "host_recv_utc": "2026-09-23T00:24:44.738Z",
+   "host_recv_mono_ns": 72306230432364,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72306114859761,
+    "acquire_ms": 115.56,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.494197845458984,
+    "max_c": 25.9642333984375,
+    "mean_c": 24.69451904296875,
+    "center_c": 24.47540283203125
+   }
+  },
+  {
+   "seq": 128,
+   "host_recv_utc": "2026-09-23T00:24:45.246Z",
+   "host_recv_mono_ns": 72306739008933,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72306614874179,
+    "acquire_ms": 124.12,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.295297622680664,
+    "max_c": 25.830217361450195,
+    "mean_c": 24.509679794311523,
+    "center_c": 24.19124984741211
+   }
+  },
+  {
+   "seq": 129,
+   "host_recv_utc": "2026-09-23T00:24:45.757Z",
+   "host_recv_mono_ns": 72307249065259,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72307114877909,
+    "acquire_ms": 134.18,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.289949417114258,
+    "max_c": 25.914621353149414,
+    "mean_c": 24.6220760345459,
+    "center_c": 24.44211196899414
+   }
+  },
+  {
+   "seq": 130,
+   "host_recv_utc": "2026-09-23T00:24:46.266Z",
+   "host_recv_mono_ns": 72307758785030,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72307614847717,
+    "acquire_ms": 143.93,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.426294326782227,
+    "max_c": 26.263639450073242,
+    "mean_c": 24.7536563873291,
+    "center_c": 24.29732322692871
+   }
+  },
+  {
+   "seq": 131,
+   "host_recv_utc": "2026-09-23T00:24:46.776Z",
+   "host_recv_mono_ns": 72308268621860,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72308114862901,
+    "acquire_ms": 153.75,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.543413162231445,
+    "max_c": 25.796939849853516,
+    "mean_c": 24.56852149963379,
+    "center_c": 24.221975326538086
+   }
+  },
+  {
+   "seq": 132,
+   "host_recv_utc": "2026-09-23T00:24:47.286Z",
+   "host_recv_mono_ns": 72308778606471,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72308614886566,
+    "acquire_ms": 163.71,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.699167251586914,
+    "max_c": 26.810291290283203,
+    "mean_c": 24.998916625976562,
+    "center_c": 24.825727462768555
+   }
+  },
+  {
+   "seq": 133,
+   "host_recv_utc": "2026-09-23T00:24:47.797Z",
+   "host_recv_mono_ns": 72309289152410,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72309114863541,
+    "acquire_ms": 174.28,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.123632431030273,
+    "max_c": 25.802305221557617,
+    "mean_c": 24.52193260192871,
+    "center_c": 24.43874740600586
+   }
+  },
+  {
+   "seq": 134,
+   "host_recv_utc": "2026-09-23T00:24:48.306Z",
+   "host_recv_mono_ns": 72309798387109,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72309614876421,
+    "acquire_ms": 183.5,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.02426528930664,
+    "max_c": 26.359325408935547,
+    "mean_c": 24.70099449157715,
+    "center_c": 24.345237731933594
+   }
+  },
+  {
+   "seq": 135,
+   "host_recv_utc": "2026-09-23T00:24:48.816Z",
+   "host_recv_mono_ns": 72310308429736,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72310114864148,
+    "acquire_ms": 193.55,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.825294494628906,
+    "max_c": 25.93328094482422,
+    "mean_c": 24.540603637695312,
+    "center_c": 24.20986557006836
+   }
+  },
+  {
+   "seq": 136,
+   "host_recv_utc": "2026-09-23T00:24:49.326Z",
+   "host_recv_mono_ns": 72310818327206,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72310614841794,
+    "acquire_ms": 203.48,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.87979507446289,
+    "max_c": 26.329072952270508,
+    "mean_c": 25.014633178710938,
+    "center_c": 24.612295150756836
+   }
+  },
+  {
+   "seq": 137,
+   "host_recv_utc": "2026-09-23T00:24:49.835Z",
+   "host_recv_mono_ns": 72311327884538,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72311114865681,
+    "acquire_ms": 213.01,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.302030563354492,
+    "max_c": 26.054208755493164,
+    "mean_c": 24.70294952392578,
+    "center_c": 24.732942581176758
+   }
+  },
+  {
+   "seq": 138,
+   "host_recv_utc": "2026-09-23T00:24:50.218Z",
+   "host_recv_mono_ns": 72311710675323,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72311614814526,
+    "acquire_ms": 95.85,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.417865753173828,
+    "max_c": 25.78331184387207,
+    "mean_c": 24.561325073242188,
+    "center_c": 24.388465881347656
+   }
+  },
+  {
+   "seq": 139,
+   "host_recv_utc": "2026-09-23T00:24:50.728Z",
+   "host_recv_mono_ns": 72312220470998,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72312114885742,
+    "acquire_ms": 105.57,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.405345916748047,
+    "max_c": 26.341209411621094,
+    "mean_c": 24.852853775024414,
+    "center_c": 24.622194290161133
+   }
+  },
+  {
+   "seq": 140,
+   "host_recv_utc": "2026-09-23T00:24:51.238Z",
+   "host_recv_mono_ns": 72312730029704,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72312614864955,
+    "acquire_ms": 115.16,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.255197525024414,
+    "max_c": 26.15550422668457,
+    "mean_c": 24.676855087280273,
+    "center_c": 24.557035446166992
+   }
+  },
+  {
+   "seq": 141,
+   "host_recv_utc": "2026-09-23T00:24:51.748Z",
+   "host_recv_mono_ns": 72313240253071,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72313114866472,
+    "acquire_ms": 125.38,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.020288467407227,
+    "max_c": 25.831220626831055,
+    "mean_c": 24.396326065063477,
+    "center_c": 24.035625457763672
+   }
+  },
+  {
+   "seq": 142,
+   "host_recv_utc": "2026-09-23T00:24:52.257Z",
+   "host_recv_mono_ns": 72313749823553,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72313615132061,
+    "acquire_ms": 134.68,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.59271240234375,
+    "max_c": 26.323759078979492,
+    "mean_c": 24.7590274810791,
+    "center_c": 24.321533203125
+   }
+  },
+  {
+   "seq": 143,
+   "host_recv_utc": "2026-09-23T00:24:52.767Z",
+   "host_recv_mono_ns": 72314259783359,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72314114868417,
+    "acquire_ms": 144.91,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.520057678222656,
+    "max_c": 25.71298599243164,
+    "mean_c": 24.507139205932617,
+    "center_c": 24.095108032226562
+   }
+  },
+  {
+   "seq": 144,
+   "host_recv_utc": "2026-09-23T00:24:53.278Z",
+   "host_recv_mono_ns": 72314770461683,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72314614877901,
+    "acquire_ms": 155.57,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.18951988220215,
+    "max_c": 25.841899871826172,
+    "mean_c": 24.549551010131836,
+    "center_c": 24.089731216430664
+   }
+  },
+  {
+   "seq": 145,
+   "host_recv_utc": "2026-09-23T00:24:53.788Z",
+   "host_recv_mono_ns": 72315280252555,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72315114873721,
+    "acquire_ms": 165.37,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.62983512878418,
+    "max_c": 25.9937686920166,
+    "mean_c": 24.37308692932129,
+    "center_c": 24.125280380249023
+   }
+  },
+  {
+   "seq": 146,
+   "host_recv_utc": "2026-09-23T00:24:54.299Z",
+   "host_recv_mono_ns": 72315791596626,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72315614834851,
+    "acquire_ms": 176.75,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.44651985168457,
+    "max_c": 26.119293212890625,
+    "mean_c": 24.674074172973633,
+    "center_c": 24.47808265686035
+   }
+  },
+  {
+   "seq": 147,
+   "host_recv_utc": "2026-09-23T00:24:54.808Z",
+   "host_recv_mono_ns": 72316300216389,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72316114845039,
+    "acquire_ms": 185.36,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.136999130249023,
+    "max_c": 26.215145111083984,
+    "mean_c": 24.704275131225586,
+    "center_c": 24.212154388427734
+   }
+  },
+  {
+   "seq": 148,
+   "host_recv_utc": "2026-09-23T00:24:55.318Z",
+   "host_recv_mono_ns": 72316810759251,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72316614833657,
+    "acquire_ms": 195.91,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.612449645996094,
+    "max_c": 26.238557815551758,
+    "mean_c": 24.822540283203125,
+    "center_c": 24.60126495361328
+   }
+  },
+  {
+   "seq": 149,
+   "host_recv_utc": "2026-09-23T00:24:55.827Z",
+   "host_recv_mono_ns": 72317319637102,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72317114844036,
+    "acquire_ms": 204.78,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.801883697509766,
+    "max_c": 25.905038833618164,
+    "mean_c": 24.29411506652832,
+    "center_c": 24.131576538085938
+   }
+  },
+  {
+   "seq": 150,
+   "host_recv_utc": "2026-09-23T00:24:56.338Z",
+   "host_recv_mono_ns": 72317830113465,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72317614855278,
+    "acquire_ms": 215.25,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.349016189575195,
+    "max_c": 26.142074584960938,
+    "mean_c": 24.598501205444336,
+    "center_c": 24.213462829589844
+   }
+  },
+  {
+   "seq": 151,
+   "host_recv_utc": "2026-09-23T00:24:56.720Z",
+   "host_recv_mono_ns": 72318212998394,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72318114875608,
+    "acquire_ms": 98.11,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.232587814331055,
+    "max_c": 26.414243698120117,
+    "mean_c": 24.6054744720459,
+    "center_c": 24.281497955322266
+   }
+  },
+  {
+   "seq": 152,
+   "host_recv_utc": "2026-09-23T00:24:57.230Z",
+   "host_recv_mono_ns": 72318722421861,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72318614878850,
+    "acquire_ms": 107.53,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.475902557373047,
+    "max_c": 25.988252639770508,
+    "mean_c": 24.736658096313477,
+    "center_c": 24.720415115356445
+   }
+  },
+  {
+   "seq": 153,
+   "host_recv_utc": "2026-09-23T00:24:57.740Z",
+   "host_recv_mono_ns": 72319232759851,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72319114873387,
+    "acquire_ms": 117.88,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.267297744750977,
+    "max_c": 26.29436492919922,
+    "mean_c": 24.577821731567383,
+    "center_c": 24.49801254272461
+   }
+  },
+  {
+   "seq": 154,
+   "host_recv_utc": "2026-09-23T00:24:58.250Z",
+   "host_recv_mono_ns": 72319742191061,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72319614873779,
+    "acquire_ms": 127.31,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.40671157836914,
+    "max_c": 26.202896118164062,
+    "mean_c": 24.703046798706055,
+    "center_c": 24.399015426635742
+   }
+  },
+  {
+   "seq": 155,
+   "host_recv_utc": "2026-09-23T00:24:58.759Z",
+   "host_recv_mono_ns": 72320251982089,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72320114852891,
+    "acquire_ms": 137.12,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.176496505737305,
+    "max_c": 26.86160659790039,
+    "mean_c": 24.931161880493164,
+    "center_c": 24.498937606811523
+   }
+  },
+  {
+   "seq": 156,
+   "host_recv_utc": "2026-09-23T00:24:59.269Z",
+   "host_recv_mono_ns": 72320761981156,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72320614836771,
+    "acquire_ms": 147.13,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.13205909729004,
+    "max_c": 25.930702209472656,
+    "mean_c": 24.435514450073242,
+    "center_c": 24.204566955566406
+   }
+  },
+  {
+   "seq": 157,
+   "host_recv_utc": "2026-09-23T00:24:59.779Z",
+   "host_recv_mono_ns": 72321271312298,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72321115092434,
+    "acquire_ms": 156.21,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.298784255981445,
+    "max_c": 26.142953872680664,
+    "mean_c": 24.572357177734375,
+    "center_c": 24.285335540771484
+   }
+  },
+  {
+   "seq": 158,
+   "host_recv_utc": "2026-09-23T00:25:00.289Z",
+   "host_recv_mono_ns": 72321781616461,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72321615085337,
+    "acquire_ms": 166.52,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.34339141845703,
+    "max_c": 26.382614135742188,
+    "mean_c": 24.70947265625,
+    "center_c": 24.591949462890625
+   }
+  },
+  {
+   "seq": 159,
+   "host_recv_utc": "2026-09-23T00:25:00.799Z",
+   "host_recv_mono_ns": 72322291126392,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72322114848505,
+    "acquire_ms": 176.27,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.41929817199707,
+    "max_c": 26.26155662536621,
+    "mean_c": 24.783002853393555,
+    "center_c": 24.705970764160156
+   }
+  },
+  {
+   "seq": 160,
+   "host_recv_utc": "2026-09-23T00:25:01.309Z",
+   "host_recv_mono_ns": 72322801493788,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72322614875201,
+    "acquire_ms": 186.61,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.402158737182617,
+    "max_c": 810.0104370117188,
+    "mean_c": 25.926626205444336,
+    "center_c": 24.14140510559082
+   }
+  },
+  {
+   "seq": 161,
+   "host_recv_utc": "2026-09-23T00:25:01.818Z",
+   "host_recv_mono_ns": 72323310767391,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72323114877159,
+    "acquire_ms": 195.88,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.637269973754883,
+    "max_c": 26.240346908569336,
+    "mean_c": 24.777084350585938,
+    "center_c": 24.635089874267578
+   }
+  },
+  {
+   "seq": 162,
+   "host_recv_utc": "2026-09-23T00:25:02.328Z",
+   "host_recv_mono_ns": 72323820900667,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72323614856621,
+    "acquire_ms": 206.03,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.594778060913086,
+    "max_c": 26.120296478271484,
+    "mean_c": 24.832443237304688,
+    "center_c": 24.662708282470703
+   }
+  },
+  {
+   "seq": 163,
+   "host_recv_utc": "2026-09-23T00:25:02.838Z",
+   "host_recv_mono_ns": 72324330507752,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72324114859538,
+    "acquire_ms": 215.64,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.27777099609375,
+    "max_c": 26.455856323242188,
+    "mean_c": 24.908483505249023,
+    "center_c": 24.592208862304688
+   }
+  },
+  {
+   "seq": 164,
+   "host_recv_utc": "2026-09-23T00:25:03.221Z",
+   "host_recv_mono_ns": 72324713182719,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72324614835735,
+    "acquire_ms": 98.34,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.16035270690918,
+    "max_c": 26.602766036987305,
+    "mean_c": 24.763547897338867,
+    "center_c": 24.45296859741211
+   }
+  },
+  {
+   "seq": 165,
+   "host_recv_utc": "2026-09-23T00:25:03.730Z",
+   "host_recv_mono_ns": 72325222987665,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72325114838492,
+    "acquire_ms": 108.14,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.400182723999023,
+    "max_c": 26.170669555664062,
+    "mean_c": 24.86014747619629,
+    "center_c": 24.59485626220703
+   }
+  },
+  {
+   "seq": 166,
+   "host_recv_utc": "2026-09-23T00:25:04.241Z",
+   "host_recv_mono_ns": 72325733062346,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72325614820448,
+    "acquire_ms": 118.23,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.405277252197266,
+    "max_c": 25.696758270263672,
+    "mean_c": 24.394548416137695,
+    "center_c": 24.152427673339844
+   }
+  },
+  {
+   "seq": 167,
+   "host_recv_utc": "2026-09-23T00:25:04.750Z",
+   "host_recv_mono_ns": 72326242436494,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72326114870246,
+    "acquire_ms": 127.56,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.555261611938477,
+    "max_c": 26.218774795532227,
+    "mean_c": 24.759428024291992,
+    "center_c": 24.42083740234375
+   }
+  },
+  {
+   "seq": 168,
+   "host_recv_utc": "2026-09-23T00:25:05.261Z",
+   "host_recv_mono_ns": 72326753682795,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72326614861258,
+    "acquire_ms": 138.81,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.34019660949707,
+    "max_c": 25.699743270874023,
+    "mean_c": 24.526824951171875,
+    "center_c": 24.188493728637695
+   }
+  },
+  {
+   "seq": 169,
+   "host_recv_utc": "2026-09-23T00:25:05.770Z",
+   "host_recv_mono_ns": 72327262518077,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72327114876654,
+    "acquire_ms": 147.63,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.663721084594727,
+    "max_c": 26.316255569458008,
+    "mean_c": 24.76727294921875,
+    "center_c": 24.3791446685791
+   }
+  },
+  {
+   "seq": 170,
+   "host_recv_utc": "2026-09-23T00:25:06.280Z",
+   "host_recv_mono_ns": 72327772935392,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72327614861297,
+    "acquire_ms": 158.06,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.442251205444336,
+    "max_c": 26.02925682067871,
+    "mean_c": 24.770294189453125,
+    "center_c": 24.530107498168945
+   }
+  },
+  {
+   "seq": 171,
+   "host_recv_utc": "2026-09-23T00:25:06.790Z",
+   "host_recv_mono_ns": 72328282391813,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72328114869685,
+    "acquire_ms": 167.51,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.956138610839844,
+    "max_c": 25.6660213470459,
+    "mean_c": 24.40523338317871,
+    "center_c": 24.18459129333496
+   }
+  },
+  {
+   "seq": 172,
+   "host_recv_utc": "2026-09-23T00:25:07.300Z",
+   "host_recv_mono_ns": 72328792059024,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72328614864215,
+    "acquire_ms": 177.19,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.956890106201172,
+    "max_c": 26.706859588623047,
+    "mean_c": 24.8726863861084,
+    "center_c": 24.915842056274414
+   }
+  },
+  {
+   "seq": 173,
+   "host_recv_utc": "2026-09-23T00:25:07.810Z",
+   "host_recv_mono_ns": 72329302118951,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72329114841433,
+    "acquire_ms": 187.27,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.751502990722656,
+    "max_c": 26.47464942932129,
+    "mean_c": 24.99951171875,
+    "center_c": 24.99277687072754
+   }
+  },
+  {
+   "seq": 174,
+   "host_recv_utc": "2026-09-23T00:25:08.319Z",
+   "host_recv_mono_ns": 72329811992919,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72329614835419,
+    "acquire_ms": 197.15,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.392433166503906,
+    "max_c": 26.059694290161133,
+    "mean_c": 24.7025089263916,
+    "center_c": 24.601116180419922
+   }
+  },
+  {
+   "seq": 175,
+   "host_recv_utc": "2026-09-23T00:25:08.830Z",
+   "host_recv_mono_ns": 72330322434137,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72330114845373,
+    "acquire_ms": 207.58,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.648876190185547,
+    "max_c": 26.03113555908203,
+    "mean_c": 24.67729949951172,
+    "center_c": 24.559629440307617
+   }
+  },
+  {
+   "seq": 176,
+   "host_recv_utc": "2026-09-23T00:25:09.340Z",
+   "host_recv_mono_ns": 72330832205254,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72330615096038,
+    "acquire_ms": 217.1,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.299724578857422,
+    "max_c": 25.737937927246094,
+    "mean_c": 24.598554611206055,
+    "center_c": 24.18218231201172
+   }
+  },
+  {
+   "seq": 177,
+   "host_recv_utc": "2026-09-23T00:25:09.721Z",
+   "host_recv_mono_ns": 72331214005983,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72331114862336,
+    "acquire_ms": 99.14,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.588825225830078,
+    "max_c": 26.157882690429688,
+    "mean_c": 24.789419174194336,
+    "center_c": 24.805686950683594
+   }
+  },
+  {
+   "seq": 178,
+   "host_recv_utc": "2026-09-23T00:25:10.232Z",
+   "host_recv_mono_ns": 72331724594629,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72331615114760,
+    "acquire_ms": 109.47,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.48800277709961,
+    "max_c": 26.04726219177246,
+    "mean_c": 24.586645126342773,
+    "center_c": 24.48154067993164
+   }
+  },
+  {
+   "seq": 179,
+   "host_recv_utc": "2026-09-23T00:25:10.742Z",
+   "host_recv_mono_ns": 72332234878720,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72332114880194,
+    "acquire_ms": 119.99,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.245819091796875,
+    "max_c": 25.608144760131836,
+    "mean_c": 24.55108642578125,
+    "center_c": 24.440052032470703
+   }
+  },
+  {
+   "seq": 180,
+   "host_recv_utc": "2026-09-23T00:25:11.252Z",
+   "host_recv_mono_ns": 72332744531176,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72332614875042,
+    "acquire_ms": 129.65,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.270917892456055,
+    "max_c": 25.829021453857422,
+    "mean_c": 24.526185989379883,
+    "center_c": 24.387065887451172
+   }
+  },
+  {
+   "seq": 181,
+   "host_recv_utc": "2026-09-23T00:25:11.761Z",
+   "host_recv_mono_ns": 72333253947881,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72333114879041,
+    "acquire_ms": 139.06,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.889793395996094,
+    "max_c": 26.38198471069336,
+    "mean_c": 24.910947799682617,
+    "center_c": 24.739635467529297
+   }
+  },
+  {
+   "seq": 182,
+   "host_recv_utc": "2026-09-23T00:25:12.271Z",
+   "host_recv_mono_ns": 72333763531982,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72333614865441,
+    "acquire_ms": 148.66,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.403230667114258,
+    "max_c": 26.028255462646484,
+    "mean_c": 24.640121459960938,
+    "center_c": 24.425067901611328
+   }
+  },
+  {
+   "seq": 183,
+   "host_recv_utc": "2026-09-23T00:25:12.783Z",
+   "host_recv_mono_ns": 72334275221811,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72334114824990,
+    "acquire_ms": 160.39,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.359752655029297,
+    "max_c": 25.864347457885742,
+    "mean_c": 24.5192928314209,
+    "center_c": 24.496112823486328
+   }
+  },
+  {
+   "seq": 184,
+   "host_recv_utc": "2026-09-23T00:25:13.292Z",
+   "host_recv_mono_ns": 72334784243975,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72334614834654,
+    "acquire_ms": 169.4,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.671661376953125,
+    "max_c": 25.96685791015625,
+    "mean_c": 24.831274032592773,
+    "center_c": 24.617145538330078
+   }
+  },
+  {
+   "seq": 185,
+   "host_recv_utc": "2026-09-23T00:25:13.801Z",
+   "host_recv_mono_ns": 72335293646693,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72335114860925,
+    "acquire_ms": 178.78,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.808189392089844,
+    "max_c": 26.276247024536133,
+    "mean_c": 24.786455154418945,
+    "center_c": 24.35839080810547
+   }
+  },
+  {
+   "seq": 186,
+   "host_recv_utc": "2026-09-23T00:25:14.311Z",
+   "host_recv_mono_ns": 72335803519218,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72335614833082,
+    "acquire_ms": 188.68,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.58530044555664,
+    "max_c": 26.304908752441406,
+    "mean_c": 24.72440528869629,
+    "center_c": 24.362751007080078
+   }
+  },
+  {
+   "seq": 187,
+   "host_recv_utc": "2026-09-23T00:25:14.822Z",
+   "host_recv_mono_ns": 72336314349052,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72336114881242,
+    "acquire_ms": 199.46,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.256832122802734,
+    "max_c": 26.42348289489746,
+    "mean_c": 24.864404678344727,
+    "center_c": 24.918148040771484
+   }
+  },
+  {
+   "seq": 188,
+   "host_recv_utc": "2026-09-23T00:25:15.331Z",
+   "host_recv_mono_ns": 72336823354285,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72336614854838,
+    "acquire_ms": 208.49,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.665708541870117,
+    "max_c": 26.096599578857422,
+    "mean_c": 24.751678466796875,
+    "center_c": 24.506418228149414
+   }
+  },
+  {
+   "seq": 189,
+   "host_recv_utc": "2026-09-23T00:25:15.842Z",
+   "host_recv_mono_ns": 72337334416861,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72337114865876,
+    "acquire_ms": 219.54,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.297725677490234,
+    "max_c": 25.997940063476562,
+    "mean_c": 24.6525936126709,
+    "center_c": 24.708086013793945
+   }
+  },
+  {
+   "seq": 190,
+   "host_recv_utc": "2026-09-23T00:25:16.223Z",
+   "host_recv_mono_ns": 72337715760261,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72337614870577,
+    "acquire_ms": 100.88,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.748573303222656,
+    "max_c": 26.030359268188477,
+    "mean_c": 24.808547973632812,
+    "center_c": 24.897510528564453
+   }
+  },
+  {
+   "seq": 191,
+   "host_recv_utc": "2026-09-23T00:25:16.734Z",
+   "host_recv_mono_ns": 72338226598286,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72338114870349,
+    "acquire_ms": 111.72,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.40601921081543,
+    "max_c": 25.897682189941406,
+    "mean_c": 24.60875701904297,
+    "center_c": 24.470996856689453
+   }
+  },
+  {
+   "seq": 192,
+   "host_recv_utc": "2026-09-23T00:25:17.243Z",
+   "host_recv_mono_ns": 72338735794756,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72338614831560,
+    "acquire_ms": 120.95,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.49943733215332,
+    "max_c": 26.04960823059082,
+    "mean_c": 24.72088623046875,
+    "center_c": 24.553634643554688
+   }
+  },
+  {
+   "seq": 193,
+   "host_recv_utc": "2026-09-23T00:25:17.754Z",
+   "host_recv_mono_ns": 72339246841650,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72339114832740,
+    "acquire_ms": 132.0,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.335363388061523,
+    "max_c": 25.845666885375977,
+    "mean_c": 24.5687255859375,
+    "center_c": 24.511775970458984
+   }
+  },
+  {
+   "seq": 194,
+   "host_recv_utc": "2026-09-23T00:25:18.263Z",
+   "host_recv_mono_ns": 72339755507063,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72339614824224,
+    "acquire_ms": 140.67,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.47185516357422,
+    "max_c": 26.12800407409668,
+    "mean_c": 24.847043991088867,
+    "center_c": 24.71078109741211
+   }
+  },
+  {
+   "seq": 195,
+   "host_recv_utc": "2026-09-23T00:25:18.774Z",
+   "host_recv_mono_ns": 72340266841614,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72340114851996,
+    "acquire_ms": 151.98,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.327932357788086,
+    "max_c": 26.361265182495117,
+    "mean_c": 24.670074462890625,
+    "center_c": 24.433515548706055
+   }
+  },
+  {
+   "seq": 196,
+   "host_recv_utc": "2026-09-23T00:25:19.283Z",
+   "host_recv_mono_ns": 72340775296012,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72340614861207,
+    "acquire_ms": 160.43,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.57855987548828,
+    "max_c": 26.168312072753906,
+    "mean_c": 24.83939552307129,
+    "center_c": 24.75115203857422
+   }
+  },
+  {
+   "seq": 197,
+   "host_recv_utc": "2026-09-23T00:25:19.793Z",
+   "host_recv_mono_ns": 72341285915564,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72341114871122,
+    "acquire_ms": 171.03,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.783597946166992,
+    "max_c": 26.568283081054688,
+    "mean_c": 25.28156280517578,
+    "center_c": 24.9252986907959
+   }
+  },
+  {
+   "seq": 198,
+   "host_recv_utc": "2026-09-23T00:25:20.303Z",
+   "host_recv_mono_ns": 72341795334758,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72341614862444,
+    "acquire_ms": 180.46,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.573551177978516,
+    "max_c": 26.232563018798828,
+    "mean_c": 24.94989585876465,
+    "center_c": 24.660871505737305
+   }
+  },
+  {
+   "seq": 199,
+   "host_recv_utc": "2026-09-23T00:25:20.813Z",
+   "host_recv_mono_ns": 72342305871555,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72342114893479,
+    "acquire_ms": 190.97,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.42685317993164,
+    "max_c": 26.390357971191406,
+    "mean_c": 24.921157836914062,
+    "center_c": 24.65073013305664
+   }
+  },
+  {
+   "seq": 200,
+   "host_recv_utc": "2026-09-23T00:25:21.323Z",
+   "host_recv_mono_ns": 72342815179482,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72342614865504,
+    "acquire_ms": 200.31,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.55474281311035,
+    "max_c": 26.047697067260742,
+    "mean_c": 24.663843154907227,
+    "center_c": 24.469871520996094
+   }
+  },
+  {
+   "seq": 201,
+   "host_recv_utc": "2026-09-23T00:25:21.834Z",
+   "host_recv_mono_ns": 72343326100706,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72343114845144,
+    "acquire_ms": 211.25,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.46460723876953,
+    "max_c": 26.188323974609375,
+    "mean_c": 24.739824295043945,
+    "center_c": 24.667375564575195
+   }
+  },
+  {
+   "seq": 202,
+   "host_recv_utc": "2026-09-23T00:25:22.342Z",
+   "host_recv_mono_ns": 72343834959050,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72343614807312,
+    "acquire_ms": 220.14,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.914478302001953,
+    "max_c": 25.851150512695312,
+    "mean_c": 24.34250831604004,
+    "center_c": 24.044023513793945
+   }
+  },
+  {
+   "seq": 203,
+   "host_recv_utc": "2026-09-23T00:25:22.725Z",
+   "host_recv_mono_ns": 72344217352847,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72344114820745,
+    "acquire_ms": 102.52,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.350513458251953,
+    "max_c": 26.193071365356445,
+    "mean_c": 24.608957290649414,
+    "center_c": 24.694364547729492
+   }
+  },
+  {
+   "seq": 204,
+   "host_recv_utc": "2026-09-23T00:25:23.235Z",
+   "host_recv_mono_ns": 72344727826024,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72344614844579,
+    "acquire_ms": 112.97,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.74148941040039,
+    "max_c": 26.32288360595703,
+    "mean_c": 24.775327682495117,
+    "center_c": 24.7163028717041
+   }
+  },
+  {
+   "seq": 205,
+   "host_recv_utc": "2026-09-23T00:25:23.746Z",
+   "host_recv_mono_ns": 72345238206142,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72345114887420,
+    "acquire_ms": 123.31,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.32762336730957,
+    "max_c": 25.52109146118164,
+    "mean_c": 24.32609748840332,
+    "center_c": 24.043071746826172
+   }
+  },
+  {
+   "seq": 206,
+   "host_recv_utc": "2026-09-23T00:25:24.254Z",
+   "host_recv_mono_ns": 72345746981187,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72345614891316,
+    "acquire_ms": 132.08,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.401216506958008,
+    "max_c": 26.477325439453125,
+    "mean_c": 24.983060836791992,
+    "center_c": 24.77482795715332
+   }
+  },
+  {
+   "seq": 207,
+   "host_recv_utc": "2026-09-23T00:25:24.765Z",
+   "host_recv_mono_ns": 72346257698403,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72346114865962,
+    "acquire_ms": 142.82,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.368282318115234,
+    "max_c": 25.9927921295166,
+    "mean_c": 24.711050033569336,
+    "center_c": 24.27659034729004
+   }
+  },
+  {
+   "seq": 208,
+   "host_recv_utc": "2026-09-23T00:25:25.276Z",
+   "host_recv_mono_ns": 72346768869488,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72346614878818,
+    "acquire_ms": 153.98,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.606548309326172,
+    "max_c": 26.666492462158203,
+    "mean_c": 24.967443466186523,
+    "center_c": 24.732707977294922
+   }
+  },
+  {
+   "seq": 209,
+   "host_recv_utc": "2026-09-23T00:25:25.785Z",
+   "host_recv_mono_ns": 72347277093699,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72347114867576,
+    "acquire_ms": 162.22,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.304485321044922,
+    "max_c": 26.55506706237793,
+    "mean_c": 24.878644943237305,
+    "center_c": 24.755720138549805
+   }
+  },
+  {
+   "seq": 210,
+   "host_recv_utc": "2026-09-23T00:25:26.296Z",
+   "host_recv_mono_ns": 72347788267887,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72347614850287,
+    "acquire_ms": 173.41,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.327768325805664,
+    "max_c": 25.985553741455078,
+    "mean_c": 24.64240074157715,
+    "center_c": 24.46200942993164
+   }
+  },
+  {
+   "seq": 211,
+   "host_recv_utc": "2026-09-23T00:25:26.804Z",
+   "host_recv_mono_ns": 72348296840108,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72348114832196,
+    "acquire_ms": 182.0,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.3880672454834,
+    "max_c": 26.162328720092773,
+    "mean_c": 24.760726928710938,
+    "center_c": 24.677955627441406
+   }
+  },
+  {
+   "seq": 212,
+   "host_recv_utc": "2026-09-23T00:25:27.315Z",
+   "host_recv_mono_ns": 72348807075867,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72348614877243,
+    "acquire_ms": 192.19,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.742374420166016,
+    "max_c": 26.485218048095703,
+    "mean_c": 24.947736740112305,
+    "center_c": 24.832002639770508
+   }
+  },
+  {
+   "seq": 213,
+   "host_recv_utc": "2026-09-23T00:25:27.824Z",
+   "host_recv_mono_ns": 72349316757817,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72349114829359,
+    "acquire_ms": 201.92,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.758304595947266,
+    "max_c": 26.605701446533203,
+    "mean_c": 24.94245147705078,
+    "center_c": 24.778945922851562
+   }
+  },
+  {
+   "seq": 214,
+   "host_recv_utc": "2026-09-23T00:25:28.334Z",
+   "host_recv_mono_ns": 72349826667294,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72349614835685,
+    "acquire_ms": 211.82,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.047365188598633,
+    "max_c": 25.67545509338379,
+    "mean_c": 24.477432250976562,
+    "center_c": 24.36475372314453
+   }
+  },
+  {
+   "seq": 215,
+   "host_recv_utc": "2026-09-23T00:25:28.718Z",
+   "host_recv_mono_ns": 72350210808630,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72350114851482,
+    "acquire_ms": 95.95,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.387109756469727,
+    "max_c": 26.265552520751953,
+    "mean_c": 24.581985473632812,
+    "center_c": 24.18396759033203
+   }
+  },
+  {
+   "seq": 216,
+   "host_recv_utc": "2026-09-23T00:25:29.226Z",
+   "host_recv_mono_ns": 72350718748573,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72350614858255,
+    "acquire_ms": 103.88,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.30935287475586,
+    "max_c": 26.376745223999023,
+    "mean_c": 24.68896484375,
+    "center_c": 24.38029670715332
+   }
+  },
+  {
+   "seq": 217,
+   "host_recv_utc": "2026-09-23T00:25:29.737Z",
+   "host_recv_mono_ns": 72351229620063,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72351114859491,
+    "acquire_ms": 114.75,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.057109832763672,
+    "max_c": 26.807239532470703,
+    "mean_c": 24.897539138793945,
+    "center_c": 24.662734985351562
+   }
+  },
+  {
+   "seq": 218,
+   "host_recv_utc": "2026-09-23T00:25:30.247Z",
+   "host_recv_mono_ns": 72351739843148,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72351614877720,
+    "acquire_ms": 124.95,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.64682960510254,
+    "max_c": 26.012968063354492,
+    "mean_c": 24.859010696411133,
+    "center_c": 24.80597686767578
+   }
+  },
+  {
+   "seq": 219,
+   "host_recv_utc": "2026-09-23T00:25:30.757Z",
+   "host_recv_mono_ns": 72352249414532,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72352114874635,
+    "acquire_ms": 134.53,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.489530563354492,
+    "max_c": 26.908702850341797,
+    "mean_c": 24.772680282592773,
+    "center_c": 24.733516693115234
+   }
+  },
+  {
+   "seq": 220,
+   "host_recv_utc": "2026-09-23T00:25:31.267Z",
+   "host_recv_mono_ns": 72352759139298,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72352614860382,
+    "acquire_ms": 144.27,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.197059631347656,
+    "max_c": 26.837507247924805,
+    "mean_c": 24.814950942993164,
+    "center_c": 24.51487922668457
+   }
+  },
+  {
+   "seq": 221,
+   "host_recv_utc": "2026-09-23T00:25:31.777Z",
+   "host_recv_mono_ns": 72353269625782,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72353115114393,
+    "acquire_ms": 154.5,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.51513671875,
+    "max_c": 26.04178237915039,
+    "mean_c": 24.850210189819336,
+    "center_c": 24.66350555419922
+   }
+  },
+  {
+   "seq": 222,
+   "host_recv_utc": "2026-09-23T00:25:32.287Z",
+   "host_recv_mono_ns": 72353779058761,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72353614831651,
+    "acquire_ms": 164.22,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.086416244506836,
+    "max_c": 26.068735122680664,
+    "mean_c": 24.672470092773438,
+    "center_c": 24.448944091796875
+   }
+  },
+  {
+   "seq": 223,
+   "host_recv_utc": "2026-09-23T00:25:32.797Z",
+   "host_recv_mono_ns": 72354289476091,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72354114826741,
+    "acquire_ms": 174.64,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.086793899536133,
+    "max_c": 25.895963668823242,
+    "mean_c": 24.690324783325195,
+    "center_c": 24.254615783691406
+   }
+  },
+  {
+   "seq": 224,
+   "host_recv_utc": "2026-09-23T00:25:33.306Z",
+   "host_recv_mono_ns": 72354798647301,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72354614864297,
+    "acquire_ms": 183.78,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.178367614746094,
+    "max_c": 25.54282569885254,
+    "mean_c": 24.439828872680664,
+    "center_c": 24.258628845214844
+   }
+  },
+  {
+   "seq": 225,
+   "host_recv_utc": "2026-09-23T00:25:33.817Z",
+   "host_recv_mono_ns": 72355309187962,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72355114862490,
+    "acquire_ms": 194.31,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.483383178710938,
+    "max_c": 26.137052536010742,
+    "mean_c": 24.744001388549805,
+    "center_c": 24.249658584594727
+   }
+  },
+  {
+   "seq": 226,
+   "host_recv_utc": "2026-09-23T00:25:34.328Z",
+   "host_recv_mono_ns": 72355820345217,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72355614863596,
+    "acquire_ms": 205.47,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.345836639404297,
+    "max_c": 25.91094398498535,
+    "mean_c": 24.557762145996094,
+    "center_c": 24.44694709777832
+   }
+  },
+  {
+   "seq": 227,
+   "host_recv_utc": "2026-09-23T00:25:34.837Z",
+   "host_recv_mono_ns": 72356329060093,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72356114888574,
+    "acquire_ms": 214.16,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.554216384887695,
+    "max_c": 26.251394271850586,
+    "mean_c": 24.66582489013672,
+    "center_c": 24.4310245513916
+   }
+  },
+  {
+   "seq": 228,
+   "host_recv_utc": "2026-09-23T00:25:35.219Z",
+   "host_recv_mono_ns": 72356711080752,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72356614875886,
+    "acquire_ms": 96.2,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.13853645324707,
+    "max_c": 26.11123275756836,
+    "mean_c": 24.594947814941406,
+    "center_c": 24.377262115478516
+   }
+  },
+  {
+   "seq": 229,
+   "host_recv_utc": "2026-09-23T00:25:35.729Z",
+   "host_recv_mono_ns": 72357221615172,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72357114838878,
+    "acquire_ms": 106.76,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.621929168701172,
+    "max_c": 26.460948944091797,
+    "mean_c": 24.903602600097656,
+    "center_c": 24.526124954223633
+   }
+  },
+  {
+   "seq": 230,
+   "host_recv_utc": "2026-09-23T00:25:36.239Z",
+   "host_recv_mono_ns": 72357731576357,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72357614843278,
+    "acquire_ms": 116.72,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.417888641357422,
+    "max_c": 26.1570987701416,
+    "mean_c": 24.666297912597656,
+    "center_c": 24.542842864990234
+   }
+  },
+  {
+   "seq": 231,
+   "host_recv_utc": "2026-09-23T00:25:36.749Z",
+   "host_recv_mono_ns": 72358241437315,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72358114842718,
+    "acquire_ms": 126.58,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.53522300720215,
+    "max_c": 26.33586311340332,
+    "mean_c": 24.683992385864258,
+    "center_c": 24.49066734313965
+   }
+  },
+  {
+   "seq": 232,
+   "host_recv_utc": "2026-09-23T00:25:37.258Z",
+   "host_recv_mono_ns": 72358750973974,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72358614821613,
+    "acquire_ms": 136.15,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.411081314086914,
+    "max_c": 25.887239456176758,
+    "mean_c": 24.6026668548584,
+    "center_c": 24.43231201171875
+   }
+  },
+  {
+   "seq": 233,
+   "host_recv_utc": "2026-09-23T00:25:37.769Z",
+   "host_recv_mono_ns": 72359261536329,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72359114854109,
+    "acquire_ms": 146.67,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.636058807373047,
+    "max_c": 26.369543075561523,
+    "mean_c": 24.878211975097656,
+    "center_c": 24.474515914916992
+   }
+  },
+  {
+   "seq": 234,
+   "host_recv_utc": "2026-09-23T00:25:38.279Z",
+   "host_recv_mono_ns": 72359771081948,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72359614887597,
+    "acquire_ms": 156.18,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.192184448242188,
+    "max_c": 25.646699905395508,
+    "mean_c": 24.502275466918945,
+    "center_c": 24.021398544311523
+   }
+  },
+  {
+   "seq": 235,
+   "host_recv_utc": "2026-09-23T00:25:38.789Z",
+   "host_recv_mono_ns": 72360281483785,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72360114864763,
+    "acquire_ms": 166.61,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.609447479248047,
+    "max_c": 26.251508712768555,
+    "mean_c": 24.86435890197754,
+    "center_c": 24.553619384765625
+   }
+  },
+  {
+   "seq": 236,
+   "host_recv_utc": "2026-09-23T00:25:39.298Z",
+   "host_recv_mono_ns": 72360790904024,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72360614872394,
+    "acquire_ms": 176.02,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.556041717529297,
+    "max_c": 26.388042449951172,
+    "mean_c": 24.869491577148438,
+    "center_c": 24.656845092773438
+   }
+  },
+  {
+   "seq": 237,
+   "host_recv_utc": "2026-09-23T00:25:39.809Z",
+   "host_recv_mono_ns": 72361301216353,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72361114877848,
+    "acquire_ms": 186.33,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.426963806152344,
+    "max_c": 25.858003616333008,
+    "mean_c": 24.626419067382812,
+    "center_c": 24.512514114379883
+   }
+  },
+  {
+   "seq": 238,
+   "host_recv_utc": "2026-09-23T00:25:40.319Z",
+   "host_recv_mono_ns": 72361811926807,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72361614860325,
+    "acquire_ms": 197.05,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.59027099609375,
+    "max_c": 26.510042190551758,
+    "mean_c": 25.01995086669922,
+    "center_c": 24.65264892578125
+   }
+  },
+  {
+   "seq": 239,
+   "host_recv_utc": "2026-09-23T00:25:40.829Z",
+   "host_recv_mono_ns": 72362321270370,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72362114856306,
+    "acquire_ms": 206.4,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.64236068725586,
+    "max_c": 26.421741485595703,
+    "mean_c": 24.960540771484375,
+    "center_c": 24.74134063720703
+   }
+  },
+  {
+   "seq": 240,
+   "host_recv_utc": "2026-09-23T00:25:41.339Z",
+   "host_recv_mono_ns": 72362831629197,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72362614838783,
+    "acquire_ms": 216.78,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.795475006103516,
+    "max_c": 26.349367141723633,
+    "mean_c": 24.8922119140625,
+    "center_c": 24.562135696411133
+   }
+  },
+  {
+   "seq": 241,
+   "host_recv_utc": "2026-09-23T00:25:41.722Z",
+   "host_recv_mono_ns": 72363214452854,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72363114871117,
+    "acquire_ms": 99.57,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.46578025817871,
+    "max_c": 26.416278839111328,
+    "mean_c": 24.743261337280273,
+    "center_c": 24.42426872253418
+   }
+  },
+  {
+   "seq": 242,
+   "host_recv_utc": "2026-09-23T00:25:42.230Z",
+   "host_recv_mono_ns": 72363722874532,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72363614884314,
+    "acquire_ms": 107.98,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.56306266784668,
+    "max_c": 25.86355972290039,
+    "mean_c": 24.72418975830078,
+    "center_c": 24.87972640991211
+   }
+  },
+  {
+   "seq": 243,
+   "host_recv_utc": "2026-09-23T00:25:42.742Z",
+   "host_recv_mono_ns": 72364234476979,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72364114873125,
+    "acquire_ms": 119.59,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.587543487548828,
+    "max_c": 26.390356063842773,
+    "mean_c": 24.98484230041504,
+    "center_c": 24.83112335205078
+   }
+  },
+  {
+   "seq": 244,
+   "host_recv_utc": "2026-09-23T00:25:43.250Z",
+   "host_recv_mono_ns": 72364742953475,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72364614871601,
+    "acquire_ms": 128.07,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.41872787475586,
+    "max_c": 25.962055206298828,
+    "mean_c": 24.573562622070312,
+    "center_c": 24.417755126953125
+   }
+  },
+  {
+   "seq": 245,
+   "host_recv_utc": "2026-09-23T00:25:43.762Z",
+   "host_recv_mono_ns": 72365254948733,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72365114869341,
+    "acquire_ms": 140.07,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.326614379882812,
+    "max_c": 25.80404281616211,
+    "mean_c": 24.504371643066406,
+    "center_c": 24.30809783935547
+   }
+  },
+  {
+   "seq": 246,
+   "host_recv_utc": "2026-09-23T00:25:44.270Z",
+   "host_recv_mono_ns": 72365762879707,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72365614867368,
+    "acquire_ms": 148.0,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.092756271362305,
+    "max_c": 26.06478500366211,
+    "mean_c": 24.53171730041504,
+    "center_c": 24.27471351623535
+   }
+  },
+  {
+   "seq": 247,
+   "host_recv_utc": "2026-09-23T00:25:44.781Z",
+   "host_recv_mono_ns": 72366273635312,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72366114859571,
+    "acquire_ms": 158.77,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.504793167114258,
+    "max_c": 26.466428756713867,
+    "mean_c": 24.82636070251465,
+    "center_c": 24.923070907592773
+   }
+  },
+  {
+   "seq": 248,
+   "host_recv_utc": "2026-09-23T00:25:45.291Z",
+   "host_recv_mono_ns": 72366783037754,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72366614833373,
+    "acquire_ms": 168.19,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.47797966003418,
+    "max_c": 26.03676414489746,
+    "mean_c": 24.72342872619629,
+    "center_c": 24.156057357788086
+   }
+  },
+  {
+   "seq": 249,
+   "host_recv_utc": "2026-09-23T00:25:45.801Z",
+   "host_recv_mono_ns": 72367293238012,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72367114858824,
+    "acquire_ms": 178.37,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.204544067382812,
+    "max_c": 25.901206970214844,
+    "mean_c": 24.530418395996094,
+    "center_c": 24.2291316986084
+   }
+  },
+  {
+   "seq": 250,
+   "host_recv_utc": "2026-09-23T00:25:46.311Z",
+   "host_recv_mono_ns": 72367803122101,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72367614814865,
+    "acquire_ms": 188.3,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.594165802001953,
+    "max_c": 26.320667266845703,
+    "mean_c": 24.767135620117188,
+    "center_c": 24.82354164123535
+   }
+  },
+  {
+   "seq": 251,
+   "host_recv_utc": "2026-09-23T00:25:46.820Z",
+   "host_recv_mono_ns": 72368312743749,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72368114845083,
+    "acquire_ms": 197.89,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.576906204223633,
+    "max_c": 26.193452835083008,
+    "mean_c": 24.7725887298584,
+    "center_c": 24.429584503173828
+   }
+  },
+  {
+   "seq": 252,
+   "host_recv_utc": "2026-09-23T00:25:47.330Z",
+   "host_recv_mono_ns": 72368822735136,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72368614832260,
+    "acquire_ms": 207.89,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.330677032470703,
+    "max_c": 26.319786071777344,
+    "mean_c": 24.600011825561523,
+    "center_c": 24.353443145751953
+   }
+  },
+  {
+   "seq": 253,
+   "host_recv_utc": "2026-09-23T00:25:47.840Z",
+   "host_recv_mono_ns": 72369332561910,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72369115095285,
+    "acquire_ms": 217.46,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.86913299560547,
+    "max_c": 25.887969970703125,
+    "mean_c": 24.4021053314209,
+    "center_c": 24.21983528137207
+   }
+  },
+  {
+   "seq": 254,
+   "host_recv_utc": "2026-09-23T00:25:48.222Z",
+   "host_recv_mono_ns": 72369714767497,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72369614876760,
+    "acquire_ms": 99.88,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.69658660888672,
+    "max_c": 26.553565979003906,
+    "mean_c": 24.981721878051758,
+    "center_c": 24.812265396118164
+   }
+  },
+  {
+   "seq": 255,
+   "host_recv_utc": "2026-09-23T00:25:48.733Z",
+   "host_recv_mono_ns": 72370225969225,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72370114875776,
+    "acquire_ms": 111.08,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.277162551879883,
+    "max_c": 26.659194946289062,
+    "mean_c": 24.890594482421875,
+    "center_c": 24.46384048461914
+   }
+  },
+  {
+   "seq": 256,
+   "host_recv_utc": "2026-09-23T00:25:49.242Z",
+   "host_recv_mono_ns": 72370734866561,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72370614884809,
+    "acquire_ms": 119.97,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.425371170043945,
+    "max_c": 26.636430740356445,
+    "mean_c": 24.85610008239746,
+    "center_c": 24.599464416503906
+   }
+  },
+  {
+   "seq": 257,
+   "host_recv_utc": "2026-09-23T00:25:49.754Z",
+   "host_recv_mono_ns": 72371246021438,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72371114856080,
+    "acquire_ms": 131.16,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.926326751708984,
+    "max_c": 26.23233413696289,
+    "mean_c": 24.978866577148438,
+    "center_c": 24.785324096679688
+   }
+  },
+  {
+   "seq": 258,
+   "host_recv_utc": "2026-09-23T00:25:50.263Z",
+   "host_recv_mono_ns": 72371755110460,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72371614875512,
+    "acquire_ms": 140.22,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.70890235900879,
+    "max_c": 26.215612411499023,
+    "mean_c": 24.778305053710938,
+    "center_c": 24.60067367553711
+   }
+  },
+  {
+   "seq": 259,
+   "host_recv_utc": "2026-09-23T00:25:50.773Z",
+   "host_recv_mono_ns": 72372265259642,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72372114873535,
+    "acquire_ms": 150.38,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.363256454467773,
+    "max_c": 26.49125862121582,
+    "mean_c": 24.838180541992188,
+    "center_c": 24.708969116210938
+   }
+  },
+  {
+   "seq": 260,
+   "host_recv_utc": "2026-09-23T00:25:51.283Z",
+   "host_recv_mono_ns": 72372775279220,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72372614847430,
+    "acquire_ms": 160.42,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.726268768310547,
+    "max_c": 26.018898010253906,
+    "mean_c": 24.902990341186523,
+    "center_c": 24.742454528808594
+   }
+  },
+  {
+   "seq": 261,
+   "host_recv_utc": "2026-09-23T00:25:51.792Z",
+   "host_recv_mono_ns": 72373284860288,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72373114857069,
+    "acquire_ms": 169.99,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.470401763916016,
+    "max_c": 26.148265838623047,
+    "mean_c": 24.80098533630371,
+    "center_c": 24.435914993286133
+   }
+  },
+  {
+   "seq": 262,
+   "host_recv_utc": "2026-09-23T00:25:52.303Z",
+   "host_recv_mono_ns": 72373795041565,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72373614885460,
+    "acquire_ms": 180.15,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 21.452672958374023,
+    "max_c": 25.651315689086914,
+    "mean_c": 24.102394104003906,
+    "center_c": 24.382007598876953
+   }
+  },
+  {
+   "seq": 263,
+   "host_recv_utc": "2026-09-23T00:25:52.814Z",
+   "host_recv_mono_ns": 72374306249082,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72374114876698,
+    "acquire_ms": 191.36,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.509536743164062,
+    "max_c": 26.362079620361328,
+    "mean_c": 24.73321533203125,
+    "center_c": 24.426454544067383
+   }
+  },
+  {
+   "seq": 264,
+   "host_recv_utc": "2026-09-23T00:25:53.324Z",
+   "host_recv_mono_ns": 72374816371030,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72374614859359,
+    "acquire_ms": 201.5,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.546424865722656,
+    "max_c": 26.525339126586914,
+    "mean_c": 24.934799194335938,
+    "center_c": 24.487430572509766
+   }
+  },
+  {
+   "seq": 265,
+   "host_recv_utc": "2026-09-23T00:25:53.834Z",
+   "host_recv_mono_ns": 72375326683799,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72375114881733,
+    "acquire_ms": 211.79,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.572389602661133,
+    "max_c": 26.86154556274414,
+    "mean_c": 25.19887351989746,
+    "center_c": 24.937728881835938
+   }
+  },
+  {
+   "seq": 266,
+   "host_recv_utc": "2026-09-23T00:25:54.343Z",
+   "host_recv_mono_ns": 72375835817075,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72375614860458,
+    "acquire_ms": 220.95,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.268085479736328,
+    "max_c": 26.131622314453125,
+    "mean_c": 24.631851196289062,
+    "center_c": 24.405065536499023
+   }
+  },
+  {
+   "seq": 267,
+   "host_recv_utc": "2026-09-23T00:25:54.726Z",
+   "host_recv_mono_ns": 72376218217962,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72376114880015,
+    "acquire_ms": 103.32,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.474607467651367,
+    "max_c": 26.347970962524414,
+    "mean_c": 24.75146484375,
+    "center_c": 24.713150024414062
+   }
+  },
+  {
+   "seq": 268,
+   "host_recv_utc": "2026-09-23T00:25:55.235Z",
+   "host_recv_mono_ns": 72376727547436,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72376614882260,
+    "acquire_ms": 112.65,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.5418643951416,
+    "max_c": 26.320419311523438,
+    "mean_c": 24.82755470275879,
+    "center_c": 24.840991973876953
+   }
+  },
+  {
+   "seq": 269,
+   "host_recv_utc": "2026-09-23T00:25:55.746Z",
+   "host_recv_mono_ns": 72377238875787,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72377114881112,
+    "acquire_ms": 123.98,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.688085556030273,
+    "max_c": 26.434816360473633,
+    "mean_c": 25.022077560424805,
+    "center_c": 24.801403045654297
+   }
+  },
+  {
+   "seq": 270,
+   "host_recv_utc": "2026-09-23T00:25:56.256Z",
+   "host_recv_mono_ns": 72377748913154,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72377614883740,
+    "acquire_ms": 134.02,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.075054168701172,
+    "max_c": 26.59465789794922,
+    "mean_c": 24.46113395690918,
+    "center_c": 24.1202335357666
+   }
+  },
+  {
+   "seq": 271,
+   "host_recv_utc": "2026-09-23T00:25:56.766Z",
+   "host_recv_mono_ns": 72378258226018,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72378114882016,
+    "acquire_ms": 143.33,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.588153839111328,
+    "max_c": 26.270849227905273,
+    "mean_c": 24.755647659301758,
+    "center_c": 24.659807205200195
+   }
+  },
+  {
+   "seq": 272,
+   "host_recv_utc": "2026-09-23T00:25:57.275Z",
+   "host_recv_mono_ns": 72378767502530,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72378614881956,
+    "acquire_ms": 152.61,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.364437103271484,
+    "max_c": 25.90505599975586,
+    "mean_c": 24.541305541992188,
+    "center_c": 24.643762588500977
+   }
+  },
+  {
+   "seq": 273,
+   "host_recv_utc": "2026-09-23T00:25:57.785Z",
+   "host_recv_mono_ns": 72379277559032,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72379114880135,
+    "acquire_ms": 162.67,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.81583023071289,
+    "max_c": 26.45902442932129,
+    "mean_c": 25.098785400390625,
+    "center_c": 24.667285919189453
+   }
+  },
+  {
+   "seq": 274,
+   "host_recv_utc": "2026-09-23T00:25:58.295Z",
+   "host_recv_mono_ns": 72379787380008,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72379614879978,
+    "acquire_ms": 172.49,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.71730613708496,
+    "max_c": 25.889780044555664,
+    "mean_c": 24.777252197265625,
+    "center_c": 24.658584594726562
+   }
+  },
+  {
+   "seq": 275,
+   "host_recv_utc": "2026-09-23T00:25:58.806Z",
+   "host_recv_mono_ns": 72380298324697,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72380114859595,
+    "acquire_ms": 183.45,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.74478530883789,
+    "max_c": 26.630474090576172,
+    "mean_c": 25.142736434936523,
+    "center_c": 25.028663635253906
+   }
+  },
+  {
+   "seq": 276,
+   "host_recv_utc": "2026-09-23T00:25:59.315Z",
+   "host_recv_mono_ns": 72380807544757,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72380614872654,
+    "acquire_ms": 192.66,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.27115249633789,
+    "max_c": 25.96009063720703,
+    "mean_c": 24.60400390625,
+    "center_c": 24.303476333618164
+   }
+  },
+  {
+   "seq": 277,
+   "host_recv_utc": "2026-09-23T00:25:59.826Z",
+   "host_recv_mono_ns": 72381318427908,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72381114875792,
+    "acquire_ms": 203.54,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.95905876159668,
+    "max_c": 26.831035614013672,
+    "mean_c": 25.01017189025879,
+    "center_c": 24.867862701416016
+   }
+  },
+  {
+   "seq": 278,
+   "host_recv_utc": "2026-09-23T00:26:00.335Z",
+   "host_recv_mono_ns": 72381827306805,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72381614881746,
+    "acquire_ms": 212.41,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.588096618652344,
+    "max_c": 26.107698440551758,
+    "mean_c": 24.8177433013916,
+    "center_c": 24.64162254333496
+   }
+  },
+  {
+   "seq": 279,
+   "host_recv_utc": "2026-09-23T00:26:00.723Z",
+   "host_recv_mono_ns": 72382215960744,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72382115122203,
+    "acquire_ms": 100.83,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.723392486572266,
+    "max_c": 26.41758155822754,
+    "mean_c": 24.81441307067871,
+    "center_c": 24.63528823852539
+   }
+  },
+  {
+   "seq": 280,
+   "host_recv_utc": "2026-09-23T00:26:01.228Z",
+   "host_recv_mono_ns": 72382720907328,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72382614886997,
+    "acquire_ms": 106.01,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.052766799926758,
+    "max_c": 25.993268966674805,
+    "mean_c": 24.5878849029541,
+    "center_c": 24.513519287109375
+   }
+  },
+  {
+   "seq": 281,
+   "host_recv_utc": "2026-09-23T00:26:01.737Z",
+   "host_recv_mono_ns": 72383229727567,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72383114875317,
+    "acquire_ms": 114.84,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.74257469177246,
+    "max_c": 26.346834182739258,
+    "mean_c": 24.944292068481445,
+    "center_c": 24.809667587280273
+   }
+  },
+  {
+   "seq": 282,
+   "host_recv_utc": "2026-09-23T00:26:02.247Z",
+   "host_recv_mono_ns": 72383739429048,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72383614873813,
+    "acquire_ms": 124.55,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.925228118896484,
+    "max_c": 26.765907287597656,
+    "mean_c": 25.0828800201416,
+    "center_c": 25.023048400878906
+   }
+  },
+  {
+   "seq": 283,
+   "host_recv_utc": "2026-09-23T00:26:02.758Z",
+   "host_recv_mono_ns": 72384250886422,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72384114869813,
+    "acquire_ms": 136.01,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.31459617614746,
+    "max_c": 26.03560447692871,
+    "mean_c": 24.61033058166504,
+    "center_c": 24.617265701293945
+   }
+  },
+  {
+   "seq": 284,
+   "host_recv_utc": "2026-09-23T00:26:03.267Z",
+   "host_recv_mono_ns": 72384759662115,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72384614845397,
+    "acquire_ms": 144.81,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.36984634399414,
+    "max_c": 26.16524887084961,
+    "mean_c": 24.695348739624023,
+    "center_c": 24.387622833251953
+   }
+  },
+  {
+   "seq": 285,
+   "host_recv_utc": "2026-09-23T00:26:03.778Z",
+   "host_recv_mono_ns": 72385270850904,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72385114861653,
+    "acquire_ms": 155.98,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.43770980834961,
+    "max_c": 26.46565055847168,
+    "mean_c": 24.91701316833496,
+    "center_c": 24.613344192504883
+   }
+  },
+  {
+   "seq": 286,
+   "host_recv_utc": "2026-09-23T00:26:04.287Z",
+   "host_recv_mono_ns": 72385779766888,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72385614829523,
+    "acquire_ms": 164.93,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.668493270874023,
+    "max_c": 26.876338958740234,
+    "mean_c": 25.011510848999023,
+    "center_c": 24.79421043395996
+   }
+  },
+  {
+   "seq": 287,
+   "host_recv_utc": "2026-09-23T00:26:04.797Z",
+   "host_recv_mono_ns": 72386289951327,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72386114843250,
+    "acquire_ms": 175.1,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.1342716217041,
+    "max_c": 26.36587905883789,
+    "mean_c": 24.702707290649414,
+    "center_c": 24.557058334350586
+   }
+  },
+  {
+   "seq": 288,
+   "host_recv_utc": "2026-09-23T00:26:05.307Z",
+   "host_recv_mono_ns": 72386799044212,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72386614822480,
+    "acquire_ms": 184.21,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.77972412109375,
+    "max_c": 26.264619827270508,
+    "mean_c": 24.940855026245117,
+    "center_c": 24.770435333251953
+   }
+  },
+  {
+   "seq": 289,
+   "host_recv_utc": "2026-09-23T00:26:05.817Z",
+   "host_recv_mono_ns": 72387309661975,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72387114861040,
+    "acquire_ms": 194.79,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.79278564453125,
+    "max_c": 26.904502868652344,
+    "mean_c": 25.119401931762695,
+    "center_c": 24.956079483032227
+   }
+  },
+  {
+   "seq": 290,
+   "host_recv_utc": "2026-09-23T00:26:06.327Z",
+   "host_recv_mono_ns": 72387819195096,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72387614888751,
+    "acquire_ms": 204.3,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.76002311706543,
+    "max_c": 26.355310440063477,
+    "mean_c": 24.913986206054688,
+    "center_c": 24.828121185302734
+   }
+  },
+  {
+   "seq": 291,
+   "host_recv_utc": "2026-09-23T00:26:06.838Z",
+   "host_recv_mono_ns": 72388330362252,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72388114865036,
+    "acquire_ms": 215.49,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.1860294342041,
+    "max_c": 26.123899459838867,
+    "mean_c": 24.514862060546875,
+    "center_c": 24.569292068481445
+   }
+  },
+  {
+   "seq": 292,
+   "host_recv_utc": "2026-09-23T00:26:07.219Z",
+   "host_recv_mono_ns": 72388711922722,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72388614877866,
+    "acquire_ms": 97.04,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.428695678710938,
+    "max_c": 25.81747817993164,
+    "mean_c": 24.634790420532227,
+    "center_c": 24.731891632080078
+   }
+  },
+  {
+   "seq": 293,
+   "host_recv_utc": "2026-09-23T00:26:07.730Z",
+   "host_recv_mono_ns": 72389222952561,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72389114861511,
+    "acquire_ms": 108.08,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.56499481201172,
+    "max_c": 25.968524932861328,
+    "mean_c": 24.757944107055664,
+    "center_c": 24.656044006347656
+   }
+  },
+  {
+   "seq": 294,
+   "host_recv_utc": "2026-09-23T00:26:08.241Z",
+   "host_recv_mono_ns": 72389733047523,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72389614852771,
+    "acquire_ms": 118.18,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.665225982666016,
+    "max_c": 25.95390510559082,
+    "mean_c": 24.814668655395508,
+    "center_c": 24.641511917114258
+   }
+  },
+  {
+   "seq": 295,
+   "host_recv_utc": "2026-09-23T00:26:08.752Z",
+   "host_recv_mono_ns": 72390244161683,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72390114831135,
+    "acquire_ms": 129.32,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.624189376831055,
+    "max_c": 26.190582275390625,
+    "mean_c": 24.97432518005371,
+    "center_c": 24.845260620117188
+   }
+  },
+  {
+   "seq": 296,
+   "host_recv_utc": "2026-09-23T00:26:09.262Z",
+   "host_recv_mono_ns": 72390754065406,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72390614848924,
+    "acquire_ms": 139.21,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.613727569580078,
+    "max_c": 26.07630157470703,
+    "mean_c": 24.8114070892334,
+    "center_c": 24.693199157714844
+   }
+  },
+  {
+   "seq": 297,
+   "host_recv_utc": "2026-09-23T00:26:09.772Z",
+   "host_recv_mono_ns": 72391264262802,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72391114843928,
+    "acquire_ms": 149.41,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.74786376953125,
+    "max_c": 26.006704330444336,
+    "mean_c": 24.593027114868164,
+    "center_c": 24.288551330566406
+   }
+  },
+  {
+   "seq": 298,
+   "host_recv_utc": "2026-09-23T00:26:10.281Z",
+   "host_recv_mono_ns": 72391774002232,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72391614817875,
+    "acquire_ms": 159.18,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.879106521606445,
+    "max_c": 26.012720108032227,
+    "mean_c": 24.8359375,
+    "center_c": 24.683401107788086
+   }
+  },
+  {
+   "seq": 299,
+   "host_recv_utc": "2026-09-23T00:26:10.792Z",
+   "host_recv_mono_ns": 72392284255437,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72392114879441,
+    "acquire_ms": 169.36,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.852807998657227,
+    "max_c": 26.138242721557617,
+    "mean_c": 25.006479263305664,
+    "center_c": 24.91254425048828
+   }
+  },
+  {
+   "seq": 300,
+   "host_recv_utc": "2026-09-23T00:26:11.301Z",
+   "host_recv_mono_ns": 72392793818348,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72392614841003,
+    "acquire_ms": 178.97,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.596574783325195,
+    "max_c": 26.464506149291992,
+    "mean_c": 24.893651962280273,
+    "center_c": 24.611797332763672
+   }
+  },
+  {
+   "seq": 301,
+   "host_recv_utc": "2026-09-23T00:26:11.810Z",
+   "host_recv_mono_ns": 72393302698903,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72393115184400,
+    "acquire_ms": 187.5,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.50466537475586,
+    "max_c": 25.85346031188965,
+    "mean_c": 24.71946907043457,
+    "center_c": 24.677515029907227
+   }
+  },
+  {
+   "seq": 302,
+   "host_recv_utc": "2026-09-23T00:26:12.319Z",
+   "host_recv_mono_ns": 72393811316793,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72393614875201,
+    "acquire_ms": 196.43,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.852195739746094,
+    "max_c": 26.01801109313965,
+    "mean_c": 24.847997665405273,
+    "center_c": 24.58067512512207
+   }
+  },
+  {
+   "seq": 303,
+   "host_recv_utc": "2026-09-23T00:26:12.830Z",
+   "host_recv_mono_ns": 72394322517417,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72394114829594,
+    "acquire_ms": 207.68,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.60331916809082,
+    "max_c": 26.371652603149414,
+    "mean_c": 24.78715705871582,
+    "center_c": 24.45740509033203
+   }
+  },
+  {
+   "seq": 304,
+   "host_recv_utc": "2026-09-23T00:26:13.342Z",
+   "host_recv_mono_ns": 72394834275723,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72394614811796,
+    "acquire_ms": 219.45,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.56186294555664,
+    "max_c": 26.02919578552246,
+    "mean_c": 24.769479751586914,
+    "center_c": 24.883195877075195
+   }
+  },
+  {
+   "seq": 305,
+   "host_recv_utc": "2026-09-23T00:26:13.721Z",
+   "host_recv_mono_ns": 72395213680925,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72395114863279,
+    "acquire_ms": 98.81,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.529701232910156,
+    "max_c": 26.085674285888672,
+    "mean_c": 24.780656814575195,
+    "center_c": 24.404321670532227
+   }
+  },
+  {
+   "seq": 306,
+   "host_recv_utc": "2026-09-23T00:26:14.231Z",
+   "host_recv_mono_ns": 72395723991025,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72395614860424,
+    "acquire_ms": 109.12,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.440065383911133,
+    "max_c": 26.214326858520508,
+    "mean_c": 24.819971084594727,
+    "center_c": 24.734107971191406
+   }
+  },
+  {
+   "seq": 307,
+   "host_recv_utc": "2026-09-23T00:26:14.742Z",
+   "host_recv_mono_ns": 72396234800245,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72396114867138,
+    "acquire_ms": 119.92,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.436019897460938,
+    "max_c": 26.049699783325195,
+    "mean_c": 24.528600692749023,
+    "center_c": 24.415597915649414
+   }
+  },
+  {
+   "seq": 308,
+   "host_recv_utc": "2026-09-23T00:26:15.252Z",
+   "host_recv_mono_ns": 72396744765183,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72396615114498,
+    "acquire_ms": 129.64,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.724882125854492,
+    "max_c": 26.21813201904297,
+    "mean_c": 24.935422897338867,
+    "center_c": 24.856061935424805
+   }
+  },
+  {
+   "seq": 309,
+   "host_recv_utc": "2026-09-23T00:26:15.762Z",
+   "host_recv_mono_ns": 72397254327612,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72397115138012,
+    "acquire_ms": 139.18,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.558218002319336,
+    "max_c": 26.1060733795166,
+    "mean_c": 24.87012481689453,
+    "center_c": 24.659400939941406
+   }
+  },
+  {
+   "seq": 310,
+   "host_recv_utc": "2026-09-23T00:26:16.272Z",
+   "host_recv_mono_ns": 72397764233571,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72397614870668,
+    "acquire_ms": 149.35,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.1477108001709,
+    "max_c": 25.73345184326172,
+    "mean_c": 24.70106315612793,
+    "center_c": 24.53404426574707
+   }
+  },
+  {
+   "seq": 311,
+   "host_recv_utc": "2026-09-23T00:26:16.782Z",
+   "host_recv_mono_ns": 72398274381745,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72398114873476,
+    "acquire_ms": 159.5,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.799406051635742,
+    "max_c": 26.257776260375977,
+    "mean_c": 24.792638778686523,
+    "center_c": 24.663475036621094
+   }
+  },
+  {
+   "seq": 312,
+   "host_recv_utc": "2026-09-23T00:26:17.291Z",
+   "host_recv_mono_ns": 72398783218167,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72398614853019,
+    "acquire_ms": 168.36,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.393430709838867,
+    "max_c": 26.086864471435547,
+    "mean_c": 24.65546417236328,
+    "center_c": 24.538379669189453
+   }
+  },
+  {
+   "seq": 313,
+   "host_recv_utc": "2026-09-23T00:26:17.802Z",
+   "host_recv_mono_ns": 72399294191678,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72399114842386,
+    "acquire_ms": 179.34,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.822723388671875,
+    "max_c": 26.405384063720703,
+    "mean_c": 24.83152198791504,
+    "center_c": 24.334617614746094
+   }
+  },
+  {
+   "seq": 314,
+   "host_recv_utc": "2026-09-23T00:26:18.312Z",
+   "host_recv_mono_ns": 72399804099012,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72399614838537,
+    "acquire_ms": 189.25,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.442319869995117,
+    "max_c": 26.21430015563965,
+    "mean_c": 24.696245193481445,
+    "center_c": 24.540250778198242
+   }
+  },
+  {
+   "seq": 315,
+   "host_recv_utc": "2026-09-23T00:26:18.823Z",
+   "host_recv_mono_ns": 72400315938756,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72400115080807,
+    "acquire_ms": 200.85,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.49681282043457,
+    "max_c": 25.75320053100586,
+    "mean_c": 24.550735473632812,
+    "center_c": 24.40435791015625
+   }
+  },
+  {
+   "seq": 316,
+   "host_recv_utc": "2026-09-23T00:26:19.333Z",
+   "host_recv_mono_ns": 72400825343674,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72400614860951,
+    "acquire_ms": 210.47,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.874570846557617,
+    "max_c": 26.44521141052246,
+    "mean_c": 25.041147232055664,
+    "center_c": 24.940391540527344
+   }
+  },
+  {
+   "seq": 317,
+   "host_recv_utc": "2026-09-23T00:26:19.843Z",
+   "host_recv_mono_ns": 72401335362051,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72401114821196,
+    "acquire_ms": 220.53,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.6717586517334,
+    "max_c": 26.058313369750977,
+    "mean_c": 24.9785099029541,
+    "center_c": 24.579280853271484
+   }
+  },
+  {
+   "seq": 318,
+   "host_recv_utc": "2026-09-23T00:26:20.225Z",
+   "host_recv_mono_ns": 72401717973172,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72401614822531,
+    "acquire_ms": 103.14,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.386409759521484,
+    "max_c": 26.354108810424805,
+    "mean_c": 24.9547176361084,
+    "center_c": 24.894119262695312
+   }
+  },
+  {
+   "seq": 319,
+   "host_recv_utc": "2026-09-23T00:26:20.735Z",
+   "host_recv_mono_ns": 72402227812535,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72402114823064,
+    "acquire_ms": 112.98,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.333040237426758,
+    "max_c": 25.846155166625977,
+    "mean_c": 24.543996810913086,
+    "center_c": 24.345335006713867
+   }
+  },
+  {
+   "seq": 320,
+   "host_recv_utc": "2026-09-23T00:26:21.245Z",
+   "host_recv_mono_ns": 72402737769916,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72402614816622,
+    "acquire_ms": 122.94,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.92954444885254,
+    "max_c": 26.66904067993164,
+    "mean_c": 25.110403060913086,
+    "center_c": 24.854557037353516
+   }
+  },
+  {
+   "seq": 321,
+   "host_recv_utc": "2026-09-23T00:26:21.755Z",
+   "host_recv_mono_ns": 72403247578397,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72403114823651,
+    "acquire_ms": 132.74,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.327871322631836,
+    "max_c": 26.371877670288086,
+    "mean_c": 24.86570930480957,
+    "center_c": 24.472938537597656
+   }
+  },
+  {
+   "seq": 322,
+   "host_recv_utc": "2026-09-23T00:26:22.265Z",
+   "host_recv_mono_ns": 72403757862828,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72403614817400,
+    "acquire_ms": 143.04,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.82842445373535,
+    "max_c": 26.452316284179688,
+    "mean_c": 24.808034896850586,
+    "center_c": 24.894107818603516
+   }
+  },
+  {
+   "seq": 323,
+   "host_recv_utc": "2026-09-23T00:26:22.774Z",
+   "host_recv_mono_ns": 72404266448039,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72404114807084,
+    "acquire_ms": 151.63,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.589061737060547,
+    "max_c": 25.68724250793457,
+    "mean_c": 24.691694259643555,
+    "center_c": 24.52045440673828
+   }
+  },
+  {
+   "seq": 324,
+   "host_recv_utc": "2026-09-23T00:26:23.283Z",
+   "host_recv_mono_ns": 72404775279882,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72404614880675,
+    "acquire_ms": 160.39,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.586889266967773,
+    "max_c": 26.07957649230957,
+    "mean_c": 24.79570198059082,
+    "center_c": 24.821386337280273
+   }
+  },
+  {
+   "seq": 325,
+   "host_recv_utc": "2026-09-23T00:26:23.793Z",
+   "host_recv_mono_ns": 72405285441108,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72405114840949,
+    "acquire_ms": 170.59,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.55788230895996,
+    "max_c": 26.039472579956055,
+    "mean_c": 24.640541076660156,
+    "center_c": 24.23089027404785
+   }
+  },
+  {
+   "seq": 326,
+   "host_recv_utc": "2026-09-23T00:26:24.303Z",
+   "host_recv_mono_ns": 72405795246228,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72405614872394,
+    "acquire_ms": 180.37,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.793846130371094,
+    "max_c": 26.287681579589844,
+    "mean_c": 24.861557006835938,
+    "center_c": 24.597911834716797
+   }
+  },
+  {
+   "seq": 327,
+   "host_recv_utc": "2026-09-23T00:26:24.813Z",
+   "host_recv_mono_ns": 72406305523649,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72406114861437,
+    "acquire_ms": 190.65,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.939611434936523,
+    "max_c": 26.416898727416992,
+    "mean_c": 25.00751304626465,
+    "center_c": 24.895414352416992
+   }
+  },
+  {
+   "seq": 328,
+   "host_recv_utc": "2026-09-23T00:26:25.322Z",
+   "host_recv_mono_ns": 72406814897651,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72406614874097,
+    "acquire_ms": 200.02,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.62293243408203,
+    "max_c": 26.1951904296875,
+    "mean_c": 24.77034568786621,
+    "center_c": 24.498228073120117
+   }
+  },
+  {
+   "seq": 329,
+   "host_recv_utc": "2026-09-23T00:26:25.833Z",
+   "host_recv_mono_ns": 72407325590476,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72407115127019,
+    "acquire_ms": 210.45,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 22.660097122192383,
+    "max_c": 26.499494552612305,
+    "mean_c": 24.625900268554688,
+    "center_c": 24.496540069580078
+   }
+  },
+  {
+   "seq": 330,
+   "host_recv_utc": "2026-09-23T00:26:26.342Z",
+   "host_recv_mono_ns": 72407834954525,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72407614874614,
+    "acquire_ms": 220.07,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.608652114868164,
+    "max_c": 26.00531578063965,
+    "mean_c": 24.68619728088379,
+    "center_c": 24.28049659729004
+   }
+  },
+  {
+   "seq": 331,
+   "host_recv_utc": "2026-09-23T00:26:26.726Z",
+   "host_recv_mono_ns": 72408218922037,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72408114849384,
+    "acquire_ms": 104.06,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.439008712768555,
+    "max_c": 25.786352157592773,
+    "mean_c": 24.67592430114746,
+    "center_c": 24.4562931060791
+   }
+  },
+  {
+   "seq": 332,
+   "host_recv_utc": "2026-09-23T00:26:27.235Z",
+   "host_recv_mono_ns": 72408727364905,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72408614832122,
+    "acquire_ms": 112.52,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.6885986328125,
+    "max_c": 25.890888214111328,
+    "mean_c": 24.72479820251465,
+    "center_c": 24.74065399169922
+   }
+  },
+  {
+   "seq": 333,
+   "host_recv_utc": "2026-09-23T00:26:27.745Z",
+   "host_recv_mono_ns": 72409237409454,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72409114852012,
+    "acquire_ms": 122.55,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.385744094848633,
+    "max_c": 26.011722564697266,
+    "mean_c": 24.72908592224121,
+    "center_c": 24.71262550354004
+   }
+  },
+  {
+   "seq": 334,
+   "host_recv_utc": "2026-09-23T00:26:28.255Z",
+   "host_recv_mono_ns": 72409747995235,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72409614816604,
+    "acquire_ms": 133.17,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.620418548583984,
+    "max_c": 25.99300193786621,
+    "mean_c": 24.800546646118164,
+    "center_c": 24.55762481689453
+   }
+  },
+  {
+   "seq": 335,
+   "host_recv_utc": "2026-09-23T00:26:28.766Z",
+   "host_recv_mono_ns": 72410258293711,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72410114850191,
+    "acquire_ms": 143.43,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.069374084472656,
+    "max_c": 26.167095184326172,
+    "mean_c": 24.578933715820312,
+    "center_c": 24.59726905822754
+   }
+  },
+  {
+   "seq": 336,
+   "host_recv_utc": "2026-09-23T00:26:29.275Z",
+   "host_recv_mono_ns": 72410767150222,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72410614860960,
+    "acquire_ms": 152.28,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.81316375732422,
+    "max_c": 26.08828353881836,
+    "mean_c": 24.87006187438965,
+    "center_c": 24.72240447998047
+   }
+  },
+  {
+   "seq": 337,
+   "host_recv_utc": "2026-09-23T00:26:29.785Z",
+   "host_recv_mono_ns": 72411277897991,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72411114867665,
+    "acquire_ms": 163.02,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.647903442382812,
+    "max_c": 25.829151153564453,
+    "mean_c": 24.604360580444336,
+    "center_c": 24.42890739440918
+   }
+  },
+  {
+   "seq": 338,
+   "host_recv_utc": "2026-09-23T00:26:30.295Z",
+   "host_recv_mono_ns": 72411787045583,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72411614866721,
+    "acquire_ms": 172.17,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.636810302734375,
+    "max_c": 26.091991424560547,
+    "mean_c": 24.824371337890625,
+    "center_c": 24.449235916137695
+   }
+  },
+  {
+   "seq": 339,
+   "host_recv_utc": "2026-09-23T00:26:30.805Z",
+   "host_recv_mono_ns": 72412297919563,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72412114869905,
+    "acquire_ms": 183.04,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.47043800354004,
+    "max_c": 25.69178581237793,
+    "mean_c": 24.525327682495117,
+    "center_c": 24.422121047973633
+   }
+  },
+  {
+   "seq": 340,
+   "host_recv_utc": "2026-09-23T00:26:31.314Z",
+   "host_recv_mono_ns": 72412806941999,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72412614870625,
+    "acquire_ms": 192.06,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.713865280151367,
+    "max_c": 26.159387588500977,
+    "mean_c": 24.860580444335938,
+    "center_c": 24.558856964111328
+   }
+  },
+  {
+   "seq": 341,
+   "host_recv_utc": "2026-09-23T00:26:31.825Z",
+   "host_recv_mono_ns": 72413317416542,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72413114834256,
+    "acquire_ms": 202.57,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.412221908569336,
+    "max_c": 25.97593879699707,
+    "mean_c": 24.64272117614746,
+    "center_c": 24.47061538696289
+   }
+  },
+  {
+   "seq": 342,
+   "host_recv_utc": "2026-09-23T00:26:32.334Z",
+   "host_recv_mono_ns": 72413826671048,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72413614808222,
+    "acquire_ms": 211.85,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.9271183013916,
+    "max_c": 26.23191261291504,
+    "mean_c": 24.967147827148438,
+    "center_c": 25.119598388671875
+   }
+  },
+  {
+   "seq": 343,
+   "host_recv_utc": "2026-09-23T00:26:32.718Z",
+   "host_recv_mono_ns": 72414210595196,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72414114830158,
+    "acquire_ms": 95.76,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.685470581054688,
+    "max_c": 26.589963912963867,
+    "mean_c": 25.031633377075195,
+    "center_c": 24.676830291748047
+   }
+  },
+  {
+   "seq": 344,
+   "host_recv_utc": "2026-09-23T00:26:33.227Z",
+   "host_recv_mono_ns": 72414719328886,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72414614854493,
+    "acquire_ms": 104.47,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.737953186035156,
+    "max_c": 26.29590606689453,
+    "mean_c": 24.915563583374023,
+    "center_c": 24.605920791625977
+   }
+  },
+  {
+   "seq": 345,
+   "host_recv_utc": "2026-09-23T00:26:33.738Z",
+   "host_recv_mono_ns": 72415230366389,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72415114863948,
+    "acquire_ms": 115.49,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.38160514831543,
+    "max_c": 26.2178955078125,
+    "mean_c": 24.623672485351562,
+    "center_c": 24.59762191772461
+   }
+  },
+  {
+   "seq": 346,
+   "host_recv_utc": "2026-09-23T00:26:34.246Z",
+   "host_recv_mono_ns": 72415738965290,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72415614876059,
+    "acquire_ms": 124.08,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.453086853027344,
+    "max_c": 26.38951301574707,
+    "mean_c": 24.933053970336914,
+    "center_c": 24.608455657958984
+   }
+  },
+  {
+   "seq": 347,
+   "host_recv_utc": "2026-09-23T00:26:34.758Z",
+   "host_recv_mono_ns": 72416250419446,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72416114870984,
+    "acquire_ms": 135.54,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.817522048950195,
+    "max_c": 26.221921920776367,
+    "mean_c": 24.743370056152344,
+    "center_c": 24.638763427734375
+   }
+  },
+  {
+   "seq": 348,
+   "host_recv_utc": "2026-09-23T00:26:35.267Z",
+   "host_recv_mono_ns": 72416759760449,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72416614872662,
+    "acquire_ms": 144.88,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.39147186279297,
+    "max_c": 26.06757926940918,
+    "mean_c": 24.722326278686523,
+    "center_c": 24.805374145507812
+   }
+  },
+  {
+   "seq": 349,
+   "host_recv_utc": "2026-09-23T00:26:35.778Z",
+   "host_recv_mono_ns": 72417270389619,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72417114869219,
+    "acquire_ms": 155.51,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.689699172973633,
+    "max_c": 26.211177825927734,
+    "mean_c": 24.88816261291504,
+    "center_c": 24.80032730102539
+   }
+  },
+  {
+   "seq": 350,
+   "host_recv_utc": "2026-09-23T00:26:36.287Z",
+   "host_recv_mono_ns": 72417779217454,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72417614843503,
+    "acquire_ms": 164.37,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.2608585357666,
+    "max_c": 26.05788230895996,
+    "mean_c": 24.825637817382812,
+    "center_c": 24.523107528686523
+   }
+  },
+  {
+   "seq": 351,
+   "host_recv_utc": "2026-09-23T00:26:36.798Z",
+   "host_recv_mono_ns": 72418290042021,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72418114846300,
+    "acquire_ms": 175.18,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.460800170898438,
+    "max_c": 25.845348358154297,
+    "mean_c": 24.626373291015625,
+    "center_c": 24.440231323242188
+   }
+  },
+  {
+   "seq": 352,
+   "host_recv_utc": "2026-09-23T00:26:37.307Z",
+   "host_recv_mono_ns": 72418799063685,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72418614806984,
+    "acquire_ms": 184.25,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.934831619262695,
+    "max_c": 26.096118927001953,
+    "mean_c": 24.922636032104492,
+    "center_c": 24.79645538330078
+   }
+  },
+  {
+   "seq": 353,
+   "host_recv_utc": "2026-09-23T00:26:37.816Z",
+   "host_recv_mono_ns": 72419308828732,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72419114849909,
+    "acquire_ms": 193.97,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.75967788696289,
+    "max_c": 26.188034057617188,
+    "mean_c": 24.91022300720215,
+    "center_c": 24.64032554626465
+   }
+  },
+  {
+   "seq": 354,
+   "host_recv_utc": "2026-09-23T00:26:38.326Z",
+   "host_recv_mono_ns": 72419818831833,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72419614843073,
+    "acquire_ms": 203.98,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.05352783203125,
+    "max_c": 26.075403213500977,
+    "mean_c": 24.516984939575195,
+    "center_c": 24.529417037963867
+   }
+  },
+  {
+   "seq": 355,
+   "host_recv_utc": "2026-09-23T00:26:38.837Z",
+   "host_recv_mono_ns": 72420329754386,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72420114851149,
+    "acquire_ms": 214.89,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.825185775756836,
+    "max_c": 26.326303482055664,
+    "mean_c": 25.13153648376465,
+    "center_c": 25.033584594726562
+   }
+  },
+  {
+   "seq": 356,
+   "host_recv_utc": "2026-09-23T00:26:39.219Z",
+   "host_recv_mono_ns": 72420711404414,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72420614860472,
+    "acquire_ms": 96.54,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 24.15259552001953,
+    "max_c": 26.408700942993164,
+    "mean_c": 25.172842025756836,
+    "center_c": 24.904674530029297
+   }
+  },
+  {
+   "seq": 357,
+   "host_recv_utc": "2026-09-23T00:26:39.730Z",
+   "host_recv_mono_ns": 72421222841446,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72421114854947,
+    "acquire_ms": 107.98,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.494140625,
+    "max_c": 25.87369155883789,
+    "mean_c": 24.683013916015625,
+    "center_c": 24.63845443725586
+   }
+  },
+  {
+   "seq": 358,
+   "host_recv_utc": "2026-09-23T00:26:40.239Z",
+   "host_recv_mono_ns": 72421731187216,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72421614867055,
+    "acquire_ms": 116.31,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.375028610229492,
+    "max_c": 25.811460494995117,
+    "mean_c": 24.700759887695312,
+    "center_c": 24.482379913330078
+   }
+  },
+  {
+   "seq": 359,
+   "host_recv_utc": "2026-09-23T00:26:40.750Z",
+   "host_recv_mono_ns": 72422242674266,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72422114849689,
+    "acquire_ms": 127.81,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.983598709106445,
+    "max_c": 27.029638290405273,
+    "mean_c": 25.207717895507812,
+    "center_c": 24.804222106933594
+   }
+  },
+  {
+   "seq": 360,
+   "host_recv_utc": "2026-09-23T00:26:41.259Z",
+   "host_recv_mono_ns": 72422751418191,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 72422614819234,
+    "acquire_ms": 136.59,
+    "lock_wait_ms": 0.01,
+    "attempts": 1
+   },
+   "value": {
+    "min_c": 23.189287185668945,
+    "max_c": 25.964981079101562,
+    "mean_c": 24.66413116455078,
+    "center_c": 24.393531799316406
+   }
+  }
+ ],
+ "applied_config": {
+  "rate_hz": 2.0,
+  "requested_rate_hz": 2.0,
+  "refresh_hz": 8.0,
+  "read_retries": 2,
+  "emissivity": 0.95,
+  "reflected_temp": "Ta-8 (드라이버 고정)",
+  "serial": "1708-6762-0190",
+  "i2c_bus": 7,
+  "mux_addr": null,
+  "mux_channel": null,
+  "i2c_addr": "0x33",
+  "fov_deg": null,
+  "module": null
+ },
+ "summary": {
+  "requested": 360,
+  "read": 360,
+  "valid": 360,
+  "success_rate": 1.0,
+  "elapsed_sec": 179.64,
+  "valid_hz": 2.004,
+  "acquire_ms": {
+   "min": 95.76,
+   "mean": 157.58,
+   "max": 220.95
+  },
+  "max_gap_ms": 512.6,
+  "retries": 0
+ },
+ "frames_npy": "thermal_bus7_3min.npy"
+}
