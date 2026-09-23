@@ -160,6 +160,16 @@ uvicorn 접속 로그(같은 포맷). 프레임마다 로그를 찍지 않는다
 `http://<Jetson IP>:8000/viewer` — 지금 들어오는 프레임을 눈으로 확인하는 **점검용** 페이지.
 기존 `status`와 저속 미리보기(`capture/preview`)만 1초마다 읽으므로 새 데이터 경로가 아니고 원본 저장과도 무관하다.
 센서 연결 상태·사유, 스트림별 수신/기록 fps·드롭·무효 수, color/depth/IR 축소 영상을 보여 준다.
+**열화상(`temp_array`)은 그림이 아니라 숫자 배열로 받아 화면에서 히트맵을 그린다**(D-011) — 화소를 짚으면 그 지점 온도가 나오고,
+색 범위는 프레임의 min~max에 맞춰 자동으로 늘어난다(차이가 1 ℃ 미만이면 1 ℃로 벌려 잡음이 과장되지 않게 한다).
+
+| 엔드포인트 | 반환 |
+|---|---|
+| `GET /api/v1/capture/preview/{sensor_id}/{stream_id}` | 축소 JPEG(영상 스트림) |
+| `GET /api/v1/capture/preview_array/{sensor_id}/{stream_id}` | `{rows, cols, unit, min, max, mean, deci[], session_id, host_utc, seq}` — `deci`는 **0.1 ℃ 단위 정수**(전송량 절감, 화면에서 10으로 나눔) |
+
+둘 다 `preview.enabled=true`로 시작한 **실행 중 세션**이 있을 때만 나오고(없으면 404), 세션이 끝나면 캐시도 비워진다.
+배열 미리보기는 cv2가 없어도 동작한다(JPEG 경로와 달리 인코딩을 하지 않는다).
 "점검 세션 시작" 버튼은 연결된 실물 센서 전부로 `preview.enabled=true` 세션을 연다(Pi 없이 벤치에서 볼 때만 사용 —
 **원본이 실제로 저장되므로** 확인 후 "세션 중지"를 누르고 `check-*` 세션은 필요 없으면 지운다).
 

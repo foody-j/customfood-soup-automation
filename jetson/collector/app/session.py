@@ -37,6 +37,9 @@ except Exception:  # pragma: no cover - recording still works without preview su
     cv2 = None
 
 _PREVIEW_STREAMS = frozenset({"rgb", "color", "depth", "ir", "left_ir", "right_ir"})
+#: 그림 대신 **숫자 배열 그대로** 내보내는 스트림(D-011: 열화상은 배열로 보내고 화면에서 히트맵을 그린다).
+_PREVIEW_ARRAY_STREAMS = frozenset({"temp_array"})
+_PREVIEW_ARRAY_MAX_CELLS = 4096  # 32×24=768. 더 큰 배열은 미리보기에서 제외한다.
 _PREVIEW_MAX_STREAMS = 8
 _PREVIEW_MAX_BYTES = 256 * 1024
 _PREVIEW_MAX_SIDE = 640
@@ -157,7 +160,12 @@ class CaptureSession:
             (s.sensor_id, spec.stream_id)
             for s in sensors for spec in s.streams if spec.stream_id in _PREVIEW_STREAMS
         }
+        self._preview_array_allowed = {
+            (s.sensor_id, spec.stream_id)
+            for s in sensors for spec in s.streams if spec.stream_id in _PREVIEW_ARRAY_STREAMS
+        }
         self._preview_frames: dict[tuple[str, str], tuple[bytes, str, int]] = {}
+        self._preview_arrays: dict[tuple[str, str], tuple[dict[str, Any], str, int]] = {}
         self._preview_last_attempt: dict[tuple[str, str], float] = {}
 
     # ── 시작 ────────────────────────────────────────────────────────────────
@@ -364,6 +372,7 @@ class CaptureSession:
             self.stop_reason = reason
             self.phases["stop_requested"] = utcnow_iso()
             self._preview_frames.clear()
+            self._preview_arrays.clear()
             self.store.append_event("info", "session.stop_requested", f"중지 요청: {reason or '사유 없음'}")
             log.info("세션 %s 중지 요청: %s", self.session_id, reason or "사유 없음")
         self._stop_event.set()
@@ -453,11 +462,14 @@ class CaptureSession:
 
     # ── 저속 미리보기 ───────────────────────────────────────────────────────
     def _update_preview(self, sensor_id: str, sample: Any) -> None:
-        """기존 수집 루프의 샘플로만 최신 JPEG를 만든다. 기록용 원본은 수정하지 않는다."""
-        if not self._preview_enabled or cv2 is None or not sample.valid or self._stop_event.is_set():
+        """기존 수집 루프의 샘플로만 최신 JPEG(또는 배열)를 만든다. 기록용 원본은 수정하지 않는다."""
+        if not self._preview_enabled or not sample.valid or self._stop_event.is_set():
             return
         key = (sensor_id, sample.stream_id)
-        if key not in self._preview_allowed:
+        if key in self._preview_array_allowed:
+            self._update_preview_array(key, sample)
+            return
+        if cv2 is None or key not in self._preview_allowed:
             return
         now = time.monotonic()
         with self._lock:
@@ -478,12 +490,58 @@ class CaptureSession:
                                                   len(self._preview_frames) < _PREVIEW_MAX_STREAMS):
                 self._preview_frames[key] = (payload, sample.host.utc, sample.seq)
 
+    def _update_preview_array(self, key: tuple[str, str], sample: Any) -> None:
+        """열화상 같은 배열 스트림은 그림으로 굽지 않고 **0.1 ℃ 단위 정수**로 내보낸다.
+
+        화면(히트맵)이 원본 값을 그대로 쓰게 해서, 미리보기에서도 화소 온도를 읽을 수 있다.
+        JPEG 경로와 달리 cv2가 필요 없다.
+        """
+        now = time.monotonic()
+        with self._lock:
+            if now - self._preview_last_attempt.get(key, float("-inf")) < self._preview_period:
+                return
+            if key not in self._preview_arrays and len(self._preview_arrays) >= _PREVIEW_MAX_STREAMS:
+                return
+            self._preview_last_attempt[key] = now
+        try:
+            arr = np.asarray(sample.data)
+            if arr.ndim != 2 or arr.size == 0 or arr.size > _PREVIEW_ARRAY_MAX_CELLS:
+                return
+            finite = np.isfinite(arr)
+            if not finite.any():
+                return
+            deci = np.where(finite, np.clip(arr, -3276.0, 3276.0), 0.0)
+            payload = {
+                "rows": int(arr.shape[0]),
+                "cols": int(arr.shape[1]),
+                "unit": (sample.flags or {}).get("unit", "degC") if isinstance(sample.flags, dict) else "degC",
+                "min": round(float(arr[finite].min()), 2),
+                "max": round(float(arr[finite].max()), 2),
+                "mean": round(float(arr[finite].mean()), 2),
+                #: 0.1 단위 정수(전송량 절감). 화면에서 10으로 나눠 쓴다. 유한하지 않은 값은 0으로 둔다.
+                "deci": np.rint(deci * 10).astype(np.int16).ravel().tolist(),
+            }
+        except Exception as exc:  # 미리보기는 절대 수집을 막지 않는다
+            log.debug("미리보기 배열 변환 실패 (%s/%s): %s", key[0], key[1], exc)
+            return
+        with self._lock:
+            if not self._stop_event.is_set() and (key in self._preview_arrays or
+                                                  len(self._preview_arrays) < _PREVIEW_MAX_STREAMS):
+                self._preview_arrays[key] = (payload, sample.host.utc, sample.seq)
+
     def preview_frame(self, sensor_id: str, stream_id: str) -> tuple[bytes, str, int] | None:
         """현재 실행 중인 세션의 캐시만 반환한다. 장치나 기록 파일을 열지 않는다."""
         with self._lock:
             if not self._preview_enabled or self.state is not CaptureState.RUNNING or self._stop_event.is_set():
                 return None
             return self._preview_frames.get((sensor_id, stream_id))
+
+    def preview_array(self, sensor_id: str, stream_id: str) -> tuple[dict[str, Any], str, int] | None:
+        """배열 스트림(열화상)의 최신 캐시. `preview_frame`과 같은 규칙이다."""
+        with self._lock:
+            if not self._preview_enabled or self.state is not CaptureState.RUNNING or self._stop_event.is_set():
+                return None
+            return self._preview_arrays.get((sensor_id, stream_id))
 
     # ── 실험 중 설정 변경 ───────────────────────────────────────────────────
     def apply_config_change(self, sensor_id: str, changes: dict[str, Any]) -> dict[str, Any]:

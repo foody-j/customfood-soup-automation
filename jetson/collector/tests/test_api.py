@@ -327,3 +327,34 @@ def test_depth_streams_are_separate_with_units(client, tmp_path):
     assert d["stream_id"] == "depth" and d["unit"] == "mm" and d["dtype"] == "uint16" and d["path"].endswith("records.bin")
     assert d["flags"]["depth_unit"] == "mm"
     assert (base / "depth" / "records.bin").stat().st_size == d["bytes"] * len((base / "depth" / "index.jsonl").read_text().splitlines())
+
+
+def test_thermal_preview_returns_array_not_image(client):
+    """열화상 미리보기는 JPEG가 아니라 0.1 ℃ 단위 정수 배열로 나온다(D-011)."""
+    start(client, sid="sess-thermal-preview", sensors=("thermal_0",),
+          preview={"enabled": True, "max_fps": 2})
+    wait_running(client, "sess-thermal-preview")
+    assert wait_until(lambda: client.get(
+        "/api/v1/capture/preview_array/thermal_0/temp_array").status_code == 200, timeout=10)
+
+    body = client.get("/api/v1/capture/preview_array/thermal_0/temp_array").json()
+    assert body["rows"] == 24 and body["cols"] == 32
+    assert len(body["deci"]) == 24 * 32
+    assert all(isinstance(v, int) for v in body["deci"][:8])
+    assert body["min"] <= body["mean"] <= body["max"]
+    assert body["session_id"] == "sess-thermal-preview" and body["seq"] >= 1
+    # 그림 경로로는 나오지 않는다 — 배열 스트림은 JPEG를 굽지 않는다
+    assert client.get("/api/v1/capture/preview/thermal_0/temp_array").status_code == 404
+
+    client.post("/api/v1/capture/stop", json={"session_id": "sess-thermal-preview"})
+    # 세션이 끝나면 캐시도 비워진다
+    assert wait_until(lambda: client.get(
+        "/api/v1/capture/preview_array/thermal_0/temp_array").status_code == 404, timeout=10)
+
+
+def test_thermal_preview_absent_without_preview_flag(client):
+    """preview를 켜지 않은 세션에서는 배열 미리보기가 없다(원본 수집에만 집중)."""
+    start(client, sid="sess-thermal-nopreview", sensors=("thermal_0",))
+    wait_running(client, "sess-thermal-nopreview")
+    assert client.get("/api/v1/capture/preview_array/thermal_0/temp_array").status_code == 404
+    client.post("/api/v1/capture/stop", json={"session_id": "sess-thermal-nopreview"})

@@ -286,6 +286,19 @@ class CollectorService:
         payload, host_utc, seq = cached
         return cur.session_id, payload, host_utc, seq
 
+    def preview_array(self, *, sensor_id: str, stream_id: str,
+                      session_id: str | None = None) -> tuple[str, dict, str, int] | None:
+        """열화상 등 배열 스트림의 최신 미리보기. `preview_frame`과 같은 규칙이다."""
+        with self._lock:
+            cur = self._session
+        if cur is None or (session_id is not None and cur.session_id != session_id):
+            return None
+        cached = cur.preview_array(sensor_id, stream_id)
+        if cached is None:
+            return None
+        payload, host_utc, seq = cached
+        return cur.session_id, payload, host_utc, seq
+
     # ── 정상 종료 ───────────────────────────────────────────────────────────
     def shutdown(self) -> CaptureAck:
         with self._lock:

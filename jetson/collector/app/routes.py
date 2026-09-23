@@ -69,6 +69,20 @@ async def capture_preview(request: Request, sensor_id: str, stream_id: str,
     })
 
 
+@router.get("/capture/preview_array/{sensor_id}/{stream_id}")
+async def capture_preview_array(request: Request, sensor_id: str, stream_id: str,
+                                session_id: str | None = None) -> dict:
+    """열화상처럼 그림이 아닌 배열 스트림의 저속 미리보기(0.1 ℃ 단위 정수).
+
+    화면이 원본 값으로 히트맵을 그리고 화소 온도를 읽을 수 있게 **숫자 그대로** 내보낸다(D-011).
+    """
+    frame = _svc(request).preview_array(sensor_id=sensor_id, stream_id=stream_id, session_id=session_id)
+    if frame is None:
+        raise HTTPException(status_code=404, detail="활성 세션의 미리보기 배열이 없음")
+    active_session_id, payload, host_utc, seq = frame
+    return {"session_id": active_session_id, "host_utc": host_utc, "seq": seq, **payload}
+
+
 @router.post("/system/shutdown", response_model=CaptureAck)
 async def system_shutdown(request: Request) -> CaptureAck:
     return await asyncio.to_thread(_svc(request).shutdown)

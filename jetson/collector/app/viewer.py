@@ -27,12 +27,15 @@ _PAGE = """<!doctype html>
  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;min-width:0}
  .card img{width:100%;display:block;border-radius:4px;background:#000;min-height:120px}
+ .card canvas{width:100%;display:block;border-radius:4px;background:#000;image-rendering:pixelated;cursor:crosshair}
+ .ramp{height:8px;border-radius:999px;margin-top:6px;background:linear-gradient(90deg,#000004,#4a0c6b,#a52c60,#ed6925,#f7d13d,#fcffa4)}
+ .ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);font-variant-numeric:tabular-nums}
  .card h2{font-size:14px;margin:0 0 6px} .stat{font-variant-numeric:tabular-nums;font-size:12px;margin-top:6px}
  table{border-collapse:collapse;width:100%;font-size:12px} td,th{padding:3px 6px;border-bottom:1px solid var(--line);text-align:left}
  .scroll{overflow-x:auto}
 </style></head><body>
 <h1>Jetson 수집 점검 화면</h1>
-<div class="mut">미리보기는 축소 JPEG(최대 2 fps)이며 저장되는 원본과 별개다. 점검 세션은 10 fps·깊이 의사색 0~1.5 m로 열리고 <b>원본이 실제로 저장된다</b> — 확인 후 세션 중지.</div>
+<div class="mut">미리보기는 축소 JPEG(최대 2 fps)이고 열화상은 <b>숫자 배열</b>을 받아 화면에서 히트맵으로 그린다. 저장되는 원본과 별개다. 점검 세션은 10 fps·깊이 의사색 0~1.5 m로 열리고 <b>원본이 실제로 저장된다</b> — 확인 후 세션 중지.</div>
 <div class="bar">
  <span id="state">상태 읽는 중…</span>
  <button id="start">점검 세션 시작</button><button id="stop">세션 중지</button>
@@ -44,6 +47,10 @@ _PAGE = """<!doctype html>
 <div class="card scroll"><table id="sensors"></table></div>
 <script>
 const API = "/api/v1", PREVIEWABLE = ["rgb","color","depth","ir","left_ir","right_ir"];
+const ARRAY_STREAMS = ["temp_array"];  // 그림이 아니라 숫자 배열로 받아 화면에서 히트맵을 그린다
+const RAMP = [[0,4,4],[27,12,65],[74,12,107],[120,28,109],[165,44,96],[207,68,70],[237,105,37],[251,155,6],[247,209,61],[252,255,164]];
+function rampColor(t){ t = t<0?0:t>1?1:t; const x=t*(RAMP.length-1), i=Math.min(Math.floor(x),RAMP.length-2), f=x-i;
+  const a=RAMP[i], b=RAMP[i+1]; return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f, a[2]+(b[2]-a[2])*f]; }
 const $ = id => document.getElementById(id);
 let timer = null, cards = {};
 function esc(s){return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
@@ -56,10 +63,12 @@ async function tick(){
     + (c.last_error ? ` · <span class="bad">${esc(c.last_error)}</span>` : "");
   $("sensors").innerHTML = "<tr><th>sensor_id</th><th>kind</th><th>연결</th><th>설명 / 사유</th></tr>" + (st.sensors || []).map(s =>
     `<tr><td>${esc(s.sensor_id)}</td><td>${esc(s.kind)}</td><td class="${s.connected ? "ok" : "bad"}">${s.connected ? "연결" : "없음"}${s.simulated ? " (모의)" : ""}</td><td>${esc(s.reason || s.detail)}</td></tr>`).join("");
-  const streams = (c.state === "running" ? (c.streams || []) : []).filter(s => PREVIEWABLE.includes(s.stream_id));
-  const keys = streams.map(s => s.sensor_id + "/" + s.stream_id);
+  const live = (c.state === "running" ? (c.streams || []) : []);
+  const streams = live.filter(s => PREVIEWABLE.includes(s.stream_id));
+  const arrays = live.filter(s => ARRAY_STREAMS.includes(s.stream_id));
+  const keys = streams.concat(arrays).map(s => s.sensor_id + "/" + s.stream_id);
   for (const k of Object.keys(cards)) if (!keys.includes(k)) { cards[k].remove(); delete cards[k]; }
-  if (!streams.length && !Object.keys(cards).length) $("views").innerHTML = '<div class="card mut">실행 중인 세션이 없거나 미리보기 대상 스트림이 없다.</div>';
+  if (!streams.length && !arrays.length && !Object.keys(cards).length) $("views").innerHTML = '<div class="card mut">실행 중인 세션이 없거나 미리보기 대상 스트림이 없다.</div>';
   for (const s of streams) {
     const k = s.sensor_id + "/" + s.stream_id;
     if (!cards[k]) {
@@ -74,6 +83,47 @@ async function tick(){
       const r = await fetch(`${API}/capture/preview/${s.sensor_id}/${s.stream_id}`, {cache:"no-store"});
       if (r.ok) { const img = d.querySelector("img"), old = img.src; img.src = URL.createObjectURL(await r.blob()); if (old.startsWith("blob:")) URL.revokeObjectURL(old); }
       else d.querySelector(".stat").textContent += " · 미리보기 없음(세션을 preview.enabled=true로 시작해야 함)";
+    } catch(e){}
+  }
+  for (const s of arrays) {
+    const k = s.sensor_id + "/" + s.stream_id;
+    if (!cards[k]) {
+      if (!Object.keys(cards).length) $("views").innerHTML = "";
+      const d = document.createElement("div"); d.className = "card";
+      d.innerHTML = `<h2>${esc(k)}</h2><canvas width="32" height="24"></canvas>`
+        + `<div class="ramp"></div><div class="ticks"><span class="t0">-</span><span class="t1">-</span></div>`
+        + `<div class="stat"></div><div class="stat pix mut">화소를 짚으면 그 지점 온도</div>`;
+      $("views").appendChild(d); cards[k] = d;
+      const cv = d.querySelector("canvas");
+      cv.addEventListener("mousemove", ev => {
+        const g = cv._grid; if (!g) return;
+        const r = cv.getBoundingClientRect();
+        const cx = Math.floor((ev.clientX - r.left) / r.width * g.cols);
+        const cy = Math.floor((ev.clientY - r.top) / r.height * g.rows);
+        if (cx < 0 || cy < 0 || cx >= g.cols || cy >= g.rows) return;
+        d.querySelector(".pix").textContent = `${(g.deci[cy*g.cols+cx]/10).toFixed(1)} \u2103 · ${cx},${cy}`;
+      });
+      cv.addEventListener("mouseleave", () => { d.querySelector(".pix").textContent = "화소를 짚으면 그 지점 온도"; });
+    }
+    const d = cards[k];
+    d.querySelector(".stat").textContent = `수신 ${s.recv_fps ?? "-"} Hz · 기록 ${s.write_fps ?? "-"} Hz · 누적 ${s.written} · 무효 ${s.invalid} · 대기열 ${s.backlog}` + (s.connected === false ? " · 센서 끊김" : "");
+    try {
+      const r = await fetch(`${API}/capture/preview_array/${s.sensor_id}/${s.stream_id}`, {cache:"no-store"});
+      if (!r.ok) { d.querySelector(".stat").textContent += " · 미리보기 없음(preview.enabled=true로 시작해야 함)"; continue; }
+      const a = await r.json();
+      const cv = d.querySelector("canvas");
+      if (cv.width !== a.cols || cv.height !== a.rows) { cv.width = a.cols; cv.height = a.rows; }
+      cv._grid = {rows: a.rows, cols: a.cols, deci: a.deci};
+      const lo = a.min, hi = (a.max - a.min < 1 ? a.min + 1 : a.max);   // 평탄한 장면에서 잡음이 과장되지 않게
+      const ctx = cv.getContext("2d"), img = ctx.createImageData(a.cols, a.rows);
+      for (let i = 0; i < a.deci.length; i++) {
+        const cc = rampColor((a.deci[i]/10 - lo) / (hi - lo));
+        img.data[i*4] = cc[0]; img.data[i*4+1] = cc[1]; img.data[i*4+2] = cc[2]; img.data[i*4+3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+      d.querySelector(".t0").textContent = lo.toFixed(1) + " \u2103";
+      d.querySelector(".t1").textContent = hi.toFixed(1) + " \u2103";
+      d.querySelector(".stat").textContent += ` · 평균 ${a.mean.toFixed(1)} \u2103 · seq ${a.seq}`;
     } catch(e){}
   }
 }

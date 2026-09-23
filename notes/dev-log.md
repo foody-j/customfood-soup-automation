@@ -2,6 +2,26 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-09-23 — 열화상 실시간 화면: 배열 미리보기 API + `/viewer` 히트맵
+
+- 요청은 "열화상을 실시간으로 보고 싶다". 카메라용 JPEG 미리보기 경로에 열화상을 태우지 않고,
+  **배열 그대로 내보내는 경로를 따로** 만들었다(D-011: 열화상은 숫자배열로 보내고 화면에서 히트맵 렌더).
+- `app/session.py`: `_PREVIEW_ARRAY_STREAMS`(`temp_array`) 추가. `_update_preview_array()`가 같은 저속 주기로
+  최신 프레임을 **0.1 ℃ 단위 int16**(768개 = 약 3 KB)로 캐시한다. cv2 없이 동작하고, 실패해도 수집을 막지 않는다.
+  중지 시 JPEG 캐시와 함께 비운다.
+- `app/routes.py`: `GET /api/v1/capture/preview_array/{sensor_id}/{stream_id}` — `{rows, cols, unit, min, max, mean, deci[]}`.
+  `app/service.py`에 `preview_array()`(기존 `preview_frame()`과 같은 세션 확인 규칙).
+- `app/viewer.py`: 열화상 카드 추가 — canvas에 인페르노로 그리고 **화소를 짚으면 그 지점 온도**가 나온다.
+  색 범위는 프레임 min~max 자동(차이 <1 ℃면 1 ℃로 벌림).
+- 테스트 2건 추가(`tests/test_api.py`): 배열 형식·세션 종료 후 404·JPEG 경로로는 안 나옴 / preview 미설정 시 404.
+  전체 53건 통과(+1 skip).
+- **실기기 확인**: `COLLECTOR_SENSOR_MODE=real`, `COLLECTOR_I2C_THERMAL_BUS=7`, `COLLECTOR_I2C_THERMAL_MUX_ADDR=none`,
+  `COLLECTOR_THERMAL_CHANNELS=0`으로 기동 → `thermal_0`이 **"MLX90640 55° 32x24 (i2c-7 CHNone)"** 로 붙었다.
+  2 Hz 세션에서 배열이 계속 갱신됨(seq 12 → 31, 24.0~27.4 ℃). `/viewer` 200.
+- 곁가지: 지금 연결된 모듈은 설정상 55°(D55)로 잡히지만 **실물 라벨(220565/220573) 대조는 아직**이다.
+- 이 작업으로 확인한 것 — 캡처 24장 뷰어(artifact)도 만들었고, 40 cm 높이에서는 D55의 짧은 축이 25 cm라
+  **지름 40 cm 솥이 안 담긴다**(D55는 64 cm 이상 필요, D110은 40 cm에서 61 cm 담김).
+
 ## 2026-09-23 — 적외선(MLX90614) 계획에서 제외(D-030), 온도는 솥 내장 센서 + PT100
 
 - 사용자 확인: **조리 설비의 솥에 온도센서가 들어간다.** 접촉식이 비접촉 IR보다 정확하고 측정 지점도 조리에 가까워
