@@ -27,7 +27,9 @@ _PAGE = """<!doctype html>
  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;min-width:0}
  .card img{width:100%;display:block;border-radius:4px;background:#000;min-height:120px}
- .card canvas{width:100%;display:block;border-radius:4px;background:#000;image-rendering:pixelated;cursor:crosshair}
+ .card.arr{max-width:340px}
+ .card canvas{width:100%;max-width:240px;display:block;margin:0 auto;border-radius:4px;background:#000;image-rendering:pixelated;cursor:crosshair}
+ .card .ramp,.card .ticks{max-width:240px;margin-left:auto;margin-right:auto}
  .ramp{height:8px;border-radius:999px;margin-top:6px;background:linear-gradient(90deg,#000004,#4a0c6b,#a52c60,#ed6925,#f7d13d,#fcffa4)}
  .ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);font-variant-numeric:tabular-nums}
  .card h2{font-size:14px;margin:0 0 6px} .stat{font-variant-numeric:tabular-nums;font-size:12px;margin-top:6px}
@@ -89,7 +91,7 @@ async function tick(){
     const k = s.sensor_id + "/" + s.stream_id;
     if (!cards[k]) {
       if (!Object.keys(cards).length) $("views").innerHTML = "";
-      const d = document.createElement("div"); d.className = "card";
+      const d = document.createElement("div"); d.className = "card arr";
       d.innerHTML = `<h2>${esc(k)}</h2><canvas width="32" height="24"></canvas>`
         + `<div class="ramp"></div><div class="ticks"><span class="t0">-</span><span class="t1">-</span></div>`
         + `<div class="stat"></div><div class="stat pix mut">화소를 짚으면 그 지점 온도</div>`;

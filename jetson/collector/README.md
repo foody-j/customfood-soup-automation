@@ -76,7 +76,7 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 |---|---|---|---|
 | `cam_rgb_0` / `cam_rgb_1` | rgb_gmsl2 | `rgb` (UYVY→JPEG 프레임 파일, 또는 raw) | ISX031F ×2, Sensing SG4A 보드. **2026-09-21 실기기 확인**(1920×1536, 30→10 fps 추림, 60초 3대 동시 드롭·갭 0). 재부팅마다 드라이버 적재 필요 → `systemd/sensing-gmsl.service` |
 | `cam_depth_0` | depth_usb | `color`(JPEG 또는 BGR raw) / `depth`(mm, uint16) / `ir`(intensity, uint16) | 어댑터 구현. **2026-09-18 실기기 단기 촬영 확인**(30 fps 드롭 0, 미리보기 OK). 30분 연속·저장량 대책은 미완 — `notes/data/experiments/20260918_gemini2-jetson-first-capture.md` |
-| `thermal_0` / `thermal_1` | thermal_i2c | `temp_array` (24×32 float32 ℃) | MLX90640 55° / 110°. **1대 2026-09-23 실기기 확인**(i2c-7 직결·mux 없음, 2 Hz 3분 360/360, 취득 96~221 ms). 2대 동시(mux CH0/CH1)·1.5 m 배선은 미검증 |
+| `thermal_0` / `thermal_1` | thermal_i2c | `temp_array` (24×32 float32 ℃) | MLX90640 55° / 110°. **D55 1대만 사용(D-031)** — i2c-7 직결·mux 없음, 2 Hz 3분 360/360, 취득 96~221 ms. `thermal_1`은 예비(D110). 1.5 m 배선은 미검증 |
 | `point_temp_0` / `point_temp_1` | point_temp_i2c | `temp` `{object_c, ambient_c}` | MLX90614 5° / 35°. **2026-09-23 계획에서 제외(D-030)** — 솥 내장 온도센서로 대체. 어댑터는 보류 상태로 남겨 둠 |
 | `pt100_0` | rtd_spi | `temp` `{temp_c, resistance_ohm, rtd_raw}` | MAX31865 + PT100 3선식. 어댑터 있음, **실물 검증 전**(미배선 — 가짜 드라이버 테스트만) |
 | `mock_*` (auto) / 위 ID 그대로 (mock) | — | 위와 같은 스트림 구조 | 모의, 항상 `simulated:true` |
