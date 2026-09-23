@@ -32,9 +32,9 @@ Jetson Orin Nano J12
 
 근거: [TI TCA9548A](https://www.ti.com/lit/ds/symlink/tca9548a.pdf), [MLX90614 사양](https://www.melexis.com/-/media/files/documents/datasheets/mlx90614-datasheet-melexis.pdf), [SEENGREAT 예제](https://seengreat.com/wiki/89/thermal-camera-mlx90640-d110).
 
-**실물 확인(2026-09-23):** J12 **3/5번은 Linux `/dev/i2c-7`(c250000)** 이다. 이 버스에 MLX90640 1대를 mux 없이
-1(3.3 V)/3/5/6번으로 직결해 주소 `0x33` 응답과 2 Hz 3분 연속 판독(360/360)을 확인했다. 27/28번 ↔ `i2c-1`(c240000) 대응은
-아직 확인 전이다. `i2c-1`에는 보드 내장 장치 `0x25`(fusb301)·`0x40`(ina3221)이 커널 드라이버에 잡혀 있으므로,
+**실물 확인(2026-09-23):** J12 **3/5번 = `/dev/i2c-7`(c250000, 400 kHz)**, **27/28번 = `/dev/i2c-1`(c240000, 100 kHz)** 이다. MLX90640 1대를 mux 없이
+1(3.3 V)/3/5/6번(= i2c-7)으로 직결해 주소 `0x33` 응답과 2 Hz 3분 연속 판독(360/360)을 확인했다. 같은 센서를 100 kHz 버스로 옮겨 재 보니 refresh 8 Hz는 전부 실패하고, 4 Hz로 낮춰야 동작하며 취득이 158 → 508 ms(3.2배)가 됐다.
+**열화상 2대 × 2 Hz는 100 kHz 한 버스에서 불가능**하므로 버스 분리를 확정했다(D-028). `i2c-1`에는 보드 내장 장치 `0x25`(fusb301)·`0x40`(ina3221)이 커널 드라이버에 잡혀 있으므로,
 그 버스에 mux·센서를 붙일 때 주소가 겹치지 않는지 확인한다.
 
 ## 실제 사용할 핀
