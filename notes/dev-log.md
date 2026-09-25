@@ -2,6 +2,23 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-09-25 — Windows 인계: Pi MLX90614 제거와 운영 온도원 문서 동기화
+
+- `main`의 `d5f2611`(Jetson 작업 머지)을 받아 D-030·D-031에 맞춰 남은 Pi·문서 작업을 반영했다.
+- Pi mock의 `point_temp_0` 센서·스트림과 모델의 현재 kind 설명을 제거했다. 열화상은 D55 한 대로 명시하고,
+  실제 Jetson 상태 중계·과거 세션·Gemini Color/Depth/IR 미리보기는 유지했다. 솥 센서·PT100을 연결된 모의 장비로 추가하지 않았다.
+- `docs/model-architecture.md`: 온도 스칼라를 솥 내장 센서로, PT100을 개발·검증 및 필요 시 대체원으로 정리했다.
+  내장 센서의 읽기 경로·갱신 주기는 미확인, MAX31865는 통신 미해결임을 명시했다. D55 한 대 직결과 최신 카메라 구성도 반영했다.
+- `docs/data-schema.md`, `shared/schema.json`, `dashboard/src/data/schema.js`: `center_temp_c` 이름은 유지하고
+  측정 위치가 확인된 조리 온도 스칼라로 설명한다. 미취득·무효·유효기간 초과를 `null`로 표현하도록 계약을 맞췄다.
+  온도원·위치·취득 시각 기록은 연동 시 지킬 규약이며 실제 솥 센서 연결을 구현한 것은 아니다.
+- 기존 React 대시보드의 'MLX90614 중심온도' 표시를 '조리 온도'로 변경하고 `null`일 때 '미수신'을 표시한다.
+  `docs/pi-jetson-api.md`의 현재 센서 목록을 갱신했다. 결정 기록은 **D-033**.
+- **검증:** Windows Python 3.12 격리 환경에서 Pi 테스트 **39 passed**(새 Starlette의 httpx 사용 deprecation 경고 1건).
+  대시보드 `npm run build`·`npm run lint` 통과(빌드에 500 kB 초과 청크 경고).
+  JSON Schema: 숫자·0·null 허용, 문자열·bool·객체·필드 누락 거절 확인.
+  Vite SSR로 온도 타일 숫자·0·null 렌더를 확인했다. 하드웨어 배포·실물 시험은 하지 않았다.
+
 ## 2026-09-25 — PT100 연결 시도: Jetson SPI는 정상 확인, 보드는 무응답(미해결)
 
 - `jetson-io`로 켠 헤더 SPI가 `config-by-pin`에 **19 `spi1_dout` / 21 `spi1_din` / 23 `spi1_sck` / 24 `spi1_cs0` / 26 `spi1_cs1`** 로 확인됐다.

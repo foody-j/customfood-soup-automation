@@ -29,14 +29,13 @@ from ..models import (
 from ..util import utcnow_iso
 from .base import JetsonUnreachable, PreviewFrame
 
-# 실물 보유 목록 기준(docs/handover-reconciliation-2026-09-11.md §A).
+# 현재 운영 구성 기준(notes/decisions.md D-030·D-031).
 # 전부 simulated=True — 이 목록은 "연결돼 있다"가 아니라 "붙일 예정"을 뜻한다.
 MOCK_SENSORS = [
     ("cam_rgb_0", "rgb_gmsl2", "Sensing ISX031F (FG12-4CH /dev/video4)"),
     ("cam_rgb_1", "rgb_gmsl2", "Sensing ISX031F 2번 (position=Video_1100)"),
     ("cam_depth_0", "depth_usb", "Orbbec Gemini 2 (USB3, 모의)"),
-    ("thermal_0", "thermal_i2c", "MLX90640 32x24 (FOV 미확정)"),
-    ("point_temp_0", "point_temp_i2c", "MLX90614 중심온도"),
+    ("thermal_0", "thermal_i2c", "MLX90640 D55 32x24 (55°×35°, 모의)"),
 ]
 
 #: 센서별 스트림 ID — 실물 수집 서비스(`jetson/collector`)의 어댑터와 같은 이름.
@@ -45,7 +44,6 @@ MOCK_STREAMS = {
     "cam_rgb_1": ["rgb"],
     "cam_depth_0": ["color", "depth", "ir"],
     "thermal_0": ["temp_array"],
-    "point_temp_0": ["temp"],
 }
 #: 실물과 같은 미리보기 대상(jetson/collector/app/session.py `_PREVIEW_STREAMS`).
 _PREVIEW_STREAMS = frozenset({"rgb", "color", "depth", "ir", "left_ir", "right_ir"})

@@ -1,5 +1,8 @@
 // 공유 데이터 계약의 프론트엔드 상수.
 // docs/data-schema.md / shared/schema.json 과 반드시 일치시킬 것.
+// center_temp_c: number | null. 솥 내장 센서의 조리 온도(PT100은 검증·대체용).
+// 이름은 호환용이며 식품 내부 중심온도를 뜻하지 않는다. 온도원은 세션 기록에서 식별한다.
+// 미취득·무효·유효기간 초과는 null, 화면은 '미수신'으로 표시한다(D-030·D-033).
 
 // ── 공정 단계 (시간·온도 기반) ──────────────────────────────────────────────
 export const STAGES = ['ingredient_add', 'heating', 'cooking'];

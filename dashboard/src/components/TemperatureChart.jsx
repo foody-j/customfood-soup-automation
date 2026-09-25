@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 
-// 중심온도 추이 — 단일 시리즈(범례 불필요). 크로스헤어 툴팁·목표 기준선.
+// 조리 온도 추이 — 단일 시리즈(범례 불필요). 크로스헤어 툴팁·목표 기준선.
 // theme prop이 바뀌면 CSS 토큰을 다시 읽어 색을 맞춘다(단일 색 출처).
 function useThemeColors(theme) {
   return useMemo(() => {
@@ -28,9 +28,9 @@ export default function TemperatureChart({ history, target, theme }) {
   const c = useThemeColors(theme);
 
   return (
-    <section className="card chart-card" aria-label="중심온도 추이">
+    <section className="card chart-card" aria-label="조리 온도 추이">
       <div className="card-head">
-        <span className="cap">중심온도 추이<span className="tile-src mono">최근 {history.length}s</span></span>
+        <span className="cap">조리 온도 추이<span className="tile-src mono">최근 {history.length}s</span></span>
       </div>
       <div className="chart-wrap">
         <ResponsiveContainer width="100%" height="100%">
@@ -57,7 +57,7 @@ export default function TemperatureChart({ history, target, theme }) {
                 borderRadius: 10, color: c.ink, fontSize: 12, boxShadow: '0 6px 20px rgba(0,0,0,.25)',
               }}
               labelFormatter={(s) => `경과 ${fmtTime(s)}`}
-              formatter={(v) => [`${v}℃`, '중심온도']}
+              formatter={(v) => [`${v}℃`, '조리 온도']}
             />
             {target != null && (
               <ReferenceLine

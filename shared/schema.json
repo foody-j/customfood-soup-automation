@@ -10,7 +10,10 @@
     "stage": { "type": "string", "enum": ["ingredient_add", "heating", "cooking"] },
     "doneness": { "type": "string", "enum": ["undercooked", "done", "overcooked"] },
     "doneness_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
-    "center_temp_c": { "type": "number" },
+    "center_temp_c": {
+      "type": ["number", "null"],
+      "description": "조리 온도 스칼라(℃). 운영은 솥 내장 센서, PT100은 검증·대체용(D-030). 읽기 경로는 미확정이며 미취득·무효·유효기간 초과는 null. 온도원과 측정 위치는 세션에 기록; 식품 내부 중심온도를 의미하지 않음."
+    },
     "target_temp_c": { "type": "number" },
     "elapsed_sec": { "type": "integer", "minimum": 0 },
     "boil_intensity": { "type": "number", "minimum": 0, "maximum": 1 },

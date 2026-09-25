@@ -510,6 +510,9 @@ def test_sensor_stats_and_storage_summary_are_surfaced(client):
 
     sensors = status["report"]["sensors"]
     assert sensors and all(s["simulated"] is True for s in sensors)  # 모의임이 명시돼야 한다
+    # D-030·D-031: 제거한 비접촉 센서를 장비 상태에 다시 노출하지 않는다.
+    assert {s["sensor_id"] for s in sensors} == {"cam_rgb_0", "cam_rgb_1", "cam_depth_0", "thermal_0"}
+    assert all(s["kind"] != "point_temp_i2c" for s in sensors)
     assert sensors[0]["stats"]["frames_written"] >= 0
     assert status["report"]["mock"] is True
 

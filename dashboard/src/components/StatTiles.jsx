@@ -6,18 +6,21 @@ function formatElapsed(sec) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// 핵심 수치 4종 타일: 중심온도 · 경과시간 · 끓음강도 · 공정단계.
+// 핵심 수치 4종 타일: 조리 온도 · 경과시간 · 끓음강도 · 공정단계.
 export default function StatTiles({ state }) {
   if (!state) return null;
-  const tempPct = Math.min(100, Math.max(0, (state.center_temp_c / (state.target_temp_c || 100)) * 100));
+  const hasTemp = Number.isFinite(state.center_temp_c);
+  const tempPct = hasTemp
+    ? Math.min(100, Math.max(0, (state.center_temp_c / (state.target_temp_c || 100)) * 100))
+    : 0;
   const boilPct = Math.round((state.boil_intensity ?? 0) * 100);
 
   return (
     <div className="tiles">
       <div className="tile">
-        <span className="cap">중심온도<span className="tile-src mono">MLX90614</span></span>
+        <span className="cap">조리 온도</span>
         <span className="tile-val num">
-          {state.center_temp_c.toFixed(1)}<small>℃</small>
+          {hasTemp ? <>{state.center_temp_c.toFixed(1)}<small>℃</small></> : '미수신'}
         </span>
         <div className="tile-track"><div className="tile-track-fill temp" style={{ width: `${tempPct}%` }} /></div>
         <span className="tile-sub">목표 {state.target_temp_c}℃</span>
