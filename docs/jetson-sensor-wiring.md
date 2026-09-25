@@ -64,6 +64,17 @@ Linux/Blinka의 SPI 전송은 하드웨어 CS0를 별도로 토글할 수 있으
 24번을 센서 CS에 연결하지 않는다. 24번을 쓰려면 하드웨어 CS를 사용하는 `spidev`
 기반 드라이버를 별도로 선택해야 한다. 근거: [Adafruit Linux/Jetson SPI 안내](https://learn.adafruit.com/circuitpython-libraries-on-linux-and-the-nvidia-jetson-nano/spi-sensors-devices).
 
+**SPI 실물 확인(2026-09-25):** `jetson-io`로 헤더 SPI를 켜면 `config-by-pin`에 **19 `spi1_dout` / 21 `spi1_din` /
+23 `spi1_sck` / 24 `spi1_cs0` / 26 `spi1_cs1`** 로 나온다(캐리어 사양의 `SPI0_*` 이름과 체계가 다르다).
+**19↔21번을 직접 이은 루프백으로 Linux 장치가 `/dev/spidev0.0`·`0.1`임을 확정했다** — `spidev1.x`는 헤더와 무관하다.
+`i2c8 → /dev/i2c-7`과 같은 이름 불일치이니 헤더 이름을 장치 번호로 바꿔 읽지 않는다.
+CS로 쓸 GPIO는 **15번 = Blinka `D22`, 16번 = `D23`**(둘 다 `unused` 상태라 사용 가능). 24·26번은 컨트롤러가 자동
+토글하므로 Adafruit 드라이버 경로에서는 연결하지 않는다.
+
+> **미해결(2026-09-25):** MAX31865는 위 배선(VIN 17 / GND 25 / SCK 23 / SDO 21 / SDI 19 / CS 16)에서 **응답하지 않는다.**
+> 버스 2개 × CS 핀 2개 × SPI 모드 4개를 모두 시험했고, 보드 VIN에 3.3 V가 들어온 것도 확인했다. Jetson 쪽은
+> 루프백으로 정상이 증명됐으므로 원인은 **점퍼선 또는 보드**다. 선 도통 확인·교체부터 다시 시작한다.
+
 ## J12 전체 핀맵
 
 ```text
