@@ -32,7 +32,8 @@ def build_physical_sensors(settings: Settings) -> list[SensorAdapter]:
             f"thermal_{i}", bus_no=settings.i2c_thermal_bus, mux_addr=settings.i2c_thermal_mux_addr,
             channel=ch if settings.i2c_thermal_mux_addr is not None else None,
             rate_hz=settings.thermal_rate_hz, refresh_hz=settings.thermal_refresh_hz,
-            retries=settings.thermal_read_retries, fail_limit=settings.sensor_fail_limit, **unit))
+            retries=settings.thermal_read_retries, valid_range=settings.thermal_range_c,
+            fail_limit=settings.sensor_fail_limit, **unit))
     sensors.append(Max31865Rtd(
         "pt100_0", cs_pin=settings.pt100_cs_pin, ref_ohms=settings.pt100_ref_ohms,
         nominal_ohms=settings.pt100_nominal_ohms, wires=settings.pt100_wires, rate_hz=settings.pt100_rate_hz,

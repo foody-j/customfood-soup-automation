@@ -66,6 +66,20 @@ def _env_int_tuple(name: str, default: tuple[int, ...]) -> tuple[int, ...]:
         return default
 
 
+def _env_float_pair(name: str, default: tuple[float, float]) -> tuple[float, float]:
+    """`"-40,300"` 형식. 값이 두 개가 아니거나 lo >= hi면 설정 오류로 본다."""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    parts = [p.strip() for p in raw.split(",") if p.strip()]
+    if len(parts) != 2:
+        raise ValueError(f"{name}은 'lo,hi' 두 값이어야 함: {raw!r}")
+    lo, hi = float(parts[0]), float(parts[1])
+    if not lo < hi:
+        raise ValueError(f"{name}의 lo는 hi보다 작아야 함: {raw!r}")
+    return (lo, hi)
+
+
 def _env_bool(name: str, default: bool) -> bool:
     raw = os.environ.get(name)
     if raw is None or not raw.strip():
@@ -109,6 +123,8 @@ class Settings:
     thermal_refresh_hz: float = 8.0
     #: getFrame의 일시적 ValueError/RuntimeError 재시도 횟수(지침서 §5-2).
     thermal_read_retries: int = 2
+    #: 물리적으로 가능한 화소 온도 범위(℃). 밖의 값이 있으면 재시도하고 그래도면 `valid:false`.
+    thermal_range_c: tuple[float, float] = (-40.0, 300.0)
     #: 비접촉 온도 버스(J12 27/28번, 100 kHz)의 실측 번호·mux 주소·채널.
     #: MAX31865 CS로 쓸 Blinka 핀 이름(예: J12 물리 15번 = `D22`). 하드웨어 CS0(24번) 금지.
     pt100_cs_pin: str = ""
@@ -188,6 +204,7 @@ class Settings:
             thermal_rate_hz=_env_float("COLLECTOR_THERMAL_RATE_HZ", 2.0),
             thermal_refresh_hz=_env_float("COLLECTOR_THERMAL_REFRESH_HZ", 8.0),
             thermal_read_retries=_env_int("COLLECTOR_THERMAL_READ_RETRIES", 2),
+            thermal_range_c=_env_float_pair("COLLECTOR_THERMAL_RANGE_C", (-40.0, 300.0)),
             pt100_cs_pin=_env_str("COLLECTOR_PT100_CS_PIN", ""),
             pt100_ref_ohms=_env_opt_float("COLLECTOR_PT100_REF_OHMS", None),
             pt100_nominal_ohms=_env_float("COLLECTOR_PT100_NOMINAL_OHMS", 100.0),

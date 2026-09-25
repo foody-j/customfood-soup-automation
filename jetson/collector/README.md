@@ -56,6 +56,7 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 | `COLLECTOR_THERMAL_CHANNELS` | `0,1` | `thermal_0,1` 순서의 mux 채널. mux 없이 1대만 쓰면 `0` |
 | `COLLECTOR_THERMAL_RATE_HZ` / `PT100_RATE_HZ` | 2 / 1 | 센서별 목표 주기(초기 시험 목표). 세션에서는 `per_sensor.<id>.rate_hz` |
 | `COLLECTOR_THERMAL_REFRESH_HZ` / `THERMAL_READ_RETRIES` | 8 / 2 | MLX90640 장치 refresh rate(서브페이지 주기) / 일시적 프레임 오류 재시도 |
+| `COLLECTOR_THERMAL_RANGE_C` | `-40,300` | 물리적으로 가능한 화소 온도 범위(데이터시트). 밖의 값이 있으면 **재시도**하고, 그래도 깨져 있으면 `valid:false` + `flags.out_of_range` |
 | `COLLECTOR_PT100_CS_PIN` / `PT100_REF_OHMS` | **(없음)** | MAX31865 별도 GPIO CS의 Blinka 핀 이름(예 `D22`) / 보드 **실물** 기준 저항 Ω |
 | `COLLECTOR_PT100_WIRES` / `PT100_NOMINAL_OHMS` | 3 / 100 | RTD 결선 수 / 공칭 저항 |
 | `COLLECTOR_SENSOR_FAIL_LIMIT` | 5 | 연속 읽기 실패가 이만큼이면 분리로 보고 재연결 |
@@ -90,10 +91,16 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
   "calibration": { "id": "calib-2026-09", "version": 3 } }
 ```
 
-I²C·SPI 센서 5대는 카메라용 전역 `fps`를 따르지 않는다 — 주기는 `per_sensor.<id>.rate_hz`
+I²C·SPI 센서는 카메라용 전역 `fps`를 따르지 않는다 — 주기는 `per_sensor.<id>.rate_hz`
 (예: `"per_sensor": {"thermal_0": {"rate_hz": 2, "refresh_hz": 8}}`)로 주고, 없으면 환경설정 기본값이다.
 읽기 실패·fault는 `index.jsonl`에 `valid:false` + `invalid_reason`(`i2c_error…`, `frame_error_after_retries…`,
-`max31865_fault:…`, `out_of_range`)으로 남고, 취득 시작 시각·소요·잠금 대기는 `flags`에 남는다.
+`max31865_fault:…`, `non_finite_pixels:N`, `out_of_range_pixels:N`)으로 남고, 취득 시작 시각·소요·잠금 대기는 `flags`에 남는다.
+
+**열화상 값 타당성 검사**: MLX90640은 전송 중 비트가 깨지면 862 ℃ 같은 값을 그대로 내보낸다(드라이버가 검사하지 않는다).
+어댑터가 `COLLECTOR_THERMAL_RANGE_C`(기본 -40~300 ℃) 밖의 화소를 찾으면 **먼저 재시도**하고, 재시도를 다 써도 깨져 있으면
+`valid:false` + `flags.out_of_range`(깨진 화소 수·최소/최대·위치 최대 16개)로 남긴다. **값을 자르거나 덮지 않는다** —
+보정값과 측정값이 섞이면 데이터를 믿을 수 없게 된다. 45.7시간 실기기 데이터(32.8만 프레임)에서 이 검사로 282 프레임(0.086 %)이
+걸렸고, 1화소만 튄 경우부터 768화소 전부가 깨진 경우까지 있었다. **범위 안으로 그럴듯하게 깨진 프레임은 이 검사로 못 잡는다.**
 같은 버스의 센서는 mux 채널 선택~읽기 완료가 버스 잠금으로 직렬화되므로 **동시 측정이 아니다**.
 
 알려진 한계(드라이버 기준, 실물 검증 전): MLX90640 드라이버는 방사율 0.95·반사온도 `Ta-8`을 고정으로 쓰고,
@@ -180,7 +187,7 @@ uvicorn 접속 로그(같은 포맷). 프레임마다 로그를 찍지 않는다
 
 링크 상태·실제 포맷·시퀀스 갭·타임스탬프 시계·빈 프레임·수신 FPS·JPEG 인코딩 시간을 잰다(플랜 7단계 입력).
 
-센서 5대 단독 진단([지침서](../../docs/jetson-five-sensor-guide.md) §5 순서). 서비스와 **같은 어댑터**로 읽으며,
+센서 단독 진단([지침서](../../docs/jetson-five-sensor-guide.md) §5 순서 — 현재 대상은 열화상 1대 + PT100). 서비스와 **같은 어댑터**로 읽으며,
 서비스가 같은 버스를 쓰는 동안에는 돌리지 않는다(프로세스 간 mux 잠금 없음):
 
 ```bash

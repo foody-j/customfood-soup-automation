@@ -74,7 +74,11 @@ class FakeMlx90640:
         bus.enter()
         try:
             if self.script:
-                raise self.script.pop(0)
+                item = self.script.pop(0)
+                if isinstance(item, Exception):
+                    raise item
+                buf[:] = item  # 깨진 프레임 등 값 자체를 주입할 때
+                return
             time.sleep(self.hold)
             buf[:] = [30.0 + 30.0 * (self.i2c.channel or 0)] * 768  # 채널마다 다른 장면
         finally:
@@ -208,6 +212,48 @@ def test_thermal_retries_transient_errors_then_records_failure(fake_buses):
     bad = s.read()[0]
     assert bad.valid is False and bad.data is None and bad.invalid_reason.startswith("frame_error_after_retries")
     assert s.read()[0].valid  # 실패 1회로는 분리로 보지 않고 계속 읽는다
+
+
+def test_thermal_out_of_range_pixel_retries_then_marks_invalid(fake_buses):
+    """I²C로 깨진 프레임(862 ℃ 같은 값)은 재시도하고, 그래도 깨져 있으면 valid:false로 남긴다.
+
+    45.7시간 실기기 운전에서 300 ℃ 초과 화소가 282 프레임(0.086 %)에 나왔다 — 드라이버는 걸러내지 않는다.
+    """
+    fake_buses(7)
+    s, made = thermal("thermal_0", 0, retries=2)
+    s.open({})
+
+    broken = [25.0] * 768
+    broken[100] = 862.3  # 화소 1개만 깨진 전형적인 경우
+    made[0].script = [list(broken)]           # 첫 읽기만 깨지고 재시도는 정상
+    ok = s.read()[0]
+    assert ok.valid and ok.flags["attempts"] == 2
+    assert ok.flags["retry_errors"][0].startswith("out_of_range_pixels:1")
+
+    made[0].script = [list(broken)] * 3       # 재시도를 다 써도 계속 깨짐
+    bad = s.read()[0]
+    assert bad.valid is False and bad.invalid_reason == "out_of_range_pixels:1"
+    o = bad.flags["out_of_range"]
+    assert o["count"] == 1 and o["max_c"] == 862.3 and o["pixels"] == [[3, 4]]  # 100 = row 3, col 4
+    assert bad.flags["valid_range_c"] == [-40.0, 300.0] and bad.flags["io_error"] is False
+    assert s.read()[0].valid  # 깨진 프레임은 장치 고장이 아니므로 다음 읽기는 정상
+
+
+def test_thermal_valid_range_is_configurable_and_reports_worst_pixels(fake_buses):
+    fake_buses(7)
+    s, made = thermal("thermal_0", 0, retries=0, valid_range=(0.0, 100.0))
+    s.open({})
+    assert s.applied_config()["valid_range_c"] == [0.0, 100.0]
+    frame = [25.0] * 768
+    for i in (0, 31, 767):
+        frame[i] = 500.0 + i      # 여러 화소가 깨진 경우
+    frame[5] = -80.0              # 아래쪽으로 벗어난 화소도 잡는다
+    made[0].script = [frame]
+    bad = s.read()[0]
+    assert bad.valid is False and bad.invalid_reason == "out_of_range_pixels:4"
+    o = bad.flags["out_of_range"]
+    assert o["min_c"] == -80.0 and o["max_c"] == 1267.0 and o["pixels_truncated"] is False
+    assert [0, 0] in o["pixels"] and [23, 31] in o["pixels"]
 
 
 def test_thermal_io_errors_recover_bus_and_escalate_to_reconnect(fake_buses):

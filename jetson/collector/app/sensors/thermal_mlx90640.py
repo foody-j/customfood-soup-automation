@@ -8,6 +8,9 @@ mux를 공유하므로 **채널 선택~프레임 읽기 완료**를 버스 잠�
 - 드라이버는 방사율 0.95·반사온도 `Ta - 8`을 고정으로 쓴다. 그 사실을 applied_config에 남긴다.
 - `getFrame()`은 data-ready를 제한 없이 기다린다. 장치가 ACK만 하고 ready를 안 올리면
   그 읽기는 돌아오지 않는다(I²C 오류는 OSError로 빠져나온다).
+- **드라이버는 값의 물리적 타당성을 검사하지 않는다.** 전송 중 비트가 깨지면 862 ℃ 같은 값이 그대로 나온다.
+  이 어댑터가 `OBJECT_RANGE_C` 밖의 화소를 찾아 **재시도**하고, 재시도를 다 쓰면 `valid:false`로 기록한다.
+  값을 잘라내거나 이웃 값으로 덮지 않는다 — 보정값과 측정값이 섞이면 데이터를 믿을 수 없게 된다.
 """
 
 from __future__ import annotations
@@ -24,6 +27,10 @@ from .polled import PolledSensor, pkg_version
 
 MLX90640_ADDR = 0x33
 SHAPE = (24, 32)
+#: 데이터시트의 물체 온도 측정 범위(℃). 이 밖의 값은 측정이 아니라 **I²C로 읽다 깨진 값**이다.
+#: 2026-09-23~25 45.7시간(32.8만 프레임) 연속 운전에서 300 ℃ 초과 화소가 282 프레임(0.086 %)에 나왔고
+#: 최대 862 ℃였다. 1화소만 튀는 경우부터 768화소 전부가 깨지는 경우까지 있었다.
+OBJECT_RANGE_C = (-40.0, 300.0)
 #: 장치 refresh rate(Hz) → 제어 레지스터 값 (adafruit_mlx90640.RefreshRate와 동일)
 REFRESH_CODES = {0.5: 0, 1.0: 1, 2.0: 2, 4.0: 3, 8.0: 4, 16.0: 5, 32.0: 6, 64.0: 7}
 
@@ -45,12 +52,16 @@ class Mlx90640Thermal(PolledSensor):
     def __init__(self, sensor_id: str, *, bus_no: int | None, mux_addr: int | None, channel: int | None,
                  fov_deg: int | None = None, module: str | None = None, addr: int = MLX90640_ADDR,
                  rate_hz: float = 2.0, refresh_hz: float = 8.0, retries: int = 2, fail_limit: int = 5,
+                 valid_range: tuple[float, float] = OBJECT_RANGE_C,
                  driver_factory: Callable[[Any, int], Any] | None = None) -> None:
         super().__init__(sensor_id, rate_hz=rate_hz, fail_limit=fail_limit)
         self._bus_no, self._mux_addr, self._channel, self._addr = bus_no, mux_addr, channel, addr
         self._fov, self._module = fov_deg, module
         self._refresh_hz = float(refresh_hz)
         self._retries = max(0, retries)
+        self._lo, self._hi = float(valid_range[0]), float(valid_range[1])
+        if not self._lo < self._hi:
+            raise SensorError(f"{sensor_id}: 유효 범위가 잘못됨: {valid_range}")
         self._driver_factory = driver_factory or _adafruit_driver
         self._dev: Any = None
         self._bus: Any = None
@@ -112,12 +123,29 @@ class Mlx90640Thermal(PolledSensor):
     def applied_config(self) -> dict[str, Any]:
         return {"rate_hz": self._rate, "requested_rate_hz": self._requested_rate, "refresh_hz": self._refresh_hz,
                 "read_retries": self._retries, "emissivity": 0.95, "reflected_temp": "Ta-8 (드라이버 고정)",
-                "serial": self._serial, **self._facts()}
+                "valid_range_c": [self._lo, self._hi], "serial": self._serial, **self._facts()}
 
     def version_info(self) -> dict[str, Any]:
         return {"driver": "adafruit_mlx90640", "adafruit_mlx90640": pkg_version("adafruit-circuitpython-mlx90640"),
                 "adafruit_tca9548a": pkg_version("adafruit-circuitpython-tca9548a"),
                 "adafruit_blinka": pkg_version("Adafruit-Blinka")}
+
+
+    def _out_of_range(self, arr: np.ndarray) -> dict[str, Any] | None:
+        """물리적으로 불가능한 화소를 찾는다. 없으면 None.
+
+        값을 고치지 않고 **어디가 얼마나 틀렸는지**만 돌려준다(최대 16개 위치까지).
+        그 요약이 index.jsonl에 남아 나중에 오류율을 세거나 원인을 추적할 수 있다.
+        """
+        mask = (arr < self._lo) | (arr > self._hi)
+        count = int(np.count_nonzero(mask))
+        if not count:
+            return None
+        vals = arr[mask]
+        rows, cols = np.nonzero(mask)
+        return {"count": count, "min_c": round(float(vals.min()), 2), "max_c": round(float(vals.max()), 2),
+                "pixels": [[int(r), int(c)] for r, c in zip(rows[:16], cols[:16])],
+                "pixels_truncated": count > 16}
 
     # ── 읽기 ──
     def _acquire(self, seq: int) -> Sample:
@@ -150,6 +178,17 @@ class Mlx90640Thermal(PolledSensor):
             if bad:
                 return Sample("temp_array", seq, host, None, None, valid=False, invalid_reason=f"non_finite_pixels:{bad}",
                               width=SHAPE[1], height=SHAPE[0], flags={"io_error": False, **flags})
+            outliers = self._out_of_range(arr)
+            if outliers is not None:
+                # 전송 중 깨진 프레임이다 — 남은 재시도가 있으면 다시 읽는다(장치 고장으로 세지 않는다)
+                errors.append(f"out_of_range_pixels:{outliers['count']} max={outliers['max_c']}")
+                if attempt <= self._retries:
+                    continue
+                return Sample("temp_array", seq, host, None, None, valid=False,
+                              invalid_reason=f"out_of_range_pixels:{outliers['count']}",
+                              width=SHAPE[1], height=SHAPE[0],
+                              flags={"io_error": False, "out_of_range": outliers,
+                                     "valid_range_c": [self._lo, self._hi], **flags})
             return Sample("temp_array", seq, host, None, arr, width=SHAPE[1], height=SHAPE[0], flags=flags)
         reason = ("i2c_error: " if io_error else "frame_error_after_retries: ") + errors[-1]
         # 재시도를 다 쓴 프레임 오류도 장치 이상으로 보고 연속 실패에 센다
