@@ -126,7 +126,8 @@ class Settings:
     #: 물리적으로 가능한 화소 온도 범위(℃). 밖의 값이 있으면 재시도하고 그래도면 `valid:false`.
     thermal_range_c: tuple[float, float] = (-40.0, 300.0)
     #: 비접촉 온도 버스(J12 27/28번, 100 kHz)의 실측 번호·mux 주소·채널.
-    #: MAX31865 CS로 쓸 Blinka 핀 이름(예: J12 물리 15번 = `D22`). 하드웨어 CS0(24번) 금지.
+    #: MAX31865 CS. `CE0`(J12 24번, 실물 확인·권장)/`CE1`(26번)이면 spidev 하드웨어 CS,
+    #: 그 밖(`D22` 등)은 Blinka GPIO CS(D-034).
     pt100_cs_pin: str = ""
     #: MAX31865 보드의 **실물** 기준 저항(Ω). 430을 가정하지 않는다.
     pt100_ref_ohms: float | None = None

@@ -303,6 +303,61 @@ def test_rtd_dead_spi_is_not_reported_connected():
         s.open({})
 
 
+def test_rtd_miso_stuck_high_is_not_reported_connected():
+    """MISO가 HIGH에 붙으면 bias가 늘 1로 읽힌다 — 켜기만 확인하면 가짜 양성이 난다(2026-09-26 실물)."""
+    class StuckHigh(FakeMax31865):
+        bias = property(lambda self: True, lambda self, v: None)
+
+    assert rtd(StuckHigh()).probe().connected is False
+
+
+class FakeMax31865Spi:
+    """MAX31865 레지스터 모델 — 전이중 transfer 1회 = CS 1회."""
+
+    def __init__(self, rtd_raw=8382, fault=0x00):
+        self.regs = [0x00] * 8
+        self.regs[1], self.regs[2], self.regs[7] = (rtd_raw << 1) >> 8, ((rtd_raw << 1) & 0xFF) | bool(fault), fault
+        self.writes = []
+
+    def transfer(self, data):
+        addr = data[0]
+        if addr & 0x80:
+            reg, val = addr & 0x7F, data[1]
+            self.writes.append((reg, val))
+            if reg == 0:
+                self.regs[0] = val & ~0x22  # fault clear·one-shot 비트는 스스로 지워진다
+            return [0] * len(data)
+        return [0] + self.regs[addr:addr + len(data) - 1]
+
+
+def test_spidev_driver_reads_rtd_with_hw_cs(monkeypatch):
+    monkeypatch.setattr(rtd_mod.time, "sleep", lambda s: None)
+    spi = FakeMax31865Spi(rtd_raw=8382)
+    dev = rtd_mod._SpidevMax31865(spi, wires=3)
+    assert spi.regs[0] & 0x10 and not dev.bias  # 3선식, bias 꺼짐
+    assert dev.read_rtd() == 8382
+    assert any(reg == 0 and val & 0x20 for reg, val in spi.writes)  # one-shot 요청
+    assert not dev.bias and dev.fault == (False,) * 6
+    s = Max31865Rtd("pt100_0", cs_pin="CE0", ref_ohms=430.0, rate_hz=10,
+                    driver_factory=lambda *a: _Max31865Handle(dev, lambda: None))
+    assert s.probe().connected and s.probe().driver == "spidev_hw_cs"
+    assert s.probe().facts["spi"] == "/dev/spidev0.0"
+    s.open({})
+    smp = s.read()[0]
+    assert smp.valid and smp.data["rtd_raw"] == 8382
+
+
+def test_spidev_driver_reports_fault_bits():
+    dev = rtd_mod._SpidevMax31865(FakeMax31865Spi(rtd_raw=0x7FFF, fault=0x80), wires=3)
+    assert dev.fault == (True, False, False, False, False, False)
+
+
+def test_cs_pin_selects_driver():
+    assert rtd_mod._driver_for("CE0") is rtd_mod._spidev_driver
+    assert rtd_mod._driver_for("CE1") is rtd_mod._spidev_driver
+    assert rtd_mod._driver_for("D22") is rtd_mod._adafruit_driver
+
+
 # ── 통합: 한 센서 장애가 나머지를 멈추지 않는다 + Pi 계약 ────────────────────
 def test_sensors_in_service_with_one_failing(client_factory, fake_buses, monkeypatch, tmp_path, pi_models):
     fake_buses(7, present={(0, 0x33), (1, 0x33)})

@@ -7,7 +7,7 @@
     $PY tools/sensor_check.py buses                                   # 장치 파일·버스 클록 목록(스캔 없음)
     $PY tools/sensor_check.py mux --bus 7 --expect 0:0x33 1:0x33       # mux와 채널별 예상 주소만 확인
     $PY tools/sensor_check.py thermal --bus 7 --channel 0 --count 20 --out thermal0.json
-    $PY tools/sensor_check.py pt100 --cs-pin D22 --ref-ohms 430 --count 30
+    $PY tools/sensor_check.py pt100 --cs-pin CE0 --ref-ohms 430 --count 30
 
 버스 번호·CS 핀·기준 저항에는 기본값이 없다 — 실물에서 확인한 값을 직접 준다.
 `--mux-addr none`이면 mux 없이 직결된 센서 1대를 읽는다. `--out` JSON은 notes/data/에 정리한다.
@@ -170,7 +170,7 @@ def main() -> int:
             p.add_argument("--channel", type=int, default=0)
     readers["thermal"].add_argument("--refresh", type=float, default=8.0, help="장치 refresh rate(Hz)")
     readers["thermal"].add_argument("--retries", type=int, default=2)
-    readers["pt100"].add_argument("--cs-pin", required=True, help="Blinka 핀 이름(J12 물리 15번 = D22). CE0/CE1 금지")
+    readers["pt100"].add_argument("--cs-pin", required=True, help="CE0(J12 24번, 하드웨어 CS) 또는 Blinka GPIO 핀 이름(15번 = D22)")
     readers["pt100"].add_argument("--ref-ohms", type=float, required=True, help="보드 실물 기준 저항(Ω)")
     readers["pt100"].add_argument("--wires", type=int, default=3)
     readers["pt100"].add_argument("--jetson-model", default="", help="Jetson.GPIO가 보드를 못 알아볼 때: JETSON_ORIN_NANO")
