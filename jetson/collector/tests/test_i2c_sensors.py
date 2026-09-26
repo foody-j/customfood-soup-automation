@@ -402,3 +402,25 @@ def test_sensors_in_service_with_one_failing(client_factory, fake_buses, monkeyp
     t1 = next(s for s in meta["sensors"] if s["sensor_id"] == "thermal_1")
     assert t1["probe_facts"]["fov_deg"] == 110 and t1["applied_config"]["mux_channel"] == 1
     assert pi_models.JetsonReport.model_validate(status(client)).last_session_summary.session_id == "sess-multi"
+
+
+def test_pt100_scalar_preview_shows_latest_value_and_fault(client_factory, monkeypatch):
+    """PT100 `temp`는 preview_array 경로로 `kind: scalar` 최신값을 준다 — fault(무효)도 그대로 보인다."""
+    dev = FakeMax31865(raw=8382)
+    monkeypatch.setattr(rtd_mod, "_adafruit_driver", lambda *a: _Max31865Handle(dev, lambda: None))
+    client = client_factory(sensor_mode="real", v4l2_devices=(), pt100_cs_pin="D22", pt100_ref_ohms=430.0,
+                            pt100_rate_hz=10.0)
+    url = "/api/v1/capture/preview_array/pt100_0/temp"
+    start(client, sid="sess-pt100-preview", sensors=("pt100_0",), preview={"enabled": True, "max_fps": 2})
+    assert wait_until(lambda: client.get(url).status_code == 200, timeout=10)
+    body = client.get(url).json()
+    assert body["kind"] == "scalar" and body["valid"] is True and body["invalid_reason"] is None
+    assert body["value"]["rtd_raw"] == 8382 and body["value"]["temp_c"] == pytest.approx(25.7, abs=0.2)
+
+    dev.raw, dev._fault = 0x7FFF, (True, False, False, False, False, False)  # 탐침 단선
+    assert wait_until(lambda: client.get(url).json().get("valid") is False, timeout=10)
+    bad = client.get(url).json()
+    assert bad["value"] is None and bad["invalid_reason"] == "max31865_fault:high_threshold"
+
+    client.post("/api/v1/capture/stop", json={"session_id": "sess-pt100-preview"})
+    assert wait_until(lambda: client.get(url).status_code == 404, timeout=10)
