@@ -19,6 +19,19 @@
   JSON Schema: 숫자·0·null 허용, 문자열·bool·객체·필드 누락 거절 확인.
   Vite SSR로 온도 타일 숫자·0·null 렌더를 확인했다. 하드웨어 배포·실물 시험은 하지 않았다.
 
+## 2026-09-26 — systemd 전환 + GMSL 카메라 소실 원인: jetson-io(9/23)가 카메라 오버레이를 덮어씀
+
+- `sensing-gmsl.service`(9/21 작성, 미설치)와 `jetson-collector.service`를 사용자가 sudo로 설치·enable. 수집 서비스는
+  systemd로 정상 기동 — thermal_0·pt100_0·cam_depth_0 연결. env를 현재 구성으로 정정(열화상 버스 7·mux 없음·채널 0),
+  서비스에 `gpio` 그룹(spidev 권한)·`After=sensing-gmsl.service` 추가.
+- 그러나 드라이버를 올려도 GMSL 노드(`/dev/video*`, `i2c-10/11`)가 생기지 않음. **원인: 9/23 SPI 활성화 때 `jetson-io`가
+  extlinux의 JetsonIO 항목 `OVERLAYS`를 카메라 오버레이(`tegra234-camera-yuv-gmslx4-overlay.dtbo`)에서 헤더 오버레이로
+  통째로 교체** → 부팅 장치 트리에 max96712 노드 없음. 9/23 기록의 "GMSL 소실은 SPI 때문이 아님"은 **틀렸다.**
+- 조치: `fdtoverlay`로 기본 DTB + 헤더(SPI) + 카메라 오버레이를 합친
+  `/boot/dtb/kernel_tegra234-p3768-0000+p3767-0005-nv-super-gmsl-spi.dtb` 생성(카메라 노드·spi1 핀 포함 확인),
+  JetsonIO 항목이 이를 `FDT`로 쓰고 `OVERLAYS` 줄 제거. 백업 `extlinux.conf.before-gmsl-spi`, 실패 시 부팅 메뉴의 primary.
+  **재부팅 후 검증 필요**(GMSL 노드·SPI·PT100). 교훈: jetson-io를 다시 쓰면 이 합친 DTB 설정도 덮어써진다.
+
 ## 2026-09-26 — viewer PT100 숫자 카드 + 열화상·PT100 통합 운전 10.5분
 
 - viewer에 스칼라 스트림 카드 추가: 세션이 `data_kind=scalar` 스트림 최신값을 무효(fault) 포함 캐시하고 기존
