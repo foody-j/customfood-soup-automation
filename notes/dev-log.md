@@ -30,7 +30,10 @@
 - 조치: `fdtoverlay`로 기본 DTB + 헤더(SPI) + 카메라 오버레이를 합친
   `/boot/dtb/kernel_tegra234-p3768-0000+p3767-0005-nv-super-gmsl-spi.dtb` 생성(카메라 노드·spi1 핀 포함 확인),
   JetsonIO 항목이 이를 `FDT`로 쓰고 `OVERLAYS` 줄 제거. 백업 `extlinux.conf.before-gmsl-spi`, 실패 시 부팅 메뉴의 primary.
-  **재부팅 후 검증 필요**(GMSL 노드·SPI·PT100). 교훈: jetson-io를 다시 쓰면 이 합친 DTB 설정도 덮어써진다.
+  교훈: jetson-io를 다시 쓰면 이 합친 DTB 설정도 덮어써진다.
+- **재부팅(15:49) 후 검증 완료**: 사람 개입 없이 `sensing-gmsl`·`jetson-collector` 자동 기동. GMSL `/dev/video6~9`(9-001a~d),
+  `i2c-10/11`, `/dev/spidev0.x` 모두 존재. 5센서 20초 세션 `postboot-20260926T070032Z`: GMSL 2대 각 9.94 fps·186장,
+  Gemini color/depth/ir 9.94 fps(depth 무효 3), 열화상 1.99 Hz, PT100 0.99 Hz(23.8 ℃), 드롭 0.
 
 ## 2026-09-26 — viewer PT100 숫자 카드 + 열화상·PT100 통합 운전 10.5분
 
