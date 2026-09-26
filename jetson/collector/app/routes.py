@@ -73,6 +73,7 @@ async def capture_preview(request: Request, sensor_id: str, stream_id: str,
 async def capture_preview_array(request: Request, sensor_id: str, stream_id: str,
                                 session_id: str | None = None) -> dict:
     """열화상처럼 그림이 아닌 배열 스트림의 저속 미리보기(0.1 ℃ 단위 정수).
+    PT100 같은 스칼라 스트림은 `{"kind": "scalar", "valid", "value", "invalid_reason"}`로 최신값을 준다.
 
     화면이 원본 값으로 히트맵을 그리고 화소 온도를 읽을 수 있게 **숫자 그대로** 내보낸다(D-011).
     """

@@ -164,6 +164,11 @@ class CaptureSession:
             (s.sensor_id, spec.stream_id)
             for s in sensors for spec in s.streams if spec.stream_id in _PREVIEW_ARRAY_STREAMS
         }
+        #: PT100 같은 스칼라 스트림 — 숫자 한 줄이라 변환 비용이 없으므로 무효 샘플(fault)도 그대로 보여 준다
+        self._preview_scalar_allowed = {
+            (s.sensor_id, spec.stream_id)
+            for s in sensors for spec in s.streams if spec.data_kind == "scalar"
+        }
         self._preview_frames: dict[tuple[str, str], tuple[bytes, str, int]] = {}
         self._preview_arrays: dict[tuple[str, str], tuple[dict[str, Any], str, int]] = {}
         self._preview_last_attempt: dict[tuple[str, str], float] = {}
@@ -462,10 +467,15 @@ class CaptureSession:
 
     # ── 저속 미리보기 ───────────────────────────────────────────────────────
     def _update_preview(self, sensor_id: str, sample: Any) -> None:
-        """기존 수집 루프의 샘플로만 최신 JPEG(또는 배열)를 만든다. 기록용 원본은 수정하지 않는다."""
-        if not self._preview_enabled or not sample.valid or self._stop_event.is_set():
+        """기존 수집 루프의 샘플로만 최신 JPEG(또는 배열·스칼라)를 만든다. 기록용 원본은 수정하지 않는다."""
+        if not self._preview_enabled or self._stop_event.is_set():
             return
         key = (sensor_id, sample.stream_id)
+        if key in self._preview_scalar_allowed:
+            self._update_preview_scalar(key, sample)
+            return
+        if not sample.valid:
+            return
         if key in self._preview_array_allowed:
             self._update_preview_array(key, sample)
             return
@@ -489,6 +499,20 @@ class CaptureSession:
             if not self._stop_event.is_set() and (key in self._preview_frames or
                                                   len(self._preview_frames) < _PREVIEW_MAX_STREAMS):
                 self._preview_frames[key] = (payload, sample.host.utc, sample.seq)
+
+    def _update_preview_scalar(self, key: tuple[str, str], sample: Any) -> None:
+        """스칼라 스트림의 최신값. 배열 캐시에 `kind: "scalar"`로 넣어 같은 엔드포인트로 내보낸다."""
+        data = sample.data if isinstance(sample.data, dict) else None
+        payload = {
+            "kind": "scalar",
+            "valid": bool(sample.valid),
+            "value": {k: v for k, v in data.items() if isinstance(v, (int, float))} if data else None,
+            "invalid_reason": sample.invalid_reason,
+        }
+        with self._lock:
+            if not self._stop_event.is_set() and (key in self._preview_arrays or
+                                                  len(self._preview_arrays) < _PREVIEW_MAX_STREAMS):
+                self._preview_arrays[key] = (payload, sample.host.utc, sample.seq)
 
     def _update_preview_array(self, key: tuple[str, str], sample: Any) -> None:
         """열화상 같은 배열 스트림은 그림으로 굽지 않고 **0.1 ℃ 단위 정수**로 내보낸다.
