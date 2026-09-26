@@ -1,0 +1,233 @@
+{
+ "command": "pt100",
+ "args": {
+  "cmd": "pt100",
+  "out": "/tmp/claude-1000/-home-ubuntu-customfood-soup-automation/29939a33-bf83-423f-a2b8-51bc55e57440/scratchpad/pt100c.json",
+  "count": 10,
+  "rate": null,
+  "sensor_id": null,
+  "cs_pin": "CE0",
+  "ref_ohms": 430.0,
+  "wires": 4,
+  "jetson_model": ""
+ },
+ "sensor_id": "pt100_0",
+ "kind": "rtd_spi",
+ "started_utc": "2026-09-26T04:11:31.756Z",
+ "probe": {
+  "connected": true,
+  "reason": null,
+  "facts": {
+   "spi": "/dev/spidev0.0",
+   "cs_pin": "CE0",
+   "ref_resistor_ohm": 430.0,
+   "rtd_nominal_ohm": 100.0,
+   "wires": 4
+  }
+ },
+ "versions": {
+  "driver": "spidev_hw_cs",
+  "adafruit_max31865": "2.2.27",
+  "adafruit_blinka": "9.2.0",
+  "jetson_gpio": "2.1.7",
+  "adafruit_pureio": "1.1.11"
+ },
+ "samples": [
+  {
+   "seq": 1,
+   "host_recv_utc": "2026-09-26T04:11:31.855Z",
+   "host_recv_mono_ns": 245338453117664,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 245338373270848,
+    "acquire_ms": 79.84,
+    "fault": []
+   },
+   "value": {
+    "temp_c": 29.187,
+    "resistance_ohm": 111.358,
+    "rtd_raw": 8486
+   }
+  },
+  {
+   "seq": 2,
+   "host_recv_utc": "2026-09-26T04:11:32.856Z",
+   "host_recv_mono_ns": 245339454220313,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 245339373463550,
+    "acquire_ms": 80.75,
+    "fault": []
+   },
+   "value": {
+    "temp_c": 29.221,
+    "resistance_ohm": 111.371,
+    "rtd_raw": 8487
+   }
+  },
+  {
+   "seq": 3,
+   "host_recv_utc": "2026-09-26T04:11:33.856Z",
+   "host_recv_mono_ns": 245340454652990,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 245340373398804,
+    "acquire_ms": 81.25,
+    "fault": []
+   },
+   "value": {
+    "temp_c": 29.187,
+    "resistance_ohm": 111.358,
+    "rtd_raw": 8486
+   }
+  },
+  {
+   "seq": 4,
+   "host_recv_utc": "2026-09-26T04:11:34.856Z",
+   "host_recv_mono_ns": 245341454191432,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 245341373362731,
+    "acquire_ms": 80.82,
+    "fault": []
+   },
+   "value": {
+    "temp_c": 29.221,
+    "resistance_ohm": 111.371,
+    "rtd_raw": 8487
+   }
+  },
+  {
+   "seq": 5,
+   "host_recv_utc": "2026-09-26T04:11:35.855Z",
+   "host_recv_mono_ns": 245342453224132,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 245342373364835,
+    "acquire_ms": 79.85,
+    "fault": []
+   },
+   "value": {
+    "temp_c": 29.221,
+    "resistance_ohm": 111.371,
+    "rtd_raw": 8487
+   }
+  },
+  {
+   "seq": 6,
+   "host_recv_utc": "2026-09-26T04:11:36.856Z",
+   "host_recv_mono_ns": 245343453887503,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 245343373394940,
+    "acquire_ms": 80.49,
+    "fault": []
+   },
+   "value": {
+    "temp_c": 29.187,
+    "resistance_ohm": 111.358,
+    "rtd_raw": 8486
+   }
+  },
+  {
+   "seq": 7,
+   "host_recv_utc": "2026-09-26T04:11:37.856Z",
+   "host_recv_mono_ns": 245344453867783,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 245344373382516,
+    "acquire_ms": 80.48,
+    "fault": []
+   },
+   "value": {
+    "temp_c": 29.153,
+    "resistance_ohm": 111.345,
+    "rtd_raw": 8485
+   }
+  },
+  {
+   "seq": 8,
+   "host_recv_utc": "2026-09-26T04:11:38.856Z",
+   "host_recv_mono_ns": 245345454289707,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 245345373379660,
+    "acquire_ms": 80.9,
+    "fault": []
+   },
+   "value": {
+    "temp_c": 29.187,
+    "resistance_ohm": 111.358,
+    "rtd_raw": 8486
+   }
+  },
+  {
+   "seq": 9,
+   "host_recv_utc": "2026-09-26T04:11:39.856Z",
+   "host_recv_mono_ns": 245346454596204,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 245346373372964,
+    "acquire_ms": 81.22,
+    "fault": []
+   },
+   "value": {
+    "temp_c": 29.187,
+    "resistance_ohm": 111.358,
+    "rtd_raw": 8486
+   }
+  },
+  {
+   "seq": 10,
+   "host_recv_utc": "2026-09-26T04:11:40.856Z",
+   "host_recv_mono_ns": 245347454163352,
+   "valid": true,
+   "invalid_reason": null,
+   "flags": {
+    "acquire_start_mono_ns": 245347373377980,
+    "acquire_ms": 80.78,
+    "fault": []
+   },
+   "value": {
+    "temp_c": 29.187,
+    "resistance_ohm": 111.358,
+    "rtd_raw": 8486
+   }
+  }
+ ],
+ "applied_config": {
+  "rate_hz": 1.0,
+  "requested_rate_hz": null,
+  "conversion": "one-shot",
+  "filter_hz": 60,
+  "spi": "/dev/spidev0.0",
+  "cs_pin": "CE0",
+  "ref_resistor_ohm": 430.0,
+  "rtd_nominal_ohm": 100.0,
+  "wires": 4
+ },
+ "summary": {
+  "requested": 10,
+  "read": 10,
+  "valid": 10,
+  "success_rate": 1.0,
+  "elapsed_sec": 9.08,
+  "valid_hz": 1.101,
+  "acquire_ms": {
+   "min": 79.84,
+   "mean": 80.64,
+   "max": 81.25
+  },
+  "max_gap_ms": 1001.1,
+  "retries": 0
+ }
+}

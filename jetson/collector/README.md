@@ -57,7 +57,7 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 | `COLLECTOR_THERMAL_RATE_HZ` / `PT100_RATE_HZ` | 2 / 1 | 센서별 목표 주기(초기 시험 목표). 세션에서는 `per_sensor.<id>.rate_hz` |
 | `COLLECTOR_THERMAL_REFRESH_HZ` / `THERMAL_READ_RETRIES` | 8 / 2 | MLX90640 장치 refresh rate(서브페이지 주기) / 일시적 프레임 오류 재시도 |
 | `COLLECTOR_THERMAL_RANGE_C` | `-40,300` | 물리적으로 가능한 화소 온도 범위(데이터시트). 밖의 값이 있으면 **재시도**하고, 그래도 깨져 있으면 `valid:false` + `flags.out_of_range` |
-| `COLLECTOR_PT100_CS_PIN` / `PT100_REF_OHMS` | **(없음)** | MAX31865 별도 GPIO CS의 Blinka 핀 이름(예 `D22`) / 보드 **실물** 기준 저항 Ω |
+| `COLLECTOR_PT100_CS_PIN` / `PT100_REF_OHMS` | **(없음)** | MAX31865 CS — `CE0`(J12 24번 하드웨어 CS, spidev 직접, 실물 확인) 또는 GPIO의 Blinka 핀 이름(예 `D22`, Adafruit 경로) / 보드 **실물** 기준 저항 Ω(VLT-THM024 = 430) |
 | `COLLECTOR_PT100_WIRES` / `PT100_NOMINAL_OHMS` | 3 / 100 | RTD 결선 수 / 공칭 저항 |
 | `COLLECTOR_SENSOR_FAIL_LIMIT` | 5 | 연속 읽기 실패가 이만큼이면 분리로 보고 재연결 |
 | `COLLECTOR_JETSON_MODEL_NAME` | (없음) | 시스템 Jetson.GPIO가 보드를 못 알아볼 때 넘길 모델명(`JETSON_ORIN_NANO`) |
@@ -78,7 +78,7 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 | `cam_rgb_0` / `cam_rgb_1` | rgb_gmsl2 | `rgb` (UYVY→JPEG 프레임 파일, 또는 raw) | ISX031F ×2, Sensing SG4A 보드. **2026-09-21 실기기 확인**(1920×1536, 30→10 fps 추림, 60초 3대 동시 드롭·갭 0). 재부팅마다 드라이버 적재 필요 → `systemd/sensing-gmsl.service` |
 | `cam_depth_0` | depth_usb | `color`(JPEG 또는 BGR raw) / `depth`(mm, uint16) / `ir`(intensity, uint16) | 어댑터 구현. **2026-09-18 실기기 단기 촬영 확인**(30 fps 드롭 0, 미리보기 OK). 30분 연속·저장량 대책은 미완 — `notes/data/experiments/20260918_gemini2-jetson-first-capture.md` |
 | `thermal_0` / `thermal_1` | thermal_i2c | `temp_array` (24×32 float32 ℃) | MLX90640 55° / 110°. **D55 1대만 사용(D-031)** — i2c-7 직결·mux 없음, 2 Hz 3분 360/360, 취득 96~221 ms. `thermal_1`은 예비(D110). 1.5 m 배선은 미검증 |
-| `pt100_0` | rtd_spi | `temp` `{temp_c, resistance_ohm, rtd_raw}` | MAX31865 + PT100 3선식. 어댑터 있음, **실물 검증 전**(미배선 — 가짜 드라이버 테스트만) |
+| `pt100_0` | rtd_spi | `temp` `{temp_c, resistance_ohm, rtd_raw}` | MAX31865 + PT100. **실물 첫 판독 성공(2026-09-26)** — CS `CE0`, 4선 모드(RTD−↔F− 점퍼), 실온 29.2 ℃ 10/10 |
 | `mock_*` (auto) / 위 ID 그대로 (mock) | — | 위와 같은 스트림 구조 | 모의, 항상 `simulated:true` |
 
 요청 config 예:
