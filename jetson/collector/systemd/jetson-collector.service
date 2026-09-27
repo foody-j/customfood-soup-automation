@@ -10,7 +10,7 @@
 [Unit]
 Description=Soup Jetson 수집 서비스 (FastAPI) — 센서 수집·원본 저장·Pi 제어 API
 Documentation=file:///home/ubuntu/customfood-soup-automation/jetson/collector/README.md
-After=network-online.target fzcam_cfg.service
+After=network-online.target fzcam_cfg.service sensing-gmsl.service
 Wants=network-online.target
 
 [Service]
@@ -27,8 +27,8 @@ StartLimitBurst=10
 KillSignal=SIGINT
 TimeoutStopSec=150
 
-; 카메라(/dev/video*)·I2C 접근이 필요하므로 PrivateDevices는 쓰지 않는다.
-SupplementaryGroups=video i2c
+; 카메라(/dev/video*)·I2C·SPI(/dev/spidev*는 gpio 그룹) 접근이 필요하므로 PrivateDevices는 쓰지 않는다.
+SupplementaryGroups=video i2c gpio
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=full
