@@ -282,3 +282,25 @@ def test_stop_ack_stopping_keeps_session_until_saved(client):
     refresh(client)
     done = client.get(f"/api/sessions/{sess['session_id']}").json()
     assert done["state"] == "stopped" and done["jetson_summary"] is not None
+
+
+# ── 한 번의 늦은 응답으로 끊김을 선언하지 않는다 ─────────────────────────
+def test_single_probe_failure_does_not_flap(client_factory):
+    client = client_factory(link_fail_confirm=2)
+    assert refresh(client)["link"]["state"] == "online"
+    jet = mock(client)
+
+    jet.link_cut = True
+    once = refresh(client)  # 1회 실패 — 상태 유지, 이벤트 없음
+    assert once["link"]["state"] == "online" and once["jetson_status"] == "online"
+    assert once["link"]["consecutive_failures"] == 1
+    jet.link_cut = False
+    back = refresh(client)
+    assert back["link"]["state"] == "online" and back["link"]["consecutive_failures"] == 0
+    assert "link.unreachable" not in codes(client) and "link.service_down" not in codes(client)
+
+    jet.link_cut = True
+    refresh(client)
+    twice = refresh(client)  # 연속 2회 → 확정
+    assert twice["link"]["state"] == "unreachable"
+    assert "link.unreachable" in codes(client)

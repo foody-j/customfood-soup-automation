@@ -127,8 +127,21 @@ class JetsonMonitor:
             state = LinkState.SERVICE_DOWN if host_up else LinkState.UNREACHABLE
 
         self.last_probe_at = now
-        self.link_state = state
         self.last_error = error
+
+        if (
+            state is not LinkState.ONLINE
+            and previous is LinkState.ONLINE
+            and self.consecutive_failures + 1 < self._settings.link_fail_confirm
+        ):
+            # 한 번의 늦은 응답으로는 끊김을 선언하지 않는다 — 연속 실패만 센다.
+            # 마지막 정상 시각(last_ok_at)은 그대로라 오래 끊기면 stale 판정은 그대로 동작한다.
+            self.consecutive_failures += 1
+            log.info("Jetson 프로브 실패 %d회(확정 전, 상태 유지): %s", self.consecutive_failures, error)
+            self._probe_count += 1
+            return self.link_info(now)
+
+        self.link_state = state
 
         if state is LinkState.ONLINE:
             self.consecutive_failures = 0

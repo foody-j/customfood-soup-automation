@@ -175,6 +175,9 @@ class Settings:
     stale_after_sec: float = 8.0
     #: 호스트·API 모두 무응답이 이 시간 이상 지속되면 "연결 끊김" 확정으로 승격
     link_lost_confirm_sec: float = 20.0
+    #: 정상(online)에서 이 횟수만큼 **연속** 실패해야 끊김으로 바꾼다. Jetson `/status`가 가끔 제한 시간을
+    #: 한 번 넘겨도(2026-09-27 실측 40회 중 1회 2.3초) 화면·이력이 깜빡이지 않게 한다. 1이면 즉시 전환.
+    link_fail_confirm: int = 2
 
     # ── 전원 제어 ──────────────────────────────────────────────────────────
     power_mode: str = POWER_UNSUPPORTED
@@ -258,6 +261,7 @@ class Settings:
             probe_timeout_sec=_env_float("SOUP_PROBE_TIMEOUT", 2.0),
             stale_after_sec=_env_float("SOUP_STALE_AFTER", 8.0),
             link_lost_confirm_sec=_env_float("SOUP_LINK_LOST_CONFIRM", 20.0),
+            link_fail_confirm=max(1, _env_int("SOUP_LINK_FAIL_CONFIRM", 2)),
             power_mode=_env_str("SOUP_POWER_MODE", POWER_UNSUPPORTED),
             db_path=Path(db_path) if db_path else DEFAULT_DB_PATH,
             event_retention=_env_int("SOUP_EVENT_RETENTION", 5000),

@@ -26,6 +26,8 @@ def make_settings(tmp_path: Path, **overrides) -> Settings:
         probe_timeout_sec=0.5,
         stale_after_sec=5.0,
         link_lost_confirm_sec=0.0,
+        # 기존 시험은 한 번의 실패로 바로 전환되는 것을 전제로 한다(연속 실패 확정은 따로 시험)
+        link_fail_confirm=1,
         mock_powered_on_boot=True,
         mock_boot_host_sec=0.0,
         mock_boot_api_sec=0.0,
