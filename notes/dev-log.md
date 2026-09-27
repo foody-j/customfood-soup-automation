@@ -2,6 +2,20 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-09-27 — Pi 실물 연동 준비: eth0 링크 없음, systemd 서비스 설정(설치는 사람 몫)
+
+- **eth0:** `NO-CARRIER`·`Link detected: no`, NetworkManager `unavailable`. 프로필 `netplan-eth0`은 `ipv4.method=shared`
+  (Pi 10.42.0.1이 DHCP 제공)·autoconnect yes로 정상. 커널 로그상 9/21 부팅 때 PHY(BCM54213PE)는 초기화됐지만
+  **이번 부팅 내내 link up이 한 번도 없다** → IP가 없는 건 설정이 아니라 물리 링크가 안 잡혀서다. 원인(케이블 분리·Jetson 전원
+  꺼짐·Jetson 쪽 포트 down 등)은 Pi에서 구분할 수 없어 단정하지 않았다. 무선(192.168.0.51)·tailscale로도 Jetson 무응답.
+  원격 접속 경로(wlan0 + tailscale)와 NM 프로필은 건드리지 않았다.
+- **서비스 파일:** 사용자 `yj-rpi` → `youngjin`(User·WorkingDirectory·ExecStart·ReadWritePaths·SOUP_DB_PATH),
+  `SOUP_JETSON_MODE=http`, `SOUP_JETSON_URL=http://10.42.0.52:8000`, 전원 회로 없음 → `SOUP_POWER_MODE=unsupported`.
+  `StartLimitIntervalSec/Burst`가 `[Service]`에 있어 systemd가 무시하던 것을 `[Unit]`으로 옮김(`systemd-analyze verify` 통과).
+  같은 env로 ExecStart를 사용자 권한에서 시험 기동: http 모드, Jetson 무응답을 `link_lost`(전원 판단 불가)로 정직하게 표시.
+- **미완:** `/etc` 설치는 sudo가 필요해(에이전트 권한에서 차단) 사람이 실행해야 한다. Jetson 링크가 없어 센서 5개·실측 표시·
+  D-035 적용 확인·가열 없는 60초 시험은 진행하지 못했다.
+
 ## 2026-09-27 — Pi: 첫 조리 데이터 수집 시험 준비(열화상·PT100 표시, 최대 촬영 시간, 자동 종료 수렴) — D-036
 
 브랜치 `pi-first-cook-trial`(Pi에서 작업, main `c358051` 기준). 대상: 약 24 cm 솥 + 비비고 소고기무국 2봉 재가열·끓음 관찰.
