@@ -67,6 +67,7 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 | `COLLECTOR_STATS_INTERVAL` / `SYSTEM_INTERVAL` | 1 / 5 초 | 수집 통계 / 시스템 상태 주기 |
 | `COLLECTOR_STOP_WAIT` | 120 초 | stop 응답이 저장 완료를 기다리는 상한 |
 | `COLLECTOR_CHECKSUM` | `after_stop` | 세션 종료 후 백그라운드 sha256 (`none`으로 끔) |
+| `COLLECTOR_ARRAY_COMPRESSION` | `lz4` | records.bin 레코드 압축(`none`으로 끔). depth 3.7배·레코드당 약 7 ms(D-035) |
 | `COLLECTOR_POWEROFF_CMD` | (없음) | shutdown 마지막 단계 명령. 비우면 저장 완료 후 로그만 |
 | `COLLECTOR_LOG_LEVEL` / `LOG_FILE` / `LOG_MAX_MB` / `LOG_BACKUPS` | INFO / 없음 / 5 / 3 | 서비스 로그 레벨·회전 파일 |
 | `COLLECTOR_LOG_SUMMARY_INTERVAL` | 30 초 | 수집 중 요약 로그 주기 |
@@ -128,7 +129,8 @@ Gemini 2의 Jetson SDK 설치, USB 권한, 수집·미리보기 시험 및 저�
                     device_ts{value,unit,clock,source}|null, path/offset/bytes, 해상도·픽셀포맷·노출·게인,
                     valid/invalid_reason. **받았으나 버린 샘플도 path=null로 남는다.**
     frames/NNNNNN.jpg   이미지 스트림
-    records.bin         배열 스트림(depth uint16 mm / thermal float32 ℃) — 미리보기가 원본을 대체하지 않음
+    records.bin         배열 스트림(depth uint16 mm / IR uint8 / thermal float32 ℃) — 기본 lz4 무손실 압축(D-035),
+                        index의 compression·shuffle·raw_bytes로 `app.storage.unpack_record`가 푼다. 미리보기가 원본을 대체하지 않음
 ```
 
 ## 시각 규칙

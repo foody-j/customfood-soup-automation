@@ -158,6 +158,10 @@ Gemini 2의 `ir` 영상 스트림은 MLX90614와 별개이며 유지한다.
 { "accepted": true, "session_id": "sess-...", "state": "running", "message": null }
 ```
 
+`config.max_duration_sec`(선택, 초, 2026-09-27): running 진입 뒤 이 시간이 지나면 Jetson이 세션을 **정상 중지**한다
+(`stop_reason = "max_duration_sec=<값> 도달"`, 이벤트 `session.max_duration`). 없거나 0이면 제한 없음 — 기존 동작 그대로.
+Jetson `/viewer` 점검 세션은 기본 600초로 연다.
+
 - 이미 **같은** `session_id`가 진행 중이면 `accepted: true`(멱등).
 - **다른** 세션이 진행 중이면 `accepted: false` + `message`에 사유. HTTP는 200으로 둔다
   (거절은 오류가 아니라 정상 응답이다). Pi는 이를 409로 사용자에게 전달한다.
@@ -228,6 +232,7 @@ Pi와의 연결은 관리 경로일 뿐 수집의 전제가 아니다(플랜 §4
 | `GET /api/v1/sessions/{session_id}` | `session`(메타) + `manifest`(결과 목록) + `live`(진행 중이면 현재 통계) |
 | `POST /api/v1/capture/config` | 실험 중 설정 변경 `{session_id?, sensor_id, changes}` → `{applied, before, after}` 또는 `{accepted:false, message}`. 변경 시각·전후 값이 세션 기록에 남는다 |
 | `GET /api/v1/capture/preview/{sensor_id}/{stream_id}?session_id=` | `config.preview.enabled=true`로 시작한 활성 세션의 최근 축소 JPEG. `max_fps` 기본 1, 상한 2. `config.preview.depth_max_mm`(기본 4000, 100~65535)로 깊이 의사색 범위를 정한다 — 작업 거리 0.5 m에서는 1000~1500 권장. 아직 프레임이 없거나 종료되면 404. `Cache-Control: no-store`, 세션 ID·수신 UTC·시퀀스 응답 헤더 포함. 원본 파일·세션 저장을 대신하지 않는다 |
+| `GET /api/v1/capture/preview_array/{sensor_id}/{stream_id}?session_id=` | 그림이 아닌 스트림의 최신 미리보기(JSON). 열화상 `temp_array`는 0.1 ℃ 정수 배열(`rows`·`cols`·`deci`·`min/max/mean`), PT100 같은 스칼라 스트림은 `{kind:"scalar", valid, value, invalid_reason}`(fault 샘플도 표시). 규칙은 JPEG 미리보기와 같다 |
 
 Jetson 구현: `jetson/collector/` (README 참고). Pi 쪽 클라이언트
 `pi-server/app/jetson/http_client.py`는 `SOUP_JETSON_MODE=http`로 바꾸면 그대로 붙는다

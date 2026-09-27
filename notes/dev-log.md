@@ -19,6 +19,17 @@
   JSON Schema: 숫자·0·null 허용, 문자열·bool·객체·필드 누락 거절 확인.
   Vite SSR로 온도 타일 숫자·0·null 렌더를 확인했다. 하드웨어 배포·실물 시험은 하지 않았다.
 
+## 2026-09-27 — 저장량 절감(D-035): 배열 lz4 압축 + IR 8비트, 세션 최대 시간
+
+- 실제 프레임으로 압축 후보 비교 → **바이트 평면 분리 + lz4**(depth 3.8배·7 ms/장) 채택. IR은 최댓값 255 — Y8을 uint16으로
+  늘려 두 배로 저장하던 것을 `uint8` 그대로 저장. `storage.pack_record/unpack_record`, index에 `compression·shuffle·raw_bytes`.
+- 세션 config `max_duration_sec` 추가 — running 뒤 경과하면 정상 중지(이벤트 `session.max_duration`). viewer 점검 세션은
+  최대 시간 선택(기본 10분). Pi 운영 세션은 지정하지 않으면 기존대로 무제한.
+- 5센서 60초 실측: **3.20 → 1.39 GB/분(2.3배, 시간당 192 → 84 GB)**, 드롭 0, 60초에 스스로 정지 확인.
+  상세: `notes/data/experiments/20260927_storage-lz4-ir8.md`. 테스트 62 통과(압축 왕복·자동 정지 추가, IR dtype 기대값 갱신).
+- 문서: README·gemini2 설정 문서(읽기 방법)·pi-jetson-api(`max_duration_sec`, `preview_array` 스칼라)·env·requirements.
+- **적용하려면 systemd 서비스 재시작 필요**(sudo). 그 전 세션은 비압축 형식 그대로 읽힌다(키 없음 = none).
+
 ## 2026-09-26 — systemd 전환 + GMSL 카메라 소실 원인: jetson-io(9/23)가 카메라 오버레이를 덮어씀
 
 - `sensing-gmsl.service`(9/21 작성, 미설치)와 `jetson-collector.service`를 사용자가 sudo로 설치·enable. 수집 서비스는

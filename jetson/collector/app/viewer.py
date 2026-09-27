@@ -40,10 +40,11 @@ _PAGE = """<!doctype html>
  .scroll{overflow-x:auto}
 </style></head><body>
 <h1>Jetson 수집 점검 화면</h1>
-<div class="mut">미리보기는 축소 JPEG(최대 2 fps)이고 열화상은 <b>숫자 배열</b>을 받아 화면에서 히트맵으로 그린다. PT100 같은 단일 온도는 숫자와 최근 추이로 보인다. 저장되는 원본과 별개다. 점검 세션은 10 fps·깊이 의사색 0~1.5 m로 열리고 <b>원본이 실제로 저장된다</b> — 확인 후 세션 중지.</div>
+<div class="mut">미리보기는 축소 JPEG(최대 2 fps)이고 열화상은 <b>숫자 배열</b>을 받아 화면에서 히트맵으로 그린다. PT100 같은 단일 온도는 숫자와 최근 추이로 보인다. 저장되는 원본과 별개다. 점검 세션은 10 fps·깊이 의사색 0~1.5 m로 열리고 <b>원본이 실제로 저장된다</b> — 고른 최대 시간(기본 10분)이 지나면 자동으로 멈춘다.</div>
 <div class="bar">
  <span id="state">상태 읽는 중…</span>
  <button id="start">점검 세션 시작</button><button id="stop">세션 중지</button>
+ <label class="mut">점검 세션 최대 <select id="maxdur"><option value="600">10분</option><option value="1800">30분</option><option value="3600">60분</option><option value="0">제한 없음</option></select></label>
  <label class="mut">갱신 <select id="period"><option value="1000">1초</option><option value="500">0.5초</option><option value="2000">2초</option></select></label>
 </div>
 <div id="msg" class="bad"></div>
@@ -180,7 +181,7 @@ $("start").onclick = async () => {
   if (!sensors.length) { $("msg").textContent = "연결된 실물 센서가 없다."; return; }
   const sid = "check-" + new Date().toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
   const r = await (await fetch(API + "/capture/start", {method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({session_id: sid, name: "viewer 점검 세션", config: {sensors, fps: 10, preview: {enabled: true, max_fps: 2, depth_max_mm: 1500}}})})).json();
+    body: JSON.stringify({session_id: sid, name: "viewer 점검 세션", config: {sensors, fps: 10, max_duration_sec: Number($("maxdur").value), preview: {enabled: true, max_fps: 2, depth_max_mm: 1500}}})})).json();
   $("msg").textContent = r.accepted ? "" : ("시작 거절: " + (r.message || ""));
   tick();
 };
