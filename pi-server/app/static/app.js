@@ -43,6 +43,34 @@ const UNKNOWN = '미확인';
 let busy = false;
 /** 카메라 미리보기 컴포넌트 핸들. 이 화면은 "볼 세션이 있는지"만 알려 준다. */
 let cameraView = null;
+/** 열화상·PT100 표시 컴포넌트 핸들. 볼 세션 ID만 알려 준다. */
+let sensorView = null;
+/** 마지막으로 읽은 저장된 실험 설정(/api/config) */
+let savedConfig = {};
+/** 최근 세션의 실제 쓰기량(바이트/초) — 예상 저장량 추정용. 없으면 null */
+let recentRate = null;
+/** 마지막으로 받은 /api/status — 입력 변경 시 시작 전 점검을 바로 다시 그리기 위함 */
+let lastStatus = null;
+
+/** 첫 조리 시험 기본 센서(카메라 3 + 열화상 + PT100). 누락 여부를 시작 전에 보여 준다. */
+const TRIAL_SENSORS = ['cam_rgb_0', 'cam_rgb_1', 'cam_depth_0', 'thermal_0', 'pt100_0'];
+const MAX_DURATION_REASON = 'max_duration_sec=';  // Jetson stop_reason 접두사(자동 중지)
+const PRESETS = {
+  check: {
+    name: '점검 60초 (가열 없음)',
+    ingredients: '',
+    conditions: '가열 없음 · 전체 센서 수집 점검',
+    note: '',
+    max_duration_sec: 60,
+  },
+  trial: {
+    name: '소고기무국 재가열 관찰',
+    ingredients: '비비고 소고기무국 2봉 — 포장 중량 ___ g ×2 · 실측 투입량 ___ g · 추가 물 ___ mL',
+    conditions: '솥 약 24 cm · 초기 출력 ___ · 뚜껑 ___ · PT100 탐침 위치 ___ · 카메라/열화상 위치·높이 ___',
+    note: '재가열·끓음 관찰 (생재료 익음·도네스 검증 아님)',
+    max_duration_sec: 600,
+  },
+};
 
 // ── 공통 ───────────────────────────────────────────────────────────────────
 async function api(path, options) {
@@ -104,6 +132,42 @@ function elapsedText(startedIso) {
   const m = Math.floor((sec % 3600) / 60);
   const s = Math.floor(sec % 60);
   return h > 0 ? `${h}시간 ${m}분 ${s}초` : `${m}분 ${s}초`;
+}
+
+function durationText(sec) {
+  if (sec == null || Number.isNaN(sec)) return '선택 안 함';
+  if (sec === 0) return '제한 없음';
+  const m = Math.floor(sec / 60);
+  const r = Math.round(sec % 60);
+  if (m === 0) return `${r}초`;
+  return r ? `${m}분 ${r}초` : `${m}분`;
+}
+
+function isAutoStop(reason) {
+  return typeof reason === 'string' && reason.startsWith(MAX_DURATION_REASON);
+}
+
+/** 최대 촬영 시간 입력값(초). 고르지 않았거나 잘못되면 null. */
+function maxDurationValue() {
+  const sel = $('in-maxdur').value;
+  if (sel === '') return null;
+  const raw = sel === 'custom' ? $('in-maxdur-custom').value : sel;
+  if (raw === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 && n <= 86400 ? n : null;
+}
+
+function setMaxDurationUi(sec) {
+  const sel = $('in-maxdur');
+  if (sec == null) {
+    sel.value = '';
+  } else if ([...sel.options].some((o) => o.value === String(sec))) {
+    sel.value = String(sec);
+  } else {
+    sel.value = 'custom';
+    $('in-maxdur-custom').value = String(sec);
+  }
+  $('lbl-maxdur-custom').classList.toggle('hidden', sel.value !== 'custom');
 }
 
 function escapeHtml(str) {
@@ -194,9 +258,97 @@ function renderSession(s) {
     ${sess.ingredients ? `<div class="session-meta">재료: ${escapeHtml(sess.ingredients)}</div>` : ''}
     ${sess.conditions ? `<div class="session-meta">조건: ${escapeHtml(sess.conditions)}</div>` : ''}
     ${sess.note ? `<div class="session-meta">메모: ${escapeHtml(sess.note)}</div>` : ''}
+    ${maxDurationLine(sess, active)}
+    ${endLine(sess)}
     <div class="session-meta">
       저장 결과: ${sess.jetson_summary ? '확인됨' : `<b>${UNKNOWN}</b>`}
     </div>`;
+}
+
+function maxDurationLine(sess, active) {
+  const cfg = sess.config || {};
+  if (!('max_duration_sec' in cfg)) return '<div class="session-meta">최대 촬영 시간: 설정 없음</div>';
+  const sec = Number(cfg.max_duration_sec);
+  let tail = '';
+  if (active && sec > 0 && sess.state === 'running' && sess.started_at) {
+    // 참고 표시일 뿐 — 실제 종료는 Jetson이 한다(브라우저 타이머로 멈추지 않음)
+    const left = sec - (Date.now() - new Date(sess.started_at).getTime()) / 1000;
+    tail = left > 0 ? ` · 남은 시간 약 ${durationText(Math.ceil(left))}` : ' · Jetson 종료 대기';
+  }
+  return `<div class="session-meta">최대 촬영 시간: ${durationText(sec)}${tail}</div>`;
+}
+
+function endLine(sess) {
+  const end = sess.jetson_end;
+  if (sess.state === 'stopping' && !(end && end.stop_reason)) {
+    return '<div class="session-meta">종료 처리 중 — Jetson 저장 마무리 대기</div>';
+  }
+  if (!end || !end.stop_reason) return '';
+  const phases = end.phases || {};
+  const when = phases.stop_requested ? ` (장치 ${localTime(phases.stop_requested)})` : '';
+  const text = isAutoStop(end.stop_reason)
+    ? `최대 촬영 시간 도달 — Jetson 자동 중지${when}. 데이터 촬영만 끝났고 인덕션은 별개입니다.`
+    : `중지 사유: ${escapeHtml(end.stop_reason)}${when}`;
+  const reason = end.end_reason ? ` · 종료 결과 ${escapeHtml(end.end_reason)}` : '';
+  return `<div class="session-meta">${text}${reason}</div>`;
+}
+
+/** 시작 전 점검 — 기본 센서 누락·모의 여부·남은 용량·미리보기·최대 시간·예상 저장량을 한눈에. */
+function renderPreflight(s) {
+  const box = $('preflight');
+  if (s.active_session) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  const items = [];
+  const report = s.report;
+  items.push(['장치', s.link.mock
+    ? '<span class="pf-warn">모의 Jetson — 실측 데이터가 아님</span>'
+    : `실물 ${escapeHtml(s.link.base_url)}`]);
+
+  const configured = Array.isArray(savedConfig.sensors) ? savedConfig.sensors : [];
+  const sensors = (report && report.sensors) || [];
+  const connected = new Set(sensors.filter((x) => x.connected).map((x) => x.sensor_id));
+  const notConfigured = TRIAL_SENSORS.filter((id) => !configured.includes(id));
+  const notConnected = TRIAL_SENSORS.filter((id) => !connected.has(id));
+  const parts = [];
+  if (!configured.length) parts.push('<span class="pf-warn">설정의 활성 센서가 비어 있음</span>');
+  else if (notConfigured.length) parts.push(`<span class="pf-warn">설정에 없음: ${notConfigured.join(', ')}</span>`);
+  if (!report) parts.push('<span class="pf-warn">Jetson 보고 없음</span>');
+  else if (notConnected.length) parts.push(`<span class="pf-bad">미연결: ${notConnected.join(', ')}</span>`);
+  if (!parts.length) parts.push(`${TRIAL_SENSORS.length}개 모두 설정·연결됨`);
+  items.push(['기본 센서', parts.join(' · ')]);
+
+  const storage = report && report.storage;
+  items.push(['남은 용량', storage ? bytesText(storage.free_bytes) : UNKNOWN]);
+  items.push(['미리보기', $('in-preview').checked ? '켬 (1 Hz 출발)' : '끔']);
+  const dur = maxDurationValue();
+  items.push(['최대 촬영 시간', dur == null
+    ? '<span class="pf-bad">선택하세요</span>' : durationText(dur)]);
+  let est = '최근 쓰기량 기록 없음 — 추정 불가';
+  if (recentRate) {
+    const perMin = recentRate.bps * 60;
+    est = `최근 세션 기준 약 ${bytesText(perMin)}/분 (추정)`;
+    if (dur) est += ` → ${durationText(dur)} 동안 약 ${bytesText(perMin * dur / 60)}`;
+    if (dur && storage && perMin * dur / 60 > storage.free_bytes * 0.9) {
+      est = `<span class="pf-bad">${est} — 남은 용량 부족</span>`;
+    }
+  }
+  items.push(['예상 저장량', est]);
+  box.innerHTML = '<div class="preflight-title">시작 전 점검</div><ul>' +
+    items.map(([k, v]) => `<li><span class="pf-k">${k}</span><span>${v}</span></li>`).join('') + '</ul>';
+}
+
+/** 저장 결과가 있는 가장 최근 세션의 쓰기 속도. 장치 단계 시각이 있으면 그것을 쓴다. */
+function computeRecentRate(rows) {
+  for (const r of rows) {
+    const bytes = r.jetson_summary && r.jetson_summary.bytes_written;
+    if (!bytes) continue;
+    const ph = (r.jetson_end && r.jetson_end.phases) || {};
+    const t0 = new Date(ph.running || r.started_at).getTime();
+    const t1 = new Date(ph.completed || ph.stop_requested || r.stopped_at).getTime();
+    const sec = (t1 - t0) / 1000;
+    if (Number.isFinite(sec) && sec >= 5) return { bps: bytes / sec, session_id: r.session_id };
+  }
+  return null;
 }
 
 /** 미리보기 컴포넌트에 **요청을 돌릴지 말지**만 알려 준다(그리기·폴링은 컴포넌트가 한다). */
@@ -208,6 +360,17 @@ function renderCameraPreviewGate(s) {
   if (!sess) cameraView.setActive(false, '진행 중인 세션 없음');
   else if (!on) cameraView.setActive(false, '미리보기를 켜지 않고 시작한 세션입니다. 원본은 정상 저장 중입니다.');
   else cameraView.setActive(true);  // Jetson 끊김 표시는 컴포넌트가 응답 코드로 직접 한다
+}
+
+function renderSensorPreviewGate(s) {
+  if (!sensorView) return;
+  const sess = s.active_session;
+  const pv = sess && sess.config && sess.config.preview;
+  const on = pv === true || !!(pv && pv.enabled === true);
+  if (!sess) sensorView.setActive(false, '진행 중인 세션 없음');
+  else if (!on) sensorView.setActive(false, '미리보기를 켜지 않고 시작한 세션입니다. 원본은 정상 저장 중입니다.');
+  else if (sess.state === 'stopping') sensorView.setActive(false, '종료 처리 중 — 미리보기 중단');
+  else sensorView.setActive(true, '', sess.session_id);
 }
 
 function renderEvents(rows) {
@@ -281,6 +444,8 @@ function render(s) {
 
   renderSession(s);
   renderCameraPreviewGate(s);
+  renderSensorPreviewGate(s);
+  renderPreflight(s);
   const canStart = s.jetson_status === 'online' && !s.active_session;
   $('btn-start').disabled = !canStart || busy;
   $('btn-stop').disabled = !s.active_session || busy;
@@ -309,6 +474,7 @@ function render(s) {
 async function loadSessions() {
   try {
     const rows = await api('/api/sessions?limit=12');
+    recentRate = computeRecentRate(rows);
     $('session-rows').innerHTML = rows.length
       ? rows.map((r) => {
           const [label, cls] = SESSION_VIEW[r.state] || [r.state, ''];
@@ -318,7 +484,8 @@ async function loadSessions() {
           return `<tr>
             <td>${localDateTime(r.started_at)}</td>
             <td>${escapeHtml(r.name)}<div class="muted mono">${escapeHtml(r.session_id)}</div></td>
-            <td><span class="pill ${cls}">${label}</span></td>
+            <td><span class="pill ${cls}">${label}</span>${
+              r.jetson_end && isAutoStop(r.jetson_end.stop_reason) ? '<div class="muted">시간 제한 종료</div>' : ''}</td>
             <td>${saved}</td>
             <td><a href="/api/sessions/${encodeURIComponent(r.session_id)}/export?format=json" download>JSON</a>
               · <a href="/api/sessions/${encodeURIComponent(r.session_id)}/export?format=csv" download>CSV</a></td>
@@ -333,6 +500,7 @@ let sessionTick = 0;
 async function poll() {
   try {
     const s = await api('/api/status');
+    lastStatus = s;
     renderServerBadge(true);
     render(s);
     if (sessionTick++ % 4 === 0) { loadSessions(); loadMarks(); }
@@ -369,20 +537,37 @@ function bind() {
   });
 
   $('btn-start').addEventListener('click', () => withBusy(async () => {
+    const maxDur = maxDurationValue();
+    if (maxDur == null) throw new Error('최대 촬영 시간을 먼저 고르세요 (0 = 제한 없음).');
     const body = {
       name: $('in-name').value || '실험',
       note: $('in-note').value || null,
       ingredients: $('in-ingredients').value || null,
       conditions: $('in-conditions').value || null,
     };
-    try { localStorage.setItem('soup.previewOn', $('in-preview').checked ? '1' : '0'); } catch (_) { /* 무시 */ }
-    if ($('in-preview').checked) {
-      // 저장된 실험 설정에 미리보기만 얹는다 — 수집 대상 센서·fps·해상도는 건드리지 않는다.
-      // 이 값도 시작 시점 설정 스냅샷에 함께 박제된다.
-      // 저장된 preview의 다른 값(예: depth_max_mm — 깊이 의사색 범위)은 유지한다.
-      const saved = await api('/api/config');
-      body.config = { ...saved, preview: { ...(saved.preview || {}), enabled: true, max_fps: 2 } };
-    }
+    const previewOn = $('in-preview').checked;
+    try { localStorage.setItem('soup.previewOn', previewOn ? '1' : '0'); } catch (_) { /* 무시 */ }
+    // 저장된 실험 설정을 그대로 쓰되 미리보기 켜기/끄기와 최대 촬영 시간은 **명시적으로** 보낸다
+    // (체크를 해제해도 저장된 preview.enabled=true가 박제되던 문제 방지).
+    // 저장된 preview의 다른 값(depth_max_mm 등)·센서·fps는 유지한다. 이 값이 세션 스냅샷에 박제된다.
+    const saved = await api('/api/config');
+    savedConfig = saved;
+    const prevPreview = saved.preview || {};
+    body.config = {
+      ...saved,
+      preview: { ...prevPreview, enabled: previewOn, max_fps: prevPreview.max_fps || 1 },
+      max_duration_sec: maxDur,
+    };
+    const missing = TRIAL_SENSORS.filter((id) => !(saved.sensors || []).includes(id));
+    const lines = [
+      `최대 촬영 시간: ${durationText(maxDur)}` +
+        (maxDur ? ' — 시간이 되면 Jetson이 데이터 촬영을 멈춥니다(인덕션은 끄지 않음).' : ' — 직접 중지해야 합니다.'),
+      `미리보기: ${previewOn ? '켬' : '끔'}`,
+      `센서: ${(saved.sensors || []).join(', ') || '(설정 비어 있음)'}`,
+    ];
+    if (missing.length) lines.push(`기본 센서 중 설정에 없음: ${missing.join(', ')}`);
+    if ($('mock-badge') && !$('mock-badge').classList.contains('hidden')) lines.push('※ 모의 모드 — 실측 데이터가 아닙니다.');
+    if (!window.confirm(`이 설정으로 촬영을 시작할까요?\n\n${lines.join('\n')}`)) return null;
     const sess = await api('/api/capture/start', { method: 'POST', body: JSON.stringify(body) });
     loadSessions();
     return `촬영 시작됨: ${sess.session_id}`;
@@ -396,9 +581,11 @@ function bind() {
 
   document.querySelectorAll('.btn-mark').forEach((btn) => {
     btn.addEventListener('click', () => withBusy(async () => {
+      const typed = $('mark-text').value.trim();
+      const quick = btn.dataset.text || '';
       const body = {
         kind: btn.dataset.kind,
-        text: $('mark-text').value || null,
+        text: (quick && typed ? `${quick} — ${typed}` : quick || typed) || null,
         occurred_at: markTimeToUtc(),
       };
       const ev = await api('/api/marks', { method: 'POST', body: JSON.stringify(body) });
@@ -418,7 +605,7 @@ function bind() {
       lighting: $('cfg-lighting').value || null,
       note: $('cfg-note').value || null,
     };
-    await api('/api/config', { method: 'PUT', body: JSON.stringify(body) });
+    savedConfig = await api('/api/config', { method: 'PUT', body: JSON.stringify(body) });
     return '설정 저장됨 (진행 중 실험에는 영향 없음)';
   }, $('config-msg')));
 
@@ -439,15 +626,65 @@ function bind() {
     return JSON.stringify(res);
   }, $('capture-msg'));
 
+  $('in-maxdur').addEventListener('change', () => {
+    $('lbl-maxdur-custom').classList.toggle('hidden', $('in-maxdur').value !== 'custom');
+    saveMaxDuration();
+  });
+  $('in-maxdur-custom').addEventListener('change', saveMaxDuration);
+  $('in-preview').addEventListener('change', () => { if (lastStatus) renderPreflight(lastStatus); });
+  $('btn-preset-check').addEventListener('click', () => applyPreset('check'));
+  $('btn-preset-trial').addEventListener('click', () => applyPreset('trial'));
+
   $('btn-mock-on').addEventListener('click', mock('/api/mock/jetson/power', { on: true }));
   $('btn-mock-off').addEventListener('click', mock('/api/mock/jetson/power', { on: false }));
   $('btn-mock-cut').addEventListener('click', mock('/api/mock/jetson/link', { cut: true }));
   $('btn-mock-join').addEventListener('click', mock('/api/mock/jetson/link', { cut: false }));
 }
 
+/** 최대 촬영 시간을 실험 설정에 저장한다(재조회·다음 시작에 그대로 쓰이도록). */
+async function saveMaxDuration() {
+  const v = maxDurationValue();
+  if (v == null) return;
+  try {
+    savedConfig = await api('/api/config', { method: 'PUT', body: JSON.stringify({ max_duration_sec: v }) });
+    showMsg($('capture-msg'), `최대 촬영 시간 저장: ${durationText(v)}`, 'ok');
+  } catch (err) {
+    showMsg($('capture-msg'), err.message, 'err');
+  }
+  if (lastStatus) renderPreflight(lastStatus);
+}
+
+/** 프리셋: 입력칸을 채우고 센서·fps·최대 시간·미리보기를 실험 설정에 저장한다. 값은 모두 편집 가능. */
+function applyPreset(key) {
+  const p = PRESETS[key];
+  withBusy(async () => {
+    $('in-name').value = p.name;
+    $('in-ingredients').value = p.ingredients;
+    $('in-conditions').value = p.conditions;
+    $('in-note').value = p.note;
+    $('in-preview').checked = true;
+    const saved = await api('/api/config');
+    const preview = { ...(saved.preview || {}), enabled: true, max_fps: 1 };
+    savedConfig = await api('/api/config', {
+      method: 'PUT',
+      body: JSON.stringify({ sensors: TRIAL_SENSORS, fps: 10, max_duration_sec: p.max_duration_sec, preview }),
+    });
+    setMaxDurationUi(p.max_duration_sec);
+    fillConfigForm(savedConfig);
+    return `프리셋 적용: ${p.name} — 센서 5개·10 fps·미리보기 1 Hz·최대 ${durationText(p.max_duration_sec)}. ___ 칸은 현장 실측값으로 채우세요.`;
+  }, $('capture-msg'));
+}
+
+function fillConfigForm(cfg) {
+  if (Array.isArray(cfg.sensors)) $('cfg-sensors').value = cfg.sensors.join(', ');
+  if (cfg.fps != null) $('cfg-fps').value = cfg.fps;
+}
+
 async function loadConfig() {
   try {
     const cfg = await api('/api/config');
+    savedConfig = cfg;
+    setMaxDurationUi(cfg.max_duration_sec == null ? null : Number(cfg.max_duration_sec));
     if (Array.isArray(cfg.sensors)) $('cfg-sensors').value = cfg.sensors.join(', ');
     if (cfg.fps != null) $('cfg-fps').value = cfg.fps;
     if (cfg.resolution) $('cfg-resolution').value = cfg.resolution;
@@ -469,9 +706,22 @@ async function mountCameraPreview() {
   }
 }
 
+async function mountSensorPreview() {
+  try {
+    const cfg = await api('/api/sensor-preview/config');
+    if (cfg.config_error) console.warn(cfg.config_error);
+    sensorView = window.SensorPreview.mount($('sensor-preview'),
+      window.SensorPreview.fromServerConfig(cfg, { headers: { 'X-Soup-Client': 'ui' } }));
+    sensorView.setActive(false, '상태 확인 중…');
+  } catch (err) {
+    $('sensor-preview').textContent = `열화상·PT100 설정을 읽지 못했습니다: ${err.message}`;
+  }
+}
+
 bind();
 try { $('in-preview').checked = localStorage.getItem('soup.previewOn') !== '0'; } catch (_) { /* 기본 켜짐 */ }
 mountCameraPreview();
+mountSensorPreview();
 loadConfig();
 loadSessions();
 loadMarks();

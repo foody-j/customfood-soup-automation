@@ -6,6 +6,7 @@
   <title>실험장치 관리 — Pi 관리 서버</title>
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="stylesheet" href="/static/camera-preview.css" />
+  <link rel="stylesheet" href="/static/sensor-preview.css" />
 </head>
 <body>
 <div class="app">
@@ -54,12 +55,26 @@
     <div id="camera-preview"></div>
   </section>
 
+  <!-- ── 열화상·PT100 (독립 컴포넌트 sensor-preview.js가 이 자리에 그린다) ── -->
+  <section class="card">
+    <div class="card-head">
+      <h2>열화상 · PT100</h2>
+      <span class="hint">Jetson 미리보기 값(JSON)을 관리 서버가 중계합니다. 수집 주기·원본 저장은 바뀌지 않습니다.</span>
+    </div>
+    <div id="sensor-preview"></div>
+  </section>
+
   <div class="grid">
     <!-- ── 촬영 ────────────────────────────────────────────────────────── -->
     <section class="card">
       <h2>촬영</h2>
       <div id="session-box" class="session-box">
         <div class="session-none">진행 중인 세션 없음</div>
+      </div>
+      <div class="preset-row">
+        <span class="muted">프리셋</span>
+        <button id="btn-preset-check" class="btn btn-small" type="button">점검 60초 (가열 없음)</button>
+        <button id="btn-preset-trial" class="btn btn-small" type="button">소고기무국 재가열 관찰</button>
       </div>
       <div class="form">
         <label>실험 이름
@@ -75,10 +90,27 @@
           <input id="in-note" type="text" placeholder="변경점·특이사항" />
         </label>
       </div>
+      <div class="form-row">
+        <label>최대 촬영 시간
+          <select id="in-maxdur">
+            <option value="60">60초 (점검)</option>
+            <option value="600">10분 (첫 실험)</option>
+            <option value="1800">30분</option>
+            <option value="3600">60분</option>
+            <option value="0">제한 없음 (0)</option>
+            <option value="custom">직접 입력…</option>
+          </select>
+        </label>
+        <label id="lbl-maxdur-custom" class="hidden">초
+          <input id="in-maxdur-custom" type="number" min="0" max="86400" step="1" placeholder="예: 900" />
+        </label>
+      </div>
+      <p class="hint">시간이 되면 <b>Jetson이 데이터 촬영을 멈춥니다.</b> 인덕션 전원은 끄지 않습니다.</p>
       <label class="check">
         <input id="in-preview" type="checkbox" checked />
         <span>카메라 미리보기 켜기 <span class="muted">— Jetson이 축소 JPEG를 따로 만듭니다. 저장되는 원본은 같습니다.</span></span>
       </label>
+      <div id="preflight" class="preflight"><span class="muted">시작 전 점검 — 불러오는 중…</span></div>
       <div class="btn-row">
         <button id="btn-start" class="btn btn-primary">촬영 시작</button>
         <button id="btn-stop" class="btn">촬영 중지</button>
@@ -105,6 +137,11 @@
         <button class="btn btn-mark" data-kind="heat">가열 변경</button>
         <button class="btn btn-mark" data-kind="stir">교반</button>
         <button class="btn btn-mark" data-kind="note">메모</button>
+      </div>
+      <div class="btn-row mark-row">
+        <button class="btn btn-mark btn-quick" data-kind="note" data-text="첫 기포">첫 기포</button>
+        <button class="btn btn-mark btn-quick" data-kind="note" data-text="지속 끓음">지속 끓음</button>
+        <button class="btn btn-mark btn-quick" data-kind="heat" data-text="가열 종료">가열 종료</button>
       </div>
       <p id="mark-msg" class="msg hidden"></p>
       <ul id="mark-list" class="mark-list"><li class="muted">기록된 사건 없음</li></ul>
@@ -224,6 +261,7 @@
   </footer>
 </div>
 <script src="/static/camera-preview.js"></script>
+<script src="/static/sensor-preview.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

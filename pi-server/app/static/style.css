@@ -185,12 +185,12 @@ a:hover { text-decoration: underline; }
 .form { display: grid; gap: 10px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 label { display: grid; gap: 4px; font-size: 12px; color: var(--gray-700); font-weight: 500; }
-input {
+input, select {
   background: #FFF; border: 1px solid var(--gray-300); color: var(--ink);
   border-radius: var(--r-sm); padding: 8px 11px; font-size: 13.5px;
   font-family: inherit; width: 100%;
 }
-input:focus {
+input:focus, select:focus {
   outline: none; border-color: var(--lavender-300);
   box-shadow: 0 0 0 3px rgba(194, 177, 223, .35);
 }
@@ -310,3 +310,18 @@ input:focus {
 .check { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; margin-top: 12px; cursor: pointer; }
 .check input { margin-top: 3px; accent-color: var(--purple-600); }
 .check input { width: auto; flex: none; padding: 0; }
+
+/* ── 첫 조리 시험: 프리셋 · 시작 전 점검 · 빠른 메모 ───────────────────── */
+.preset-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0 10px; font-size: 12px; }
+.btn-small { padding: 6px 12px; font-size: 12.5px; }
+.btn-quick { background: var(--lavender-soft); }
+.preflight {
+  margin-top: 12px; padding: 10px 12px; border-radius: var(--r-sm);
+  background: var(--gray-050); border: 1px solid var(--gray-300); font-size: 12.5px;
+}
+.preflight ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.preflight li { display: flex; gap: 8px; align-items: baseline; }
+.preflight .pf-k { min-width: 92px; color: var(--gray-700); flex: none; }
+.preflight .pf-warn { color: #A25C10; font-weight: 600; }
+.preflight .pf-bad { color: #C23A2E; font-weight: 600; }
+.preflight-title { font-weight: 600; }
