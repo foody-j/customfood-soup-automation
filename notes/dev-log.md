@@ -2,6 +2,17 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-09-27 — Pi 실물 연동 완료: 서비스 http 모드, 가열 없는 60초 점검 자동 종료·저장 확인
+
+- 이더넷 재연결 후 16:45:40 링크 업(1 Gbps), eth0 10.42.0.1 ↔ Jetson 10.42.0.52. 서비스 `soup-pi-server`
+  (사용자 youngjin, http, 전원 unsupported)는 사람이 sudo로 설치 — 16:43 기동.
+- Jetson 실물 센서 5개 모두 connected·simulated=false, 진행 중 세션 없음 확인 후 Pi 화면으로 '점검 60초' 시험:
+  `sess-20260927T074757Z-f355` → 60초에 Jetson 자동 중지 → Pi `stopped`·`capture.auto_stopped`·저장 결과(ok, 2,950프레임,
+  드롭 0, 1.36 GB) → 메모 추가 후 JSON 내보내기에 설정·종료 사유·메모 포함. 상세 `notes/data/experiments/20260927_pi-real-check60s.md`.
+- **D-035 운영 적용 확인**(lz4·IR uint8 저장, max_duration 자동 중지 — SSH 권한이 없어 동작으로 확인).
+- 발견: Jetson `/status` 간헐 2초 초과로 Pi가 순간 `service_down` 기록(대책 후보: `SOUP_PROBE_TIMEOUT` 5초 또는
+  연속 실패 시에만 전환), GMSL2 ① 화면 흐림, Jetson 보고에 `mock_*` 센서 동봉, Gemini depth/IR 8.6 fps.
+
 ## 2026-09-27 — Pi 실물 연동 준비: eth0 링크 없음, systemd 서비스 설정(설치는 사람 몫)
 
 - **eth0:** `NO-CARRIER`·`Link detected: no`, NetworkManager `unavailable`. 프로필 `netplan-eth0`은 `ipv4.method=shared`

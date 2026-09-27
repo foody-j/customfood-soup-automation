@@ -1,0 +1,273 @@
+{
+  "schema_version": 2,
+  "exported_at": "2026-09-27T07:49:35.418Z",
+  "project_id": "customfood-soup",
+  "device_id": "youngjin",
+  "session": {
+    "session_id": "sess-20260927T074757Z-f355",
+    "name": "점검 60초 (가열 없음)",
+    "note": null,
+    "state": "stopped",
+    "started_at": "2026-09-27T07:47:57.470Z",
+    "stopped_at": "2026-09-27T07:49:00.714Z",
+    "config": {
+      "sensors": [
+        "cam_rgb_0",
+        "cam_rgb_1",
+        "cam_depth_0",
+        "thermal_0",
+        "pt100_0"
+      ],
+      "fps": 10,
+      "preview": {
+        "enabled": true,
+        "max_fps": 1
+      },
+      "max_duration_sec": 60,
+      "extra": {}
+    },
+    "jetson_ack": true,
+    "source": "pi",
+    "project_id": "customfood-soup",
+    "device_id": "youngjin",
+    "ingredients": null,
+    "conditions": "가열 없음 · 전체 센서 수집 점검",
+    "jetson_summary": {
+      "session_id": "sess-20260927T074757Z-f355",
+      "path": "/home/ubuntu/collector-data/sess-20260927T074757Z-f355",
+      "files": 16,
+      "bytes_written": 1358270517,
+      "frames_written": 2950,
+      "frames_dropped": 0,
+      "closed_at": "2026-09-27T07:49:00.641Z",
+      "ok": true,
+      "note": null
+    },
+    "schema_version": 2,
+    "jetson_end": {
+      "state": "stopped",
+      "stop_reason": "max_duration_sec=60 도달",
+      "phases": {
+        "requested": "2026-09-27T07:47:57.477Z",
+        "starting": "2026-09-27T07:47:57.478Z",
+        "running": "2026-09-27T07:47:59.253Z",
+        "stop_requested": "2026-09-27T07:48:59.578Z",
+        "stopping": "2026-09-27T07:48:59.579Z",
+        "files_closed": "2026-09-27T07:49:00.637Z",
+        "completed": "2026-09-27T07:49:00.641Z",
+        "first_sample:cam_rgb_1/rgb": "2026-09-27T07:47:58.974Z",
+        "first_sample:cam_rgb_0/rgb": "2026-09-27T07:47:58.985Z",
+        "first_sample:pt100_0/temp": "2026-09-27T07:47:59.333Z",
+        "first_sample:thermal_0/temp_array": "2026-09-27T07:48:00.127Z",
+        "first_sample:cam_depth_0/color": "2026-09-27T07:48:00.567Z",
+        "first_sample:cam_depth_0/depth": "2026-09-27T07:48:07.948Z",
+        "first_sample:cam_depth_0/ir": "2026-09-27T07:48:07.948Z"
+      },
+      "first_seen_at": "2026-09-27T07:49:00.715Z",
+      "end_reason": "stopped"
+    }
+  },
+  "config_snapshot": {
+    "sensors": [
+      "cam_rgb_0",
+      "cam_rgb_1",
+      "cam_depth_0",
+      "thermal_0",
+      "pt100_0"
+    ],
+    "fps": 10,
+    "preview": {
+      "enabled": true,
+      "max_fps": 1
+    },
+    "max_duration_sec": 60,
+    "extra": {}
+  },
+  "jetson_summary": {
+    "session_id": "sess-20260927T074757Z-f355",
+    "path": "/home/ubuntu/collector-data/sess-20260927T074757Z-f355",
+    "files": 16,
+    "bytes_written": 1358270517,
+    "frames_written": 2950,
+    "frames_dropped": 0,
+    "closed_at": "2026-09-27T07:49:00.641Z",
+    "ok": true,
+    "note": null
+  },
+  "jetson_end": {
+    "state": "stopped",
+    "stop_reason": "max_duration_sec=60 도달",
+    "phases": {
+      "requested": "2026-09-27T07:47:57.477Z",
+      "starting": "2026-09-27T07:47:57.478Z",
+      "running": "2026-09-27T07:47:59.253Z",
+      "stop_requested": "2026-09-27T07:48:59.578Z",
+      "stopping": "2026-09-27T07:48:59.579Z",
+      "files_closed": "2026-09-27T07:49:00.637Z",
+      "completed": "2026-09-27T07:49:00.641Z",
+      "first_sample:cam_rgb_1/rgb": "2026-09-27T07:47:58.974Z",
+      "first_sample:cam_rgb_0/rgb": "2026-09-27T07:47:58.985Z",
+      "first_sample:pt100_0/temp": "2026-09-27T07:47:59.333Z",
+      "first_sample:thermal_0/temp_array": "2026-09-27T07:48:00.127Z",
+      "first_sample:cam_depth_0/color": "2026-09-27T07:48:00.567Z",
+      "first_sample:cam_depth_0/depth": "2026-09-27T07:48:07.948Z",
+      "first_sample:cam_depth_0/ir": "2026-09-27T07:48:07.948Z"
+    },
+    "first_seen_at": "2026-09-27T07:49:00.715Z",
+    "end_reason": "stopped"
+  },
+  "events": [
+    {
+      "id": 22,
+      "ts": "2026-09-27T07:47:57.471Z",
+      "level": "info",
+      "source": "ui",
+      "code": "capture.start_requested",
+      "message": "촬영 시작 요청(전송): 점검 60초 (가열 없음)",
+      "session_id": "sess-20260927T074757Z-f355",
+      "detail": {
+        "sent_at": "2026-09-27T07:47:57.470Z",
+        "config": {
+          "sensors": [
+            "cam_rgb_0",
+            "cam_rgb_1",
+            "cam_depth_0",
+            "thermal_0",
+            "pt100_0"
+          ],
+          "fps": 10,
+          "preview": {
+            "enabled": true,
+            "max_fps": 1
+          },
+          "max_duration_sec": 60,
+          "extra": {}
+        }
+      },
+      "occurred_at": null,
+      "request_id": "req-20260927T074757Z-4677",
+      "origin": "pi"
+    },
+    {
+      "id": 23,
+      "ts": "2026-09-27T07:47:57.533Z",
+      "level": "info",
+      "source": "jetson",
+      "code": "capture.started",
+      "message": "촬영 시작 확인(Jetson 응답): 점검 60초 (가열 없음)",
+      "session_id": "sess-20260927T074757Z-f355",
+      "detail": {
+        "sent_at": "2026-09-27T07:47:57.470Z",
+        "confirmed_at": "2026-09-27T07:47:57.532Z",
+        "latency_ms": 62.0,
+        "jetson_state": "starting"
+      },
+      "occurred_at": null,
+      "request_id": "req-20260927T074757Z-4677",
+      "origin": "pi"
+    },
+    {
+      "id": 24,
+      "ts": "2026-09-27T07:48:01.190Z",
+      "level": "info",
+      "source": "jetson",
+      "code": "capture.device_started",
+      "message": "Jetson 장치 기준 촬영 시작 시각 보고: 2026-09-27T07:47:59.253Z",
+      "session_id": "sess-20260927T074757Z-f355",
+      "detail": null,
+      "occurred_at": "2026-09-27T07:47:59.253Z",
+      "request_id": null,
+      "origin": "jetson"
+    },
+    {
+      "id": 25,
+      "ts": "2026-09-27T07:49:00.715Z",
+      "level": "info",
+      "source": "jetson",
+      "code": "capture.stop_confirmed",
+      "message": "중지 확인(재동기화)",
+      "session_id": "sess-20260927T074757Z-f355",
+      "detail": null,
+      "occurred_at": null,
+      "request_id": null,
+      "origin": "jetson"
+    },
+    {
+      "id": 26,
+      "ts": "2026-09-27T07:49:00.715Z",
+      "level": "info",
+      "source": "jetson",
+      "code": "capture.auto_stopped",
+      "message": "최대 촬영 시간 도달 — Jetson이 촬영(데이터 수집)을 스스로 중지: max_duration_sec=60 도달",
+      "session_id": "sess-20260927T074757Z-f355",
+      "detail": {
+        "stop_reason": "max_duration_sec=60 도달",
+        "phases": {
+          "requested": "2026-09-27T07:47:57.477Z",
+          "starting": "2026-09-27T07:47:57.478Z",
+          "running": "2026-09-27T07:47:59.253Z",
+          "stop_requested": "2026-09-27T07:48:59.578Z",
+          "stopping": "2026-09-27T07:48:59.579Z",
+          "files_closed": "2026-09-27T07:49:00.637Z",
+          "completed": "2026-09-27T07:49:00.641Z",
+          "first_sample:cam_rgb_1/rgb": "2026-09-27T07:47:58.974Z",
+          "first_sample:cam_rgb_0/rgb": "2026-09-27T07:47:58.985Z",
+          "first_sample:pt100_0/temp": "2026-09-27T07:47:59.333Z",
+          "first_sample:thermal_0/temp_array": "2026-09-27T07:48:00.127Z",
+          "first_sample:cam_depth_0/color": "2026-09-27T07:48:00.567Z",
+          "first_sample:cam_depth_0/depth": "2026-09-27T07:48:07.948Z",
+          "first_sample:cam_depth_0/ir": "2026-09-27T07:48:07.948Z"
+        }
+      },
+      "occurred_at": "2026-09-27T07:48:59.578Z",
+      "request_id": null,
+      "origin": "jetson"
+    },
+    {
+      "id": 27,
+      "ts": "2026-09-27T07:49:00.716Z",
+      "level": "info",
+      "source": "jetson",
+      "code": "capture.save_confirmed",
+      "message": "저장 결과 요약 수신: 파일 16개, 프레임 2950",
+      "session_id": "sess-20260927T074757Z-f355",
+      "detail": {
+        "session_id": "sess-20260927T074757Z-f355",
+        "path": "/home/ubuntu/collector-data/sess-20260927T074757Z-f355",
+        "files": 16,
+        "bytes_written": 1358270517,
+        "frames_written": 2950,
+        "frames_dropped": 0,
+        "closed_at": "2026-09-27T07:49:00.641Z",
+        "ok": true,
+        "note": null
+      },
+      "occurred_at": "2026-09-27T07:49:00.641Z",
+      "request_id": null,
+      "origin": "jetson"
+    },
+    {
+      "id": 33,
+      "ts": "2026-09-27T07:49:35.408Z",
+      "level": "info",
+      "source": "api",
+      "code": "mark.note",
+      "message": "[수동] 메모: 실물 60초 점검 완료(가열 없음) — Claude 검증",
+      "session_id": "sess-20260927T074757Z-f355",
+      "detail": {
+        "kind": "note",
+        "text": "실물 60초 점검 완료(가열 없음) — Claude 검증",
+        "late_entry": false
+      },
+      "occurred_at": null,
+      "request_id": null,
+      "origin": "manual"
+    }
+  ],
+  "counts": {
+    "events": 7,
+    "manual_marks": 1,
+    "errors": 0
+  },
+  "note": "원본 영상·프레임 단위 기록은 Jetson 로컬에 있으며 이 파일에 포함되지 않는다. 여기에는 Pi가 보관하는 실험 정보·설정 스냅샷·사건 이력·저장 결과 요약만 담긴다."
+}
