@@ -10,7 +10,8 @@
       <sensor_id>/<stream_id>/
         index.jsonl                 샘플 1개 = 1줄. 받았으나 버린 샘플도 path=null로 남김
         frames/000001.jpg …         이미지 스트림(프레임 단위 파일)
-        records.bin                 배열 스트림(고정 크기 레코드, index에 offset·bytes)
+        records.bin                 배열 스트림(레코드를 이어 씀, index에 offset·bytes). index의 `compression`이
+                                    "lz4"면 레코드는 [원소 바이트 평면 분리(shuffle) →] lz4 frame — `unpack_record`로 푼다
 
 원칙
 - **프레임마다 동기 쓰기·콘솔 출력 없음.** index는 버퍼링해 주기/줄 수로 flush.
@@ -46,6 +47,40 @@ except Exception:  # pragma: no cover
     cv2 = None
 
 UNFINISHED_STATES = ("starting", "running", "stopping")
+ARRAY_COMPRESSIONS = ("none", "lz4")
+
+
+def pack_record(arr: np.ndarray, compression: str) -> tuple[bytes, dict[str, Any]]:
+    """배열 1개 → records.bin 레코드. 반환 extra는 index 줄에 그대로 들어간다(읽을 때 필요한 정보 전부)."""
+    arr = np.ascontiguousarray(arr)
+    raw = arr.tobytes()
+    if compression == "none":
+        return raw, {}
+    import lz4.frame  # type: ignore
+
+    shuffle = arr.dtype.itemsize if arr.dtype.itemsize > 1 else 1
+    if shuffle > 1:  # 같은 자리 바이트끼리 모아야 상위 바이트(대부분 0·작은 값)가 잘 줄어든다
+        raw_view = np.frombuffer(raw, dtype=np.uint8).reshape(-1, shuffle)
+        payload = np.ascontiguousarray(raw_view.T).tobytes()
+    else:
+        payload = raw
+    return lz4.frame.compress(payload), {"compression": "lz4", "shuffle": shuffle, "raw_bytes": len(raw)}
+
+
+def unpack_record(buf: bytes, index_line: dict[str, Any]) -> np.ndarray:
+    """records.bin에서 `offset`부터 `bytes`만큼 읽은 레코드 → 원래 배열(dtype·shape는 index 줄에서)."""
+    dtype, shape = np.dtype(index_line["dtype"]), tuple(index_line["shape"])
+    if index_line.get("compression", "none") == "none":
+        return np.frombuffer(buf, dtype=dtype).reshape(shape)
+    if index_line["compression"] != "lz4":
+        raise ValueError(f"알 수 없는 압축: {index_line['compression']}")
+    import lz4.frame  # type: ignore
+
+    data = lz4.frame.decompress(buf)
+    shuffle = int(index_line.get("shuffle") or 1)
+    if shuffle > 1:
+        data = np.ascontiguousarray(np.frombuffer(data, dtype=np.uint8).reshape(shuffle, -1).T).tobytes()
+    return np.frombuffer(data, dtype=dtype).reshape(shape)
 
 
 def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -127,6 +162,12 @@ class StreamWriter(threading.Thread):
         self._records_off = 0
         self._frame_no = 0
         self._array_dtype: str | None = None
+        self._compression = settings.array_compression if settings.array_compression in ARRAY_COMPRESSIONS else "none"
+        if self._compression == "lz4":
+            try:
+                import lz4.frame  # type: ignore  # noqa: F401
+            except Exception:  # 압축 라이브러리가 없으면 원본 그대로 저장한다(수집을 막지 않음)
+                self._compression = "none"
         self._array_shape: tuple[int, ...] | None = None
         self._last_flush = time.monotonic()
         self._stop = threading.Event()
@@ -250,12 +291,12 @@ class StreamWriter(threading.Thread):
                     self._array_dtype, self._array_shape = str(arr.dtype), tuple(arr.shape)
                 elif (str(arr.dtype), tuple(arr.shape)) != (self._array_dtype, self._array_shape):
                     raise ValueError(f"{self.rel}: 배열 형식 변경 {arr.dtype}/{arr.shape} != {self._array_dtype}/{self._array_shape}")
-                raw = arr.tobytes()
+                record, packed = pack_record(arr, self._compression)
                 assert self._records_fh is not None
-                self._records_fh.write(raw)
-                path, offset, nbytes = f"{self.rel}/records.bin", self._records_off, len(raw)
+                self._records_fh.write(record)
+                path, offset, nbytes = f"{self.rel}/records.bin", self._records_off, len(record)
                 self._records_off += nbytes
-                extra = {"dtype": str(arr.dtype), "shape": list(arr.shape)}
+                extra = {"dtype": str(arr.dtype), "shape": list(arr.shape), **packed}
             elif self.spec.data_kind == DATA_SCALAR:
                 extra = {"value": s.data}
             with self._lock:
@@ -376,7 +417,9 @@ class StreamWriter(threading.Thread):
         elif self.spec.data_kind == DATA_ARRAY:
             entries.append({
                 "path": f"{self.rel}/records.bin",
-                "format": f"raw records dtype={self._array_dtype or self.spec.dtype} shape={list(self._array_shape or self.spec.shape or [])}",
+                "format": f"{'lz4 records' if self._compression == 'lz4' else 'raw records'} "
+                          f"dtype={self._array_dtype or self.spec.dtype} shape={list(self._array_shape or self.spec.shape or [])}",
+                "compression": self._compression,
                 "role": "data", "unit": self.spec.unit, "bytes": _size(self.dir / "records.bin"), "frames": st.written,
                 "first_host_utc": st.first_host_utc, "last_host_utc": st.last_host_utc,
                 "started_at": self.started_utc, "ended_at": self.ended_utc, "status": status,

@@ -82,8 +82,8 @@ def _ir_values(frame: Any) -> np.ndarray:
     w, h = int(frame.get_width()), int(frame.get_height())
     fmt = _format_name(frame.get_format())
     raw = np.asarray(frame.get_data(), dtype=np.uint8)
-    if fmt == "Y8":
-        return raw.reshape(h, w).astype("<u2")
+    if fmt == "Y8":  # 장치가 8비트로 주므로 그대로 둔다 — uint16으로 늘리면 용량만 두 배(2026-09-27 실측 max 255)
+        return raw.reshape(h, w).copy()
     if fmt == "Y16":
         return raw.view("<u2").reshape(h, w).copy()
     raise SensorError(f"Gemini 2 미지원 IR 포맷: {fmt}")
@@ -131,7 +131,8 @@ class OrbbecGemini2(SensorAdapter):
     streams = (
         StreamSpec("color", DATA_IMAGE, description="Gemini 2 color, decoded BGR and stored as JPEG"),
         StreamSpec("depth", DATA_ARRAY, unit="mm", dtype="uint16", description="Gemini 2 Z16 converted to mm"),
-        StreamSpec("ir", DATA_ARRAY, unit="raw_ir", dtype="uint16", description="Gemini 2 Y8/Y16 intensity values"),
+        StreamSpec("ir", DATA_ARRAY, unit="raw_ir", dtype=None,
+                   description="Gemini 2 IR intensity, device native dtype (Y8 → uint8, Y16 → uint16)"),
     )
 
     def __init__(self, serial: str | None = None, *, default_fps: int | None = None, sdk: Any = None) -> None:
@@ -307,7 +308,7 @@ class OrbbecGemini2(SensorAdapter):
                 else:
                     data = _ir_values(frame)
                     flags["raw_format"] = fmt
-                    pixel_format = "IR_U16"
+                    pixel_format = "IR_U8" if data.dtype == np.uint8 else "IR_U16"
             except (ValueError, SensorError) as exc:
                 # 실기기에서 SDK가 드물게 해제 전 RLE 깊이 프레임을 그대로 준다(2026-09-18 관측).
                 # 프레임 하나 때문에 세 스트림을 모두 끊지 않고 무효 샘플로 기록한다.

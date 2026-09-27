@@ -10,6 +10,8 @@ import json
 import time
 from pathlib import Path
 
+import numpy as np
+
 import app.session as session_mod
 import app.storage as storage_mod
 
@@ -325,8 +327,13 @@ def test_depth_streams_are_separate_with_units(client, tmp_path):
     assert {p.name for p in base.iterdir()} == {"color", "depth", "ir"}
     d = json.loads((base / "depth" / "index.jsonl").read_text().splitlines()[0])
     assert d["stream_id"] == "depth" and d["unit"] == "mm" and d["dtype"] == "uint16" and d["path"].endswith("records.bin")
-    assert d["flags"]["depth_unit"] == "mm"
-    assert (base / "depth" / "records.bin").stat().st_size == d["bytes"] * len((base / "depth" / "index.jsonl").read_text().splitlines())
+    assert d["flags"]["depth_unit"] == "mm" and d["compression"] == "lz4" and d["shuffle"] == 2
+    rows = [json.loads(line) for line in (base / "depth" / "index.jsonl").read_text().splitlines()]
+    # 압축 레코드는 크기가 제각각 — 인덱스의 bytes 합이 파일 크기와 같고, 각 레코드가 원래 배열로 풀린다
+    assert (base / "depth" / "records.bin").stat().st_size == sum(r["bytes"] for r in rows)
+    raw = (base / "depth" / "records.bin").read_bytes()
+    arr = storage_mod.unpack_record(raw[rows[0]["offset"]:rows[0]["offset"] + rows[0]["bytes"]], rows[0])
+    assert arr.dtype == np.uint16 and list(arr.shape) == rows[0]["shape"] and arr.nbytes == rows[0]["raw_bytes"]
 
 
 def test_thermal_preview_returns_array_not_image(client):
@@ -358,3 +365,21 @@ def test_thermal_preview_absent_without_preview_flag(client):
     wait_running(client, "sess-thermal-nopreview")
     assert client.get("/api/v1/capture/preview_array/thermal_0/temp_array").status_code == 404
     client.post("/api/v1/capture/stop", json={"session_id": "sess-thermal-nopreview"})
+
+
+def test_session_stops_itself_at_max_duration(client):
+    """config.max_duration_sec이 지나면 세션이 스스로 정상 중지한다(점검 세션을 잊어도 원본이 무한히 쌓이지 않음)."""
+    start(client, sid="sess-maxdur", sensors=("thermal_0",), max_duration_sec=1.5)
+    wait_running(client, "sess-maxdur")
+    assert wait_until(lambda: status(client)["capture"]["state"] in ("stopped", "idle"), timeout=10)
+    detail = client.get("/api/v1/sessions/sess-maxdur").json()
+    assert "max_duration_sec=1.5" in json.dumps(detail, ensure_ascii=False)
+
+
+def test_record_pack_roundtrip():
+    for arr in (np.arange(24, dtype=np.uint16).reshape(4, 6) * 97, np.arange(8, dtype=np.uint8).reshape(2, 4),
+                np.linspace(-40, 300, 768, dtype=np.float32).reshape(24, 32)):
+        for comp in ("none", "lz4"):
+            rec, extra = storage_mod.pack_record(arr, comp)
+            line = {"dtype": str(arr.dtype), "shape": list(arr.shape), **extra}
+            np.testing.assert_array_equal(storage_mod.unpack_record(rec, line), arr)

@@ -190,8 +190,11 @@ JPEG 설정을 대상으로 한다.
 ## 5. Jetson에 저장된 원본 검사
 
 완료된 세션은 `$COLLECTOR_DATA_ROOT/$SESSION_ID/`에 남는다. `color`는 프레임별
-JPEG, `depth`는 **mm 단위 `uint16`**, `ir`은 Y8 값을 손실 없이 확장하거나 Y16
-값을 유지한 `uint16` 배열이며 depth·IR 배열은 각각 `records.bin`에 이어 쓴다.
+JPEG, `depth`는 **mm 단위 `uint16`**, `ir`은 장치 형식 그대로(Y8 → **`uint8`**, Y16 → `uint16`)이며
+depth·IR 배열은 각각 `records.bin`에 이어 쓴다. 2026-09-27부터 레코드는 기본 **lz4 무손실 압축**
+(`COLLECTOR_ARRAY_COMPRESSION=lz4`, 원소 2바이트 이상은 바이트 평면 분리 후 압축, D-035)이라 레코드마다 길이가 다르다.
+인덱스의 `compression`·`shuffle`·`raw_bytes`를 보고 `app.storage.unpack_record(buf, row)`로 푼다.
+그 전 세션(키 없음)은 비압축 `uint16`이다.
 depth는 SDK Z16 코드에 `depth_scale_mm_per_code`를 곱해 반올림한 값이며, 변환 전
 Z16 코드는 별도로 저장하지 않는다. 적용한 scale·원래 픽셀 형식은 인덱스 `flags`에
 남는다.
@@ -232,8 +235,9 @@ for stream in ("color", "depth", "ir"):
         if stream == "color":
             assert data.suffix == ".jpg" and row["bytes"] > 0
         else:
-            assert row["dtype"] == "uint16" and len(row["shape"]) == 2
-            assert row["bytes"] == math.prod(row["shape"]) * 2
+            assert row["dtype"] in ("uint16", "uint8") and len(row["shape"]) == 2
+            raw_bytes = row.get("raw_bytes", row["bytes"])  # 압축 레코드는 raw_bytes가 원래 크기
+            assert raw_bytes == math.prod(row["shape"]) * (2 if row["dtype"] == "uint16" else 1)
             assert row["offset"] + row["bytes"] <= data.stat().st_size
             if stream == "depth":
                 assert row["unit"] == "mm"

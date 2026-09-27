@@ -138,6 +138,14 @@ class CaptureSession:
         self._finalize_started = False
         self._prev_counts: dict[tuple[str, str], tuple[float, int, int]] = {}
         self._rates: dict[tuple[str, str], dict[str, float | None]] = {}
+        #: 세션 config `max_duration_sec`(>0) — running 진입 뒤 이 시간이 지나면 정상 중지한다(점검 세션 잊음 방지).
+        #: 없거나 0이면 제한 없음(Pi가 여는 운영 세션의 기본 동작은 그대로).
+        try:
+            max_dur = float(self.config.get("max_duration_sec") or 0)
+        except (TypeError, ValueError):
+            max_dur = 0.0
+        self.max_duration_sec: float | None = max_dur if math.isfinite(max_dur) and max_dur > 0 else None
+        self._running_mono: float | None = None
         preview_config = self.config.get("preview")
         self._preview_enabled = bool(preview_config is True or
                                      (isinstance(preview_config, dict) and preview_config.get("enabled") is True))
@@ -235,6 +243,7 @@ class CaptureSession:
                 self._abort("sensor_open_failed", "센서를 하나도 열지 못함 — 세션 시작 실패")
                 return
             self.state = CaptureState.RUNNING
+            self._running_mono = time.monotonic()
             self.started_at = utcnow_iso()
             self.phases["running"] = self.started_at
             self.store.update(state=self.state.value, phases=dict(self.phases))
@@ -326,6 +335,13 @@ class CaptureSession:
                 self.store.append_stats(rec)
             except OSError as exc:
                 self._abort("stats_write_failed", f"stats.jsonl 기록 실패: {exc}")
+                return
+            if (self.max_duration_sec is not None and self._running_mono is not None
+                    and now - self._running_mono >= self.max_duration_sec):
+                self.store.append_event("info", "session.max_duration",
+                                        f"최대 시간 {self.max_duration_sec:g}초 도달 — 자동 중지",
+                                        max_duration_sec=self.max_duration_sec)
+                self.request_stop(f"max_duration_sec={self.max_duration_sec:g} 도달")
                 return
             if now - last_sys >= self.settings.system_interval_sec:
                 last_sys = now

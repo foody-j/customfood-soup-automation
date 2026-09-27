@@ -17,6 +17,7 @@ from app.sensors.base import SensorError
 from app.sensors.orbbec import OrbbecGemini2
 from app.sensors.registry import build_sensors
 from app.service import CollectorService
+from app.storage import unpack_record
 
 
 class FakeInfo:
@@ -295,7 +296,7 @@ def test_read_converts_color_depth_and_ir_with_independent_data_and_metadata():
     assert samples[1].data.dtype == np.uint16 and samples[1].pixel_format == "Z16_MM"
     np.testing.assert_array_equal(samples[1].data, [[0, 50]])
     assert samples[1].flags["depth_scale_mm_per_code"] == 0.5
-    assert samples[2].data.dtype == np.uint16 and samples[2].pixel_format == "IR_U16"
+    assert samples[2].data.dtype == np.uint8 and samples[2].pixel_format == "IR_U8"  # Y8은 8비트 그대로
     np.testing.assert_array_equal(samples[2].data, [[5, 200]])
     color.data[0] = 0
     depth.data[2] = 0
@@ -406,11 +407,12 @@ def test_real_adapter_session_persists_three_streams_and_preview(tmp_path, monke
     assert meta["sensors"][0]["applied_config"]["profiles"]["depth"]["format"] == "Y16"
     assert manifest["state"] == "stopped"
     assert len(list((root / "cam_depth_0" / "color" / "frames").glob("*.jpg"))) == 3
-    for stream, expected in (("depth", [0, 600]), ("ir", [5, 200])):
+    for stream, expected, dtype in (("depth", [0, 600], "uint16"), ("ir", [5, 200], "uint8")):
         folder = root / "cam_depth_0" / stream
         rows = [json.loads(line) for line in (folder / "index.jsonl").read_text(encoding="utf-8").splitlines()]
-        assert len(rows) == 3 and all(row["dtype"] == "uint16" and row["shape"] == [1, 2] for row in rows)
+        assert len(rows) == 3 and all(row["dtype"] == dtype and row["shape"] == [1, 2] for row in rows)
+        assert all(row["compression"] == "lz4" for row in rows)
         with (folder / "records.bin").open("rb") as file:
             file.seek(rows[0]["offset"])
-            values = np.frombuffer(file.read(rows[0]["bytes"]), dtype="<u2")
-        np.testing.assert_array_equal(values, expected)
+            values = unpack_record(file.read(rows[0]["bytes"]), rows[0])
+        np.testing.assert_array_equal(values.ravel(), expected)
