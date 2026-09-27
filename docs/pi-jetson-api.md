@@ -123,7 +123,8 @@ Pi의 실험 기록 기능이 쓰는 값이다. **전부 선택(optional)** 이�
 
 2026-09-25 동기화(D-030·D-031): MLX90614의 `point_temp_0/1`·`point_temp_i2c`는 현재 수집 목록에서
 제외했다. 열화상은 `thermal_0`(D55 한 대, I²C 직결), PT100은 `pt100_0`(개발·검증용)이다.
-Pi 모의 목록은 카메라 3대와 열화상 한 대이며, 실제 연동 모드에서는 Jetson이 보고한 목록을 그대로 표시한다.
+Pi 모의 목록은 카메라 3대와 열화상 한 대이며(2026-09-27 첫 조리 시험 준비로 `pt100_0` 모의 항목 추가 — `simulated:true`),
+실제 연동 모드에서는 Jetson이 보고한 목록을 그대로 표시한다.
 과거 세션에 남은 센서 ID나 미지의 `kind` 문자열을 삭제·차단하지 않는다.
 솥 내장 온도센서는 모델의 운영 온도원으로 계획했지만 읽기 인터페이스와 수집 담당 장비가 미확정이므로,
 연결된 Jetson 센서로 추가하지 않는다. 값을 읽지 못하면 PT100을 운영에 사용하는 방안을 검증한다.
@@ -162,6 +163,14 @@ Gemini 2의 `ir` 영상 스트림은 MLX90614와 별개이며 유지한다.
 (`stop_reason = "max_duration_sec=<값> 도달"`, 이벤트 `session.max_duration`). 없거나 0이면 제한 없음 — 기존 동작 그대로.
 Jetson `/viewer` 점검 세션은 기본 600초로 연다.
 
+**Pi 동작(2026-09-27):** Pi 실험 설정(`PUT /api/config`)의 `max_duration_sec`(0~86400, 0=제한 없음)을 저장·재조회하고,
+시작 요청의 `config` **최상위**에 그대로 싣는다(`extra.max_duration_sec`는 422로 거절). 화면은 시작 전에 값을 고르고
+확인창에서 다시 보여 준다 — 운영 세션에 몰래 제한을 걸지 않는다. Pi는 브라우저 타이머로 멈추지 않는다.
+종료 이유는 `capture.stop_reason`/`last_session.stop_reason`의 `max_duration_sec=` 접두사로만 판단하고
+(`end_reason=stopped`만으로 시간 제한이라고 추정하지 않음) 세션의 `jetson_end`에 `stop_reason`·`end_reason`·`phases`를 남긴다
+(이벤트 `capture.auto_stopped`, 수동 중지 등은 `capture.stop_reason`). **데이터 촬영 종료일 뿐 인덕션 전원과 무관하다.**
+시작 요청은 `config.preview.enabled`를 켜기/끄기 모두 명시해 보낸다(저장된 `depth_max_mm` 등은 유지).
+
 - 이미 **같은** `session_id`가 진행 중이면 `accepted: true`(멱등).
 - **다른** 세션이 진행 중이면 `accepted: false` + `message`에 사유. HTTP는 200으로 둔다
   (거절은 오류가 아니라 정상 응답이다). Pi는 이를 409로 사용자에게 전달한다.
@@ -180,8 +189,9 @@ Jetson `/viewer` 점검 세션은 기본 600초로 연다.
 - **Pi 타임아웃(2초)보다 저장 마무리가 길 수 있다.** 그 경우 Pi는 `ReadTimeout`으로 세션을
   `stopping`에 두고(`capture.stop_deferred`), 이후 status의 `capture.state == stopped`를 보고
   `capture.stop_confirmed`로 마무리한다. Jetson은 `COLLECTOR_STOP_WAIT`(기본 120초)까지 기다린 뒤
-  그래도 안 끝나면 `accepted:true, state:"stopping"`으로 응답한다 — Pi는 이 응답을 받으면
-  세션을 `stopped`로 표시하므로(현 구현) 이 경로는 사실상 status 재동기화에 맡긴다.
+  그래도 안 끝나면 `accepted:true, state:"stopping"`으로 응답한다 — Pi는 이 응답이면 세션을 **`stopping`으로 두고**
+  (`capture.stop_accepted`) status 재동기화로 `stopped`/`failed`와 저장 결과를 받아 마무리한다(2026-09-27 수정 —
+  이전에는 곧바로 `stopped`로 표시했다). `state:"failed"` 응답은 `failed`로 기록한다.
 - 진행 중 세션이 없으면 어떤 `session_id`든 `accepted: true`(멱등 — 이미 멈춰 있음).
 - 끝난 세션의 `session_id`로 다시 start하면 `accepted:false`(저장 디렉터리가 겹치므로). 새 ID가 필요하다.
 
@@ -206,6 +216,8 @@ Jetson `/viewer` 점검 세션은 기본 600초로 연다.
 | 상황 | Pi 처리 | 이벤트 |
 |---|---|---|
 | 같은 세션 진행 중 | Jetson 상태로 동기화 | — |
+| 같은 세션이 Jetson에서 `stopping` | **정상 마무리 단계** — Pi도 `stopping`으로 두고 기다림(고아 처리 안 함) | 중지 사유를 처음 받으면 `capture.auto_stopped`/`capture.stop_reason` |
+| 같은 세션이 Jetson에서 `stopped`/`failed` | 그 상태로 종료 | `capture.stop_confirmed` |
 | 서로 다른 세션 | Pi 쪽 `unknown`으로 닫고 Jetson 쪽 채택 | `session.mismatch` (error) |
 | Pi만 진행 중으로 앎 | `unknown`(확인 불가)으로 표시 | `session.orphaned` (warn) |
 | Jetson만 진행 중 | Pi 기록으로 인계 | `session.adopted` (warn) |
@@ -218,6 +230,7 @@ Pi와의 연결은 관리 경로일 뿐 수집의 전제가 아니다(플랜 §4
 | 항목 | 상태 |
 |---|---|
 | `sensors[].stats` · `last_session_summary` | **Jetson 구현됨(2026-09-12)** — §2.1. `stats`는 진행 중 세션의 스트림 통계를 센서 단위로 합산(세션 없으면 null), `last_session_summary`는 파일 close·manifest 기록 후 확정(`ok=false`면 `note`에 사유) |
+| 열화상·PT100 JSON 미리보기 | **Pi 연동됨(2026-09-27)** — Pi `GET /api/preview_array/{sensor_id}/{stream_id}?session_id=`가 Jetson `preview_array`를 값 변경 없이 중계한다(+`pi_received_at`, `mock`). 진행 중 세션 없음·값 없음 404, 요청 `session_id`가 진행 중 세션과 다르면 409, Jetson 무응답 503, Jetson 오류 502. 카드 설정은 `GET /api/sensor-preview/config`(`SOUP_SENSOR_PREVIEWS`). 200은 "캐시에 값이 있음"일 뿐이라 화면이 `seq` 정체로 갱신 지연을 판단한다 |
 | 저해상 미리보기 | **Jetson 구현됨(2026-09-18), Pi 연동됨(2026-09-18)** — 아래 `GET /api/v1/capture/preview/{sensor_id}/{stream_id}`. 활성 세션에서 요청 시에만 사용, 원본 저장과 분리. Pi는 `GET /api/preview/{sensor_id}/{stream_id}`로 그대로 중계하고(저장 안 함) 시작 요청의 `config.preview`로 켠다 — 계약 변경 없음 |
 | 센서별 설정 조회/변경 (`/api/v1/sensors/...`) | 미정의 — 4단계 |
 | 인증 | 없음(로컬 유선망 전제). 운영 전 재검토 |

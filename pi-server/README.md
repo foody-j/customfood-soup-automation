@@ -277,7 +277,8 @@ curl -X PUT localhost:8100/api/identity -H 'content-type: application/json' \
   ```
   설정을 직접 줘도 된다: `{ apiBase, cameras: [{id, label, sensor_id, streams: [{id, label}]}], intervalMs }`.
 - **미리보기는 `preview.enabled=true`로 시작한 세션에서만 나온다.** 촬영 카드의 "카메라 미리보기 켜기"(기본 켜짐)가
-  저장된 실험 설정에 `preview: {enabled: true, max_fps: 2}`만 얹어 보낸다. 끄고 시작한 세션은 "프레임 없음"이 정상이다.
+  저장된 실험 설정의 `preview`에 `enabled`를 켜기/끄기 모두 **명시해** 얹어 보낸다(`max_fps`는 저장값, 없으면 1 — 2026-09-27부터).
+  끄고 시작한 세션은 "프레임 없음"이 정상이다.
   깊이 의사색 범위는 `PUT /api/config`의 `preview.depth_max_mm`(100~65535, 비우면 Jetson 기본 4000)로 저장해 두면
   유지된다 — 작업 거리 0.5 m면 1000~1500.
 - **요청이 멈추는 때:** 컴포넌트가 화면 밖(스크롤·`display:none`·DOM 제거), 브라우저 탭 숨김, 진행 중 세션 없음, `destroy()`.
@@ -285,6 +286,35 @@ curl -X PUT localhost:8100/api/identity -H 'content-type: application/json' \
 - 카메라 목록은 `SOUP_PREVIEW_CAMERAS`(JSON)로 바꾼다. 기본은 GMSL2 ①(`cam_rgb_0`)·②(`cam_rgb_1`)·Gemini 2(`cam_depth_0`: color/depth/ir).
   형식이 틀리면 기본 목록으로 뜨고 `/api/preview/config`의 `config_error`에 이유가 나온다.
 - Pi는 미리보기 그림을 저장하지 않고, 조회를 이벤트로 남기지도 않는다.
+
+## 열화상 · PT100 (독립 컴포넌트, 2026-09-27)
+
+```
+브라우저 sensor-preview.js ──GET /api/preview_array/{sensor}/{stream}?session_id=──▶ Pi 서버 ──GET /api/v1/capture/preview_array/…──▶ Jetson
+```
+
+- `static/sensor-preview.js` + `sensor-preview.css` — 카메라 모듈과 같은 방식의 독립 모듈(`SensorPreview.mount`,
+  `fromServerConfig(GET /api/sensor-preview/config)`, `setActive(on, text, sessionId)`). 카드는 `SOUP_SENSOR_PREVIEWS`(JSON)로 바꾼다.
+  기본: `thermal_0/temp_array`(kind `thermal`, 고정 범위 15–110 ℃, 4초 무갱신이면 지연) · `pt100_0/temp`(kind `scalar`, 5초).
+- 열화상: `deci`만 10으로 나눈다(`min/max/mean`은 이미 ℃). 히트맵을 누르면 그 화소 온도, 고정/자동 표시 범위 전환(원본 불변).
+- PT100: `valid:false`는 온도로 그리지 않는다 — `max31865_fault:*`/`rtd_raw_out_of_range`는 **센서 오류**, `spi_error`는 **통신 오류**,
+  404는 **미수신**, 502/503은 **Jetson 통신 오류**. `value.temp_c`가 0이면 `0.00 ℃`, null이면 `값 없음`. 저항·raw는 '진단값'에 접어 둔다.
+  3선 탐침을 `wires=4`로 읽는 중이라 화면에 **검증된 기준 온도(GT) 아님**을 함께 표시한다.
+- 같은 `seq`는 새 측정으로 치지 않는다(추이에 반복 삽입 안 함). `seq`가 멈추면 '갱신 지연'으로 마지막 값을 흐리게 둔다.
+- 요청은 카드마다 하나씩만(겹치지 않음), 화면 밖·탭 숨김·세션 없음·종료 중이면 멈춘다. 세션이 바뀌면 이전 값과 늦은 응답을 버린다.
+
+## 첫 조리 시험 준비 (2026-09-27)
+
+- **최대 촬영 시간**: 촬영 카드에서 고른다(60초 점검 / 10분 첫 실험 / 30분 / 60분 / 제한 없음=0 / 직접 입력). 바꾸면
+  `PUT /api/config`에 저장되고 다시 열어도 유지된다. 시작 요청 `config` 최상위 `max_duration_sec`로 Jetson에 가며,
+  **Jetson이** 멈춘다(브라우저 타이머 없음). 데이터 촬영 종료일 뿐 인덕션은 끄지 않는다. 값을 고르지 않으면 시작하지 않는다.
+- **프리셋**: '점검 60초 (가열 없음)', '소고기무국 재가열 관찰'(10분). 센서 5개(`cam_rgb_0/1`, `cam_depth_0`, `thermal_0`, `pt100_0`)·
+  10 fps·미리보기 1 Hz를 실험 설정에 저장하고 재료·조건 칸에 `___` 자리를 채운다 — 중량·물·출력·뚜껑·탐침/카메라 위치는
+  현장 실측값으로 적는다(임의 값 확정 안 함).
+- **시작 전 점검**: 모의 여부, 기본 센서의 설정 누락·미연결, 남은 용량, 미리보기, 최대 시간, 예상 저장량
+  (최근 세션의 실제 쓰기량 기준 **추정** — 기록이 없으면 '추정 불가').
+- **빠른 메모**: 첫 기포 / 지속 끓음 / 가열 종료 → 기존 `/api/marks`(수동 입력 표시).
+- 세션에는 Jetson이 보고한 종료 정보 `jetson_end`(`stop_reason`·`end_reason`·`phases`)가 붙고 JSON 내보내기에 함께 나간다.
 
 ## 설정 (환경변수)
 
