@@ -41,6 +41,68 @@ DEFAULT_PREVIEW_CAMERAS: list[dict] = [
 ]
 
 
+#: 열화상·PT100 표시 모듈(`static/sensor-preview.js`) 기본 카드. Jetson `preview_array`(JSON)를 쓴다.
+#: `kind`: thermal(행렬 히트맵) | scalar(숫자 한 개). `stale_after_ms`는 센서 주기(열화상 2 Hz, PT100 1 Hz)보다
+#: 넉넉히 잡는다 — 그 시간 동안 seq가 늘지 않으면 '갱신 지연'으로 표시한다.
+#: `range_c`는 열화상 고정 표시 범위(원본 값은 바꾸지 않는다). 자동 범위는 화면에서 고른다.
+DEFAULT_SENSOR_PREVIEWS: list[dict] = [
+    {"id": "thermal", "label": "열화상 · MLX90640 D55", "sensor_id": "thermal_0", "stream_id": "temp_array",
+     "kind": "thermal", "stale_after_ms": 4000, "range_c": [15.0, 110.0]},
+    {"id": "pt100", "label": "PT100 · MAX31865", "sensor_id": "pt100_0", "stream_id": "temp",
+     "kind": "scalar", "field": "temp_c", "unit": "℃", "stale_after_ms": 5000,
+     "note": "실측값 표시 — 3선 보상·기준 온도 대조 전이라 검증된 기준 온도(GT)가 아님"},
+]
+_SENSOR_PREVIEW_KINDS = ("thermal", "scalar")
+
+
+def parse_sensor_previews(raw: str) -> list[dict]:
+    """`SOUP_SENSOR_PREVIEWS`(JSON) → 열화상·PT100 카드 목록. 형식이 틀리면 ValueError."""
+    if not raw.strip():
+        return [dict(card) for card in DEFAULT_SENSOR_PREVIEWS]
+    try:
+        data = json.loads(raw)
+    except ValueError as exc:
+        raise ValueError(f"JSON이 아님: {exc}") from exc
+    if not isinstance(data, list) or not data:
+        raise ValueError("비어 있지 않은 배열이어야 함")
+    cards: list[dict] = []
+    for i, card in enumerate(data):
+        if not isinstance(card, dict):
+            raise ValueError(f"[{i}] 객체여야 함")
+        for key in ("sensor_id", "stream_id"):
+            if not isinstance(card.get(key), str) or not card[key]:
+                raise ValueError(f"[{i}] {key}가 필요함")
+        kind = card.get("kind")
+        if kind not in _SENSOR_PREVIEW_KINDS:
+            raise ValueError(f"[{i}] kind는 {'|'.join(_SENSOR_PREVIEW_KINDS)}")
+        out = {
+            "id": str(card.get("id") or f"{card['sensor_id']}/{card['stream_id']}"),
+            "label": str(card.get("label") or card["sensor_id"]),
+            "sensor_id": card["sensor_id"],
+            "stream_id": card["stream_id"],
+            "kind": kind,
+        }
+        stale = card.get("stale_after_ms")
+        if stale is not None:
+            if not isinstance(stale, (int, float)) or isinstance(stale, bool) or stale <= 0:
+                raise ValueError(f"[{i}] stale_after_ms는 양수")
+            out["stale_after_ms"] = int(stale)
+        rng = card.get("range_c")
+        if rng is not None:
+            if (not isinstance(rng, list) or len(rng) != 2
+                    or not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in rng)
+                    or rng[0] >= rng[1]):
+                raise ValueError(f"[{i}] range_c는 [낮은값, 높은값]")
+            out["range_c"] = [float(rng[0]), float(rng[1])]
+        for key in ("field", "unit", "note"):
+            if card.get(key) is not None:
+                out[key] = str(card[key])
+        cards.append(out)
+    if len({card["id"] for card in cards}) != len(cards):
+        raise ValueError("카드 id가 중복됨")
+    return cards
+
+
 def parse_preview_cameras(raw: str) -> list[dict]:
     """`SOUP_PREVIEW_CAMERAS`(JSON) → 정규화된 카메라 목록. 형식이 틀리면 ValueError.
 
@@ -149,6 +211,10 @@ class Settings:
     preview_cameras_json: str = ""
     #: 미리보기 갱신 주기(ms). Jetson이 최대 2fps로만 갱신하므로 500 미만은 의미가 없다.
     preview_interval_ms: int = 1000
+    #: 열화상·PT100 표시 카드(JSON 배열). 비우면 `DEFAULT_SENSOR_PREVIEWS`.
+    sensor_previews_json: str = ""
+    #: 열화상·PT100 JSON 미리보기 갱신 주기(ms). 요청은 겹치지 않게 보낸다.
+    sensor_preview_interval_ms: int = 1000
 
     #: 이 서버 자신의 표시용 이름(여러 대 운용 시 구분)
     site_name: str = "국·탕 실험장치 관리 서버"
@@ -208,6 +274,8 @@ class Settings:
             port=_env_int("SOUP_PORT", 8100),
             preview_cameras_json=_env_str("SOUP_PREVIEW_CAMERAS", ""),
             preview_interval_ms=_env_int("SOUP_PREVIEW_INTERVAL_MS", 1000),
+            sensor_previews_json=_env_str("SOUP_SENSOR_PREVIEWS", ""),
+            sensor_preview_interval_ms=_env_int("SOUP_SENSOR_PREVIEW_INTERVAL_MS", 1000),
             site_name=_env_str("SOUP_SITE_NAME", "국·탕 실험장치 관리 서버"),
             project_id=_env_str("SOUP_PROJECT_ID", "customfood-soup"),
             device_id=_env_str("SOUP_DEVICE_ID", socket.gethostname()),

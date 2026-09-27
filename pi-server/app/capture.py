@@ -43,6 +43,16 @@ log = logging.getLogger(__name__)
 
 FINISHED_STATES = (CaptureState.STOPPED, CaptureState.FAILED)
 JETSON_ACTIVE_STATES = (CaptureState.STARTING, CaptureState.RUNNING)
+#: 재동기화에서 "아직 이 세션이 살아 있다"로 보는 Jetson 상태. **STOPPING은 정상 마무리 단계**다 —
+#: 최대 촬영 시간 자동 중지처럼 Jetson이 스스로 멈추는 중에 Pi가 조회해도 세션을 고아로 만들지 않는다.
+JETSON_LIVE_STATES = (CaptureState.STARTING, CaptureState.RUNNING, CaptureState.STOPPING)
+#: Jetson이 최대 촬영 시간으로 스스로 멈출 때 `stop_reason`에 쓰는 접두사(jetson/collector session.py).
+#: 종료 이유는 이 문자열로만 판단한다 — `end_reason=stopped`만으로 시간 제한 종료라고 추정하지 않는다.
+MAX_DURATION_REASON_PREFIX = "max_duration_sec="
+
+
+def is_max_duration_stop(stop_reason: str | None) -> bool:
+    return bool(stop_reason) and str(stop_reason).startswith(MAX_DURATION_REASON_PREFIX)
 
 
 class CaptureConflict(Exception):
@@ -251,6 +261,26 @@ class CaptureService:
             confirmed_at = utcnow_iso()
             latency_ms = elapsed_ms(started_monotonic)
 
+            if ack.accepted and ack.state is CaptureState.STOPPING:
+                # Jetson이 중지를 받았지만 저장 마무리가 대기 시간을 넘김 — 아직 '종료'가 아니다.
+                # 세션을 '중지 중'으로 두고, 재동기화가 stopped/failed와 저장 결과를 받아 마무리한다.
+                self._db.update_session(session_id, state=CaptureState.STOPPING, jetson_ack=True)
+                self._db.log_event(
+                    level=EventLevel.INFO,
+                    source="jetson",
+                    code="capture.stop_accepted",
+                    message="중지 접수 — Jetson이 저장을 마무리하는 중(완료는 상태 조회로 확인)",
+                    session_id=session_id,
+                    request_id=request_id,
+                    detail={
+                        "sent_at": sent_at,
+                        "confirmed_at": confirmed_at,
+                        "latency_ms": latency_ms,
+                        "jetson_message": ack.message,
+                    },
+                )
+                return _to_info(self._db.get_session(session_id))  # type: ignore[return-value]
+
             if not ack.accepted:
                 self._db.log_event(
                     level=EventLevel.ERROR,
@@ -268,8 +298,9 @@ class CaptureService:
                 )
                 raise CaptureConflict(ack.message or "Jetson이 촬영 중지를 거절했습니다")
 
+            final = CaptureState.FAILED if ack.state is CaptureState.FAILED else CaptureState.STOPPED
             self._db.update_session(
-                session_id, state=CaptureState.STOPPED, stopped_at=confirmed_at, jetson_ack=True
+                session_id, state=final, stopped_at=confirmed_at, jetson_ack=True
             )
             self._db.log_event(
                 level=EventLevel.INFO,
@@ -315,12 +346,13 @@ class CaptureService:
     async def reconcile(self, report: JetsonReport) -> None:
         async with self._lock:
             self._reconcile_locked(report)
+            self._absorb_end_info(report)
             self._absorb_storage_result(report)
 
     def _reconcile_locked(self, report: JetsonReport) -> None:
         jetson_capture = report.capture
         jetson_id = jetson_capture.session_id
-        jetson_active = jetson_capture.state in JETSON_ACTIVE_STATES and bool(jetson_id)
+        jetson_active = jetson_capture.state in JETSON_LIVE_STATES and bool(jetson_id)
         pi_row = self._db.active_session()
 
         if pi_row is not None and jetson_active and pi_row["session_id"] == jetson_id:
@@ -418,6 +450,55 @@ class CaptureService:
             origin="jetson",
             occurred_at=device_started_at,
         )
+
+    def _absorb_end_info(self, report: JetsonReport) -> None:
+        """Jetson이 보고한 **종료 사실**(중지 사유·단계 시각·종료 이유)을 세션에 붙인다.
+
+        출처는 `capture`(종료 중·종료 직후의 현재 세션)와 `last_session`(마지막으로 닫힌 세션)이다.
+        받은 필드만 담고 없는 값을 추정하지 않는다. 중지 사유는 처음 받았을 때 한 번 사건으로 남긴다.
+        """
+        sources: list[tuple[str | None, dict[str, Any]]] = []
+        cap = report.capture
+        if cap.session_id and (cap.state in (CaptureState.STOPPING, *FINISHED_STATES) or cap.stop_reason):
+            sources.append((cap.session_id, {
+                "state": cap.state.value,
+                "stop_reason": cap.stop_reason,
+                "phases": dict(cap.phases) or None,
+                "last_error": cap.last_error,
+            }))
+        last = report.last_session
+        if isinstance(last, dict) and last.get("session_id"):
+            sources.append((str(last["session_id"]), {
+                key: last.get(key)
+                for key in ("state", "stop_reason", "end_reason", "phases", "last_error")
+            }))
+        for session_id, info in sources:
+            row = self._db.get_session(session_id or "")
+            if row is None:
+                continue
+            before = dict(row.get("jetson_end") or {})
+            merged = dict(before)
+            merged.update({k: v for k, v in info.items() if v is not None})
+            merged.setdefault("first_seen_at", utcnow_iso())  # Pi가 처음 받은 시각
+            if merged == before:
+                continue
+            self._db.update_session(session_id, jetson_end=merged)
+            reason = merged.get("stop_reason")
+            if reason and not before.get("stop_reason"):
+                auto = is_max_duration_stop(reason)
+                self._db.log_event(
+                    level=EventLevel.INFO,
+                    source="jetson",
+                    code="capture.auto_stopped" if auto else "capture.stop_reason",
+                    message=(
+                        f"최대 촬영 시간 도달 — Jetson이 촬영(데이터 수집)을 스스로 중지: {reason}"
+                        if auto else f"Jetson 중지 사유 보고: {reason}"
+                    ),
+                    session_id=session_id,
+                    origin="jetson",
+                    occurred_at=(merged.get("phases") or {}).get("stop_requested"),
+                    detail={"stop_reason": reason, "phases": merged.get("phases")},
+                )
 
     def _absorb_storage_result(self, report: JetsonReport) -> None:
         """저장 결과 요약을 세션에 박제한다 — **여기서야 저장 완료가 확정된다.**

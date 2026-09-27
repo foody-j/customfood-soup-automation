@@ -17,7 +17,7 @@ from pydantic import ValidationError
 
 from ..config import Settings
 from ..models import CaptureAck, JetsonReport
-from .base import JetsonError, JetsonUnreachable, PreviewFrame
+from .base import JetsonError, JetsonUnreachable, PreviewArray, PreviewFrame
 
 
 class HttpJetsonClient:
@@ -119,6 +119,37 @@ class HttpJetsonClient:
             session_id=response.headers.get("x-preview-session-id"),
             host_utc=response.headers.get("x-preview-host-utc"),
             sequence=response.headers.get("x-preview-sequence"),
+        )
+
+    async def fetch_preview_array(
+        self, *, sensor_id: str, stream_id: str, session_id: str | None = None
+    ) -> PreviewArray | None:
+        """`GET /api/v1/capture/preview_array/{sensor_id}/{stream_id}` — 열화상 배열·PT100 스칼라(JSON).
+
+        JPEG 중계와 같은 timeout·404 규칙을 쓴다. 본문 값은 고치지 않는다.
+        """
+        path = f"/api/v1/capture/preview_array/{quote(sensor_id, safe='')}/{quote(stream_id, safe='')}"
+        params = {"session_id": session_id} if session_id else None
+        try:
+            response = await self._client.get(path, params=params)
+        except httpx.HTTPError as exc:
+            raise JetsonUnreachable(f"GET {path} 실패: {exc}") from exc
+        if response.status_code == 404:  # 샘플이 아직 없거나 미리보기를 켜지 않은 세션
+            return None
+        if response.status_code >= 400:
+            raise JetsonError(f"미리보기 배열 오류 {response.status_code}: {response.text[:200]}")
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise JetsonError(f"미리보기 배열이 JSON 아님: {response.text[:200]}") from exc
+        if not isinstance(payload, dict):
+            raise JetsonError("미리보기 배열 응답이 객체가 아님")
+        seq = payload.get("seq")
+        return PreviewArray(
+            payload=payload,
+            session_id=payload.get("session_id"),
+            host_utc=payload.get("host_utc"),
+            seq=seq if isinstance(seq, int) and not isinstance(seq, bool) else None,
         )
 
     async def request_shutdown(self) -> CaptureAck:

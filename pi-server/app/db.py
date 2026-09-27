@@ -103,6 +103,7 @@ ADDED_COLUMNS: dict[str, dict[str, str]] = {
         "ingredients": "TEXT",   # 재료 (자유 텍스트)
         "conditions": "TEXT",    # 실험 조건 (자유 텍스트)
         "jetson_summary": "TEXT",  # 종료 시점의 Jetson 저장 결과 요약(JSON)
+        "jetson_end": "TEXT",      # Jetson이 보고한 종료 정보(stop_reason·end_reason·phases, JSON)
         "schema_version": "INTEGER",
     },
 }
@@ -353,7 +354,7 @@ class Database:
     def update_session(self, session_id: str, **fields: Any) -> dict[str, Any] | None:
         allowed = {
             "name", "note", "state", "stopped_at", "config", "jetson_ack", "source",
-            "ingredients", "conditions", "jetson_summary", "project_id", "device_id",
+            "ingredients", "conditions", "jetson_summary", "jetson_end", "project_id", "device_id",
         }
         sets: list[str] = []
         params: list[Any] = []
@@ -362,7 +363,7 @@ class Database:
                 raise KeyError(f"세션에 없는 필드: {key}")
             if key == "state" and isinstance(value, CaptureState):
                 value = value.value
-            if key in ("config", "jetson_summary") and not isinstance(value, (str, type(None))):
+            if key in ("config", "jetson_summary", "jetson_end") and not isinstance(value, (str, type(None))):
                 value = json.dumps(value or {}, ensure_ascii=False)
             if key == "jetson_ack":
                 value = 1 if value else 0
@@ -422,6 +423,7 @@ class Database:
         data = dict(row)
         data["config"] = _loads(data.get("config"))
         data["jetson_summary"] = _loads(data.get("jetson_summary")) or None
+        data["jetson_end"] = _loads(data.get("jetson_end")) or None
         data["jetson_ack"] = bool(data.get("jetson_ack"))
         data.pop("updated_at", None)
         return data

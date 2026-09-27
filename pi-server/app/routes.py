@@ -29,7 +29,13 @@ from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from .capture import CaptureConflict, CaptureService, CaptureUnavailable, SessionNotFound
-from .config import DEFAULT_PREVIEW_CAMERAS, Settings, parse_preview_cameras
+from .config import (
+    DEFAULT_PREVIEW_CAMERAS,
+    DEFAULT_SENSOR_PREVIEWS,
+    Settings,
+    parse_preview_cameras,
+    parse_sensor_previews,
+)
 from .db import SCHEMA_VERSION, Database
 from .identity import Identity
 from .jetson.base import JetsonError, JetsonUnreachable
@@ -287,6 +293,75 @@ async def preview(request: Request, sensor_id: str, stream_id: str) -> Response:
     return Response(content=frame.content, media_type=frame.media_type, headers=headers)
 
 
+@router.get("/sensor-preview/config")
+async def sensor_preview_config(request: Request) -> dict[str, Any]:
+    """열화상·PT100 표시 모듈(`static/sensor-preview.js`) 설정. 카드·API 주소·주기를 전부 여기서 준다."""
+    settings = _settings(request)
+    error = None
+    try:
+        cards = parse_sensor_previews(settings.sensor_previews_json)
+    except ValueError as exc:
+        cards = [dict(card) for card in DEFAULT_SENSOR_PREVIEWS]
+        error = f"SOUP_SENSOR_PREVIEWS 무시(기본 목록 사용): {exc}"
+    return {
+        "api_base": "/api/preview_array",
+        "interval_ms": max(500, settings.sensor_preview_interval_ms),
+        "sensors": cards,
+        "config_error": error,
+    }
+
+
+@router.get("/preview_array/{sensor_id}/{stream_id}")
+async def preview_array(
+    request: Request, sensor_id: str, stream_id: str, session_id: str | None = None
+) -> Response:
+    """열화상 배열·PT100 스칼라의 최신 미리보기(JSON)를 Jetson에서 받아 **그대로 중계**한다.
+
+    Jetson `GET /api/v1/capture/preview_array/...`만 쓴다. Pi는 센서·원본 파일을 열지 않고 값을 고치지 않는다
+    (단위 변환도 화면이 한다). `session_id`를 주면 지금 진행 중인 세션과 다를 때 409 — 이전 세션을 보던
+    화면이 새 세션 값을 제 것으로 착각하지 않게 한다. HTTP 200은 "캐시에 값이 있다"일 뿐 최신·정상 보장이 아니다
+    (열화상 무효 샘플은 Jetson 캐시에 들어가지 않는다) — 신선도는 화면이 `seq`·`host_utc`로 판단한다.
+    """
+    active = _capture(request).active()
+    if active is None:
+        raise HTTPException(status_code=404, detail="진행 중인 세션이 없습니다")
+    if session_id and session_id != active.session_id:
+        raise HTTPException(
+            status_code=409, detail=f"세션 불일치 — 요청 {session_id} / 진행 중 {active.session_id}"
+        )
+    try:
+        item = await request.app.state.jetson.fetch_preview_array(
+            sensor_id=sensor_id, stream_id=stream_id, session_id=active.session_id
+        )
+    except JetsonUnreachable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except JetsonError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if item is None:
+        raise HTTPException(
+            status_code=404,
+            detail="미리보기 값 없음 — 미리보기를 켜고 시작한 세션인지, 센서가 값을 내는지 확인",
+        )
+    if item.session_id and item.session_id != active.session_id:
+        raise HTTPException(
+            status_code=409,
+            detail=f"세션 불일치 — Jetson {item.session_id} / Pi {active.session_id}",
+        )
+    body = {
+        **item.payload,
+        "session_id": item.session_id or active.session_id,
+        "host_utc": item.host_utc,
+        "seq": item.seq,
+        "pi_received_at": utcnow_iso(),
+        "mock": bool(request.app.state.jetson.is_mock),
+    }
+    return Response(
+        content=json.dumps(body, ensure_ascii=False, separators=(",", ":")),
+        media_type="application/json",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 실험(세션)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -358,6 +433,8 @@ def _session_bundle(db: Database, identity: Identity, session: dict[str, Any]) -
         "session": session,
         "config_snapshot": session.get("config") or {},
         "jetson_summary": session.get("jetson_summary"),
+        #: Jetson이 보고한 종료 사실(stop_reason·end_reason·phases). 없으면 null — 추정하지 않는다.
+        "jetson_end": session.get("jetson_end"),
         "events": events,
         "counts": {
             "events": len(events),

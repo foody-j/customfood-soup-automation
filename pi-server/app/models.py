@@ -10,7 +10,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -105,6 +105,11 @@ class JetsonCapture(BaseModel):
     frames_written: int = 0
     frames_dropped: int = 0
     last_error: str | None = None
+    # ── Jetson 확장 필드(선택) — 없으면 비어 있다. 종료 이유를 추정하지 않기 위해 그대로 받는다. ──
+    #: 단계별 장치 시각(requested → running → stop_requested → stopping → files_closed → completed)
+    phases: dict[str, str | None] = Field(default_factory=dict)
+    #: 중지 요청 사유. 최대 촬영 시간이면 Jetson이 `max_duration_sec=<초> 도달`로 적는다.
+    stop_reason: str | None = None
 
 
 class StorageResult(BaseModel):
@@ -137,6 +142,8 @@ class JetsonReport(BaseModel):
     sensors: list[SensorInfo] = Field(default_factory=list)
     #: 가장 최근에 닫힌 세션의 저장 결과 요약(선택 — Jetson 확장 필드).
     last_session_summary: StorageResult | None = None
+    #: 마지막으로 닫힌 세션의 스냅샷(선택 — Jetson 확장 필드). `end_reason`·`stop_reason`·`phases`를 읽는다.
+    last_session: dict[str, Any] | None = None
     #: 모의 장치가 만든 보고임을 명시. UI가 "모의 모드" 배지를 띄우는 근거.
     mock: bool = False
 
@@ -194,6 +201,8 @@ class SessionInfo(BaseModel):
     conditions: str | None = None    # 실험 조건
     #: Jetson이 보고한 저장 결과 요약(종료 확인 시점에 박제)
     jetson_summary: dict[str, Any] | None = None
+    #: Jetson이 보고한 종료 정보(state·stop_reason·end_reason·phases·last_error). 받은 것만 담는다.
+    jetson_end: dict[str, Any] | None = None
     schema_version: int | None = None
 
 
@@ -246,6 +255,21 @@ class StartCaptureRequest(BaseModel):
     ingredients: str | None = Field(default=None, max_length=2000)
     conditions: str | None = Field(default=None, max_length=2000)
 
+    @field_validator("config")
+    @classmethod
+    def _check_max_duration(cls, config: dict[str, Any] | None) -> dict[str, Any] | None:
+        """`max_duration_sec`은 Jetson이 **config 최상위**에서 읽는다. 잘못된 값이 그대로 박제되지 않게 막는다."""
+        if config is None:
+            return None
+        value = config.get("max_duration_sec")
+        if value is not None:
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 86400:
+                raise ValueError("max_duration_sec은 0(제한 없음)~86400초 숫자여야 함")
+        extra = config.get("extra")
+        if isinstance(extra, dict) and "max_duration_sec" in extra:
+            raise ValueError("max_duration_sec은 extra가 아니라 config 최상위에 둬야 Jetson이 읽음")
+        return config
+
 
 class StopCaptureRequest(BaseModel):
     #: 비우면 현재 활성 세션을 중지한다. 재시도 시 같은 값을 보내면 멱등.
@@ -277,7 +301,18 @@ class ExperimentConfig(BaseModel):
     note: str | None = None
     #: 미리보기 설정(선택). 비우면 Jetson 기본(꺼짐).
     preview: PreviewConfig | None = None
+    #: 최대 촬영 시간(초). **Jetson이 config 최상위에서 읽는다**(`extra`에 넣지 말 것).
+    #: 도달하면 Jetson이 스스로 정상 중지한다 — 데이터 촬영 종료이며 인덕션 전원과 무관하다.
+    #: 0은 제한 없음, 비우면 이전 저장값을 유지한다.
+    max_duration_sec: float | None = Field(default=None, ge=0, le=86400)
     extra: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("extra")
+    @classmethod
+    def _no_nested_max_duration(cls, extra: dict[str, Any]) -> dict[str, Any]:
+        if "max_duration_sec" in extra:
+            raise ValueError("max_duration_sec은 extra가 아니라 최상위 필드로 보내야 Jetson이 읽음")
+        return extra
 
 
 class MockPowerRequest(BaseModel):
