@@ -2,6 +2,19 @@
 
 단국대학교 커스텀푸드 국/탕 조리 자동화 **과제** 저장소. 아래 규칙을 지켜서 작업할 것.
 
+## Pi·Jetson 동시 개발 (2026-09-28)
+
+담당 구간과 동기화 절차는 [docs/development-workflow.md](docs/development-workflow.md)를 따른다.
+- `pi/*` 브랜치: `pi-server/`, `docs/pi/`, `notes/pi/`만 수정한다.
+- `jetson/*` 브랜치: `jetson/`, `cam-adaptor/`, `docs/jetson/`, `notes/jetson/`만 수정한다.
+- 공통 계약·중앙 노트·설계·React dashboard는 통합 담당(현재 Windows)이 맡는다. 역할 밖 변경은 요청사항으로 기록한다.
+- 장비 작업의 개발 노트·결정 제안은 `notes/<역할>/<작업명>.md`에 남긴다. 중앙 노트 요약·D 번호는 통합 시 부여한다.
+  아래 중앙 노트 작성 규칙은 장비별 기록 후 병합 요약으로 충족한다.
+- `python3 tools/dev_session.py start <pi|jetson> <작업명>`으로 최신 main에서 격리된 작업을 시작한다.
+  커밋 전 `python3 tools/dev_session.py check <역할>`을 실행한다. 원래 운영 폴더는 자동 pull/재시작하지 않는다.
+- 기존 브랜치와 사용자에게서 명시적으로 지정된 작업 범위는 유지한다. 새 규칙 때문에 기존 커밋을 폐기하지 않는다.
+- Discord의 `AI_AGENT_RUNNER=1`은 아래 무인 규칙을 따른다. 일반 대화형 런처로 그 제한을 우회하지 않는다.
+
 ## ⚠️ 과제 관리 규칙 (가장 중요)
 
 이 프로젝트는 학과 과제이므로 **개발 노트와 데이터를 반드시 정리·기록**해야 한다.
