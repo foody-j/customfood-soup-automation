@@ -27,7 +27,7 @@ from .clock import clock_relation, utcnow_iso
 from .config import Settings
 from .models import CaptureState
 from .sensors.base import SensorAdapter, SensorError
-from .storage import SessionStore, StreamWriter, disk_usage
+from .storage import NullStore, NullWriter, SessionStore, StreamWriter, disk_usage
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +41,8 @@ _PREVIEW_STREAMS = frozenset({"rgb", "color", "depth", "ir", "left_ir", "right_i
 _PREVIEW_ARRAY_STREAMS = frozenset({"temp_array"})
 _PREVIEW_ARRAY_MAX_CELLS = 4096  # 32×24=768. 더 큰 배열은 미리보기에서 제외한다.
 _PREVIEW_MAX_STREAMS = 8
+#: 라이브 보기(record:false)에서 max_duration_sec이 없을 때의 상한 — 센서를 잡은 채 잊히지 않게(D-037)
+LIVE_DEFAULT_MAX_DURATION_SEC = 600.0
 _PREVIEW_MAX_BYTES = 256 * 1024
 _PREVIEW_MAX_SIDE = 640
 _PREVIEW_DEPTH_MAX_MM = 4000
@@ -116,7 +118,10 @@ class CaptureSession:
         self._system = system_snapshot
         self._on_finished = on_finished
 
-        self.store = SessionStore(settings.data_root, session_id)
+        #: `config.record is False`면 라이브 보기(D-037): 원본·manifest·세션 디렉터리 없이 미리보기만.
+        self.record = self.config.get("record") is not False
+        self.store: SessionStore | NullStore = (SessionStore(settings.data_root, session_id) if self.record
+                                                else NullStore(session_id))
         self.state = CaptureState.STARTING
         self.phases: dict[str, str | None] = {"requested": utcnow_iso(), "starting": None, "running": None,
                                               "stop_requested": None, "stopping": None, "files_closed": None,
@@ -125,13 +130,13 @@ class CaptureSession:
         self.last_error: str | None = None
         self.stop_reason: str | None = None
         self.end_reason: str | None = None
-        self.checksum_state: str = "none" if settings.checksum_mode == "none" else "pending"
+        self.checksum_state: str = "none" if settings.checksum_mode == "none" or not self.record else "pending"
         self.config_changes: list[dict[str, Any]] = []
 
         self._lock = threading.RLock()
         self._stop_event = threading.Event()
         self._done = threading.Event()
-        self._writers: dict[tuple[str, str], StreamWriter] = {}
+        self._writers: dict[tuple[str, str], StreamWriter | NullWriter] = {}
         self._threads: list[threading.Thread] = []
         self._sensor_state: dict[str, dict[str, Any]] = {}
         self._fail_reason: str | None = None
@@ -145,10 +150,12 @@ class CaptureSession:
         except (TypeError, ValueError):
             max_dur = 0.0
         self.max_duration_sec: float | None = max_dur if math.isfinite(max_dur) and max_dur > 0 else None
+        if not self.record and self.max_duration_sec is None:
+            self.max_duration_sec = LIVE_DEFAULT_MAX_DURATION_SEC
         self._running_mono: float | None = None
         preview_config = self.config.get("preview")
-        self._preview_enabled = bool(preview_config is True or
-                                     (isinstance(preview_config, dict) and preview_config.get("enabled") is True))
+        self._preview_enabled = (not self.record) or bool(  # 라이브는 보는 것이 목적 — 항상 켠다
+            preview_config is True or (isinstance(preview_config, dict) and preview_config.get("enabled") is True))
         requested_fps = preview_config.get("max_fps", 1.0) if isinstance(preview_config, dict) else 1.0
         try:
             requested_fps = float(requested_fps)
@@ -228,7 +235,8 @@ class CaptureSession:
                 break
             self._sensor_state[s.sensor_id] = {"connected": False, "reconnects": 0, "last_error": None}
             for spec in s.streams:
-                w = StreamWriter(self.store.dir, self.session_id, s.sensor_id, spec, self.settings, self._on_write_error)
+                w = (StreamWriter(self.store.dir, self.session_id, s.sensor_id, spec, self.settings, self._on_write_error)
+                     if self.record else NullWriter(self.session_id, s.sensor_id, spec))
                 self._writers[(s.sensor_id, spec.stream_id)] = w
                 w.start()
             if self._open_sensor(s, first=True):
@@ -248,7 +256,8 @@ class CaptureSession:
             self.phases["running"] = self.started_at
             self.store.update(state=self.state.value, phases=dict(self.phases))
             self.store.append_event("info", "session.running", f"수집 시작 — 센서 {opened}/{len(self.sensors)} 열림")
-            log.info("세션 %s 수집 시작 (%s) — 센서 %d/%d 열림, 경로 %s", self.session_id, self.name, opened, len(self.sensors), self.store.dir)
+            log.info("세션 %s 수집 시작 (%s) — 센서 %d/%d 열림, 경로 %s", self.session_id, self.name, opened, len(self.sensors),
+                     self.store.dir or "없음(라이브 보기 — 저장 안 함)")
         t = threading.Thread(target=self._stats_loop, name=f"stats:{self.session_id}", daemon=True)
         self._threads.append(t)
         t.start()
@@ -352,7 +361,7 @@ class CaptureSession:
                     except OSError:
                         pass
                 try:
-                    free = disk_usage(self.settings.data_root)["free_bytes"]
+                    free = disk_usage(self.settings.data_root)["free_bytes"] if self.record else None
                 except OSError:
                     free = None
                 if free is not None and free < self.settings.min_free_bytes:
@@ -451,7 +460,8 @@ class CaptureSession:
                                   last_error=self.last_error, stop_reason=self.stop_reason,
                                   config_changes=self.config_changes, summary=summary)
                 self.store.append_event("info" if final is CaptureState.STOPPED else "error", f"session.{final.value}",
-                                        "저장 완료 — 파일 닫힘·manifest 기록" if final is CaptureState.STOPPED
+                                        ("저장 완료 — 파일 닫힘·manifest 기록" if self.record else "라이브 보기 종료(저장 없음)")
+                                        if final is CaptureState.STOPPED
                                         else f"세션 실패로 종료: {self.last_error}")
             except OSError as exc:
                 log.error("세션 메타 최종 기록 실패: %s", exc)
@@ -461,7 +471,7 @@ class CaptureSession:
                 self._on_finished(self)
             except Exception:
                 log.exception("on_finished 훅 실패")
-        if self.settings.checksum_mode == "after_stop":
+        if self.settings.checksum_mode == "after_stop" and self.record:
             # 수집이 끝난 뒤에만 계산한다(수집 중 디스크 경쟁 금지)
             threading.Thread(target=self._checksum, name=f"checksum:{self.session_id}", daemon=True).start()
 
@@ -624,4 +634,5 @@ class CaptureSession:
                 "stop_reason": self.stop_reason, "streams": self.stream_stats(),
                 "frames_dropped_detected": summ["frames_dropped_detected"], "frames_invalid": summ["frames_invalid"],
                 "writer_backlog": summ["writer_backlog"], "checksum_state": self.checksum_state,
+                "record": self.record,
             }

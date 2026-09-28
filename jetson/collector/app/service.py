@@ -29,6 +29,10 @@ from .sysmon import SystemMonitor
 log = logging.getLogger(__name__)
 
 
+#: status로 알리는 선택 기능 — Pi는 이것을 보고서만 해당 요청을 보낸다(D-037 라이브 보기)
+CAPABILITIES = ("live_view",)
+
+
 class CollectorService:
     def __init__(self, settings: Settings, sensors: list[SensorAdapter] | None = None) -> None:
         self.settings = settings
@@ -175,7 +179,7 @@ class CollectorService:
             service=SERVICE_NAME, version=VERSION, device_time=utcnow_iso(),
             uptime_sec=round(time.monotonic() - self._started_mono, 1),
             accepting_new_capture=self.accepting and not self._shutting_down,
-            capture=capture, storage=storage, sensors=self.sensor_infos(),
+            capture=capture, storage=storage, sensors=self.sensor_infos(), capabilities=list(CAPABILITIES),
             last_session_summary=self._last_summary, mock=self.settings.is_mock_only,
             device_id=self.settings.device_id, schema_version=SCHEMA_VERSION, sensor_mode=self.settings.sensor_mode,
             clock=_clock_brief(), system=self._sysmon.latest(), last_session=last,
@@ -201,14 +205,15 @@ class CollectorService:
                 # 같은 ID로 끝난 세션을 다시 시작하려는 요청 — 파일이 겹치므로 거절
                 return CaptureAck(accepted=False, session_id=session_id, state=cur.state,
                                   message=f"세션 {session_id}은(는) 이미 종료됨({cur.state.value}) — 새 session_id 필요")
-            if (self.settings.data_root / session_id / "session.json").exists():
+            live = config.get("record") is False  # 라이브 보기(D-037): 디렉터리·디스크를 쓰지 않으므로 두 검사 생략
+            if not live and (self.settings.data_root / session_id / "session.json").exists():
                 return CaptureAck(accepted=False, session_id=session_id, state=CaptureState.IDLE,
                                   message=f"세션 디렉터리가 이미 존재함: {session_id} — 새 session_id 필요")
             try:
-                free = disk_usage(self.settings.data_root)["free_bytes"]
+                free = None if live else disk_usage(self.settings.data_root)["free_bytes"]
             except OSError as exc:
                 return CaptureAck(accepted=False, session_id=None, state=CaptureState.IDLE, message=f"저장소 확인 실패: {exc}")
-            if free < self.settings.min_free_bytes:
+            if free is not None and free < self.settings.min_free_bytes:
                 return CaptureAck(accepted=False, session_id=None, state=CaptureState.IDLE,
                                   message=f"디스크 여유 부족({free} bytes < {self.settings.min_free_bytes})")
             try:
@@ -249,6 +254,12 @@ class CollectorService:
 
     def _on_session_finished(self, session: CaptureSession) -> None:
         """파일 close·manifest 기록이 끝난 뒤 호출된다 — 여기서 저장 결과 요약을 확정한다."""
+        if not session.record:
+            # 라이브 보기는 저장 결과가 없다 — last_session_summary(직전 녹화 요약)를 덮지 않는다(D-037)
+            with self._lock:
+                self._last_session = {**session.snapshot(), "end_reason": session.end_reason, "path": None, "manifest": None}
+            log.info("라이브 보기 %s 닫힘 — state=%s reason=%s", session.session_id, session.state.value, session.end_reason)
+            return
         manifest = session.store.read_manifest()
         summ = session.summary()
         with self._lock:

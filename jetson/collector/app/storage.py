@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import queue
 import shutil
@@ -47,6 +48,7 @@ except Exception:  # pragma: no cover
     cv2 = None
 
 UNFINISHED_STATES = ("starting", "running", "stopping")
+log = logging.getLogger(__name__)
 ARRAY_COMPRESSIONS = ("none", "lz4")
 
 
@@ -134,6 +136,25 @@ class WriterStats:
         return sum(self.dropped.values())
 
 
+def _count_received(stats: WriterStats, sample: Sample) -> None:
+    """수신 통계(받음·무효·장치 순번 누락·첫/마지막 시각). 기록 여부와 무관 — 라이브(NullWriter)도 같은 값을 보고한다."""
+    stats.received += 1
+    if not sample.valid:
+        stats.invalid += 1
+    if sample.seq_is_device:
+        if stats.gaps_detected is None:
+            stats.gaps_detected = 0
+        if sample.device_gap is not None:
+            # 어댑터가 전체 속도 스트림에서 센 실제 누락 — 추림으로 생긴 seq 간격을 누락으로 오인하지 않는다
+            stats.gaps_detected += sample.device_gap
+        elif stats.last_seq is not None and sample.seq > stats.last_seq + 1:
+            stats.gaps_detected += sample.seq - stats.last_seq - 1
+    stats.last_seq = sample.seq
+    if stats.first_host_utc is None:
+        stats.first_host_utc = sample.host.utc
+    stats.last_host_utc = sample.host.utc
+
+
 class StreamWriter(threading.Thread):
     def __init__(
         self,
@@ -179,21 +200,7 @@ class StreamWriter(threading.Thread):
     # ── 생산자 쪽 ──
     def submit(self, sample: Sample) -> bool:
         with self._lock:
-            self.stats.received += 1
-            if not sample.valid:
-                self.stats.invalid += 1
-            if sample.seq_is_device:
-                if self.stats.gaps_detected is None:
-                    self.stats.gaps_detected = 0
-                if sample.device_gap is not None:
-                    # 어댑터가 전체 속도 스트림에서 센 실제 누락 — 추림으로 생긴 seq 간격을 누락으로 오인하지 않는다
-                    self.stats.gaps_detected += sample.device_gap
-                elif self.stats.last_seq is not None and sample.seq > self.stats.last_seq + 1:
-                    self.stats.gaps_detected += sample.seq - self.stats.last_seq - 1
-            self.stats.last_seq = sample.seq
-            if self.stats.first_host_utc is None:
-                self.stats.first_host_utc = sample.host.utc
-            self.stats.last_host_utc = sample.host.utc
+            _count_received(self.stats, sample)
         try:
             self._q.put_nowait(sample)
             return True
@@ -444,6 +451,89 @@ def _json_default(o: Any) -> Any:
     if isinstance(o, (bytes, bytearray)):
         return f"<{len(o)} bytes>"
     return str(o)
+
+
+class NullWriter:
+    """라이브 보기(`record:false`, D-037)용 — StreamWriter와 같은 모양이지만 아무것도 쓰지 않고 수신 통계만 센다."""
+
+    def __init__(self, session_id: str, sensor_id: str, spec: StreamSpec) -> None:
+        self.session_id, self.sensor_id, self.spec = session_id, sensor_id, spec
+        self.rel = f"{sensor_id}/{spec.stream_id}"
+        self.stats = WriterStats()
+        self._lock = threading.Lock()
+        self.finished = threading.Event()
+        self.finished.set()
+        self.error: str | None = None
+
+    def start(self) -> None:
+        pass
+
+    def stop(self) -> None:
+        pass
+
+    def submit(self, sample: Sample) -> bool:
+        with self._lock:
+            _count_received(self.stats, sample)
+        return True
+
+    def snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            st = self.stats
+            return {
+                "sensor_id": self.sensor_id, "stream_id": self.spec.stream_id,
+                "received": st.received, "written": 0, "bytes_written": 0,
+                "invalid": st.invalid, "dropped": {}, "dropped_total": 0,
+                "gaps_detected": st.gaps_detected, "last_seq": st.last_seq,
+                "backlog": 0, "write_errors": 0, "last_write_ms": None, "last_written_utc": None,
+            }
+
+    def manifest_entries(self) -> list[dict[str, Any]]:
+        return []
+
+
+class NullStore:
+    """라이브 보기용 SessionStore 대역 — `data_root`에 디렉터리를 만들지 않는다. 메타는 메모리, 사건은 서비스 로그로."""
+
+    def __init__(self, session_id: str) -> None:
+        self.session_id = session_id
+        self.dir: Path | None = None
+        self._meta: dict[str, Any] = {}
+        self._meta_lock = threading.Lock()
+
+    def create(self, meta: dict[str, Any]) -> None:
+        with self._meta_lock:
+            self._meta = {"schema_version": SCHEMA_VERSION, "collector_version": VERSION, "record": False, **meta}
+
+    def update(self, **fields: Any) -> dict[str, Any]:
+        with self._meta_lock:
+            self._meta.update(fields)
+            return dict(self._meta)
+
+    def set_phase(self, name: str, when: str | None = None) -> None:
+        pass
+
+    def meta(self) -> dict[str, Any]:
+        with self._meta_lock:
+            return json.loads(json.dumps(self._meta, default=_json_default))
+
+    def append_event(self, level: str, code: str, message: str, **detail: Any) -> dict[str, Any]:
+        ev = {"ts": utcnow_iso(), "level": level, "code": code, "message": message, "session_id": self.session_id}
+        log.log({"error": logging.ERROR, "warn": logging.WARNING}.get(level, logging.INFO),
+                "[라이브 %s] %s: %s", self.session_id, code, message)
+        return ev
+
+    def append_stats(self, record: dict[str, Any]) -> None:
+        pass
+
+    def write_manifest(self, files: list[dict[str, Any]], *, state: str, summary: dict[str, Any],
+                       checksum_state: str) -> dict[str, Any]:
+        return {}
+
+    def read_manifest(self) -> dict[str, Any] | None:
+        return None
+
+    def compute_checksums(self, stop: threading.Event | None = None) -> dict[str, Any]:
+        return {"checksum_state": "none"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

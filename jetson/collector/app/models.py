@@ -97,6 +97,8 @@ class JetsonCapture(BaseModel):
     frames_invalid: int = 0
     writer_backlog: int = 0
     checksum_state: str | None = None
+    #: 확장(D-037): false면 라이브 보기 — 원본을 저장하지 않는 세션. 세션 없으면 null
+    record: bool | None = None
 
 
 class JetsonReport(BaseModel):
@@ -121,6 +123,8 @@ class JetsonReport(BaseModel):
     #: 프로세스 재시작으로 중단된 채 발견된 세션 목록(완료로 보고하지 않음)
     recovered_sessions: list[dict[str, Any]] = Field(default_factory=list)
     errors: list[dict[str, Any]] = Field(default_factory=list)
+    #: 선택 기능 알림(D-037). "live_view" = config.record=false를 이해하고 저장하지 않는다
+    capabilities: list[str] = Field(default_factory=list)
 
 
 class CaptureAck(BaseModel):
