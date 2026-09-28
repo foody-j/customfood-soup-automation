@@ -6,11 +6,13 @@ on the Jetson; the Pi never opens the USB camera or receives its raw frames.
 
 from __future__ import annotations
 
+import glob
 import importlib
 import importlib.metadata
+import os
 import re
 import time
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 
@@ -89,6 +91,24 @@ def _ir_values(frame: Any) -> np.ndarray:
     raise SensorError(f"Gemini 2 미지원 IR 포맷: {fmt}")
 
 
+ORBBEC_USB_VENDOR = "2bc5"
+
+
+def _usb_devices() -> list[dict[str, str]]:
+    """sysfs의 Orbbec USB 장치(serial·버스·장치 번호). SDK 탐색(≈2 s, GIL을 쥔다) 없이 연결 유지만 본다.
+    재연결되면 devnum이 바뀐다."""
+    out = []
+    for vid in glob.glob("/sys/bus/usb/devices/*/idVendor"):
+        d = os.path.dirname(vid)
+        try:
+            if open(vid).read().strip() != ORBBEC_USB_VENDOR:
+                continue
+            out.append({k: open(os.path.join(d, k)).read().strip() for k in ("serial", "busnum", "devnum")})
+        except OSError:
+            continue
+    return out
+
+
 def _frame_stamp(frame: Any) -> DeviceStamp | None:
     try:
         return DeviceStamp(int(frame.get_timestamp_us()), "us", "device", "sdk_frame_timestamp_us")
@@ -135,8 +155,13 @@ class OrbbecGemini2(SensorAdapter):
                    description="Gemini 2 IR intensity, device native dtype (Y8 → uint8, Y16 → uint16)"),
     )
 
-    def __init__(self, serial: str | None = None, *, default_fps: int | None = None, sdk: Any = None) -> None:
+    def __init__(self, serial: str | None = None, *, default_fps: int | None = None, sdk: Any = None,
+                 usb_lookup: Callable[[], list[dict[str, str]] | None] | None = None) -> None:
         self.serial = serial or None
+        #: sysfs 조회. 주입한 SDK(시험)에서는 기본으로 끈다(None 반환 = 모름 → 항상 SDK 탐색).
+        self._usb_lookup = usb_lookup or (_usb_devices if sdk is None else (lambda: None))
+        #: 마지막 SDK probe 성공 결과와 그때의 USB (busnum, devnum)
+        self._probe_hit: tuple[SensorProbe, tuple[str, str]] | None = None
         #: 세션 설정에 fps가 없을 때 쓸 값. None/0이면 SDK 기본 프로필.
         self._default_fps = int(default_fps) if default_fps else None
         self._sdk = sdk
@@ -166,16 +191,33 @@ class OrbbecGemini2(SensorAdapter):
         raise SensorError("Gemini 2 USB 장치 없음" + (f" (serial={self.serial})" if self.serial else ""))
 
     def probe(self) -> SensorProbe:
+        """SDK 탐색은 약 2초 동안 GIL을 쥐어 서비스 전체(/status)를 멈춘다(2026-09-28 실측) — 같은 USB 장치가
+        그대로 꽂혀 있으면 sysfs 확인만으로 지난 결과를 쓰고, 처음·재연결·분리 때만 SDK로 확인한다."""
+        usb = self._usb_lookup()
+        if usb is not None:
+            if not any(self.serial is None or d.get("serial") == self.serial for d in usb):
+                self._probe_hit = None
+                return SensorProbe(False, False, model="Orbbec Gemini 2", driver="pyorbbecsdk2",
+                                   reason="Gemini 2 USB 장치 없음(sysfs)" + (f" (serial={self.serial})" if self.serial else ""),
+                                   facts={"requested_serial": self.serial, "link_check": "usb_sysfs"})
+            if self._probe_hit is not None:
+                cached, key = self._probe_hit
+                if any((d.get("serial"), (d.get("busnum"), d.get("devnum"))) == (cached.serial, key) for d in usb):
+                    return cached
         try:
             sdk = self._module()
             _context, _device, info = self._find_device(sdk)
         except Exception as exc:
+            self._probe_hit = None
             return SensorProbe(False, False, model="Orbbec Gemini 2", driver="pyorbbecsdk2",
                                reason=str(exc), facts={"requested_serial": self.serial})
-        return SensorProbe(True, False, detail="Gemini 2 SDK 장치 탐색 성공 (프레임 미검증)",
-                           model=info.get("name") or "Orbbec Gemini 2", serial=info.get("serial"),
-                           driver="pyorbbecsdk2", verified=False,
-                           facts={**info, "requested_serial": self.serial})
+        probe = SensorProbe(True, False, detail="Gemini 2 SDK 장치 탐색 성공 (프레임 미검증)",
+                            model=info.get("name") or "Orbbec Gemini 2", serial=info.get("serial"),
+                            driver="pyorbbecsdk2", verified=False,
+                            facts={**info, "requested_serial": self.serial})
+        dev = next((d for d in usb or [] if d.get("serial") == info.get("serial")), None)
+        self._probe_hit = (probe, (dev["busnum"], dev["devnum"])) if dev else None
+        return probe
 
     @staticmethod
     def _profile(pipeline: Any, sensor_type: Any, requested: dict[str, Any]) -> Any:
