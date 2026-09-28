@@ -237,6 +237,23 @@ def test_probe_selects_exact_serial_and_reports_observed_device_info():
     assert OrbbecGemini2("missing", sdk=sdk).probe().connected is False
 
 
+
+def test_probe_reuses_sdk_result_while_same_usb_device_stays():
+    """SDK 탐색(≈2 s, GIL 점유)은 처음·재연결 때만 — 같은 USB(serial·busnum·devnum)면 sysfs 확인으로 지난 결과."""
+    sdk = FakeSDK([FakeInfo(serial="G2-001")])
+    calls = []
+    orig = sdk.Context
+    sdk.Context = lambda: (calls.append(1), orig())[1]
+    usb = [{"serial": "G2-001", "busnum": "2", "devnum": "3"}]
+    camera = OrbbecGemini2(sdk=sdk, usb_lookup=lambda: list(usb))
+    assert camera.probe().connected and len(calls) == 1
+    assert camera.probe().connected and camera.probe().connected and len(calls) == 1  # SDK 재탐색 없음
+    usb[0]["devnum"] = "7"  # 뽑았다 다시 꽂음 → SDK로 다시 확인
+    assert camera.probe().connected and len(calls) == 2
+    usb.clear()  # 분리 → SDK 없이 즉시 미연결
+    p = camera.probe()
+    assert p.connected is False and "sysfs" in p.reason and len(calls) == 2
+
 def test_open_uses_requested_profile_and_rejects_unsupported_profile():
     sdk = FakeSDK()
     camera = OrbbecGemini2(sdk=sdk)
