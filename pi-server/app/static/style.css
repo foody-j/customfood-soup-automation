@@ -110,7 +110,7 @@ a:hover { text-decoration: underline; }
 }
 .subtitle { color: var(--gray-700); font-size: 12.5px; margin-top: 3px; }
 
-.header-right { display: flex; align-items: center; gap: 10px; }
+.header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .conn-badge {
   display: inline-flex; align-items: center; gap: 8px;
   font-size: 12.5px; font-weight: 500; color: var(--gray-700);
@@ -325,3 +325,34 @@ input:focus, select:focus {
 .preflight .pf-warn { color: #A25C10; font-weight: 600; }
 .preflight .pf-bad { color: #C23A2E; font-weight: 600; }
 .preflight-title { font-weight: 600; }
+
+/* ── 탭(실험 / 장치·설정 / 이력) — 한 화면이 너무 길지 않게 ────────────── */
+.tabs {
+  position: sticky; top: 0; z-index: 5; display: flex; gap: 6px;
+  margin: -6px 0 16px; padding: 8px 0; background: var(--bg);
+  border-bottom: 1px solid var(--gray-300);
+}
+.tab {
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  padding: 9px 18px; border-radius: 999px; border: 1px solid var(--gray-300);
+  background: #FFF; color: var(--gray-700);
+}
+.tab:hover { background: var(--gray-200); }
+.tab[aria-selected="true"] { background: var(--purple-600); border-color: var(--purple-600); color: #FFF; }
+.tab:focus-visible { outline: 2px solid var(--purple-800); outline-offset: 2px; }
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); margin-bottom: 14px; }
+
+/* 머리글의 작은 Jetson 상태 — 어느 탭에서든 보인다. 누르면 장치·설정 탭 */
+.status-chip {
+  display: inline-flex; align-items: center; gap: 9px; cursor: pointer;
+  font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink);
+  background: #FFF; border: 1px solid var(--gray-300); border-radius: 999px; padding: 6px 13px 6px 11px;
+}
+.status-chip .status-dot { width: 8px; height: 8px; box-shadow: none; }
+
+/* 이력 표는 좁은 화면에서 표 안에서만 가로 스크롤(페이지가 옆으로 밀리지 않게) */
+.tab-panel[data-panel="history"] .card { overflow-x: auto; }
+
+@media (max-width: 520px) {
+  .tab { flex: 1; padding: 9px 8px; font-size: 13.5px; }
+}

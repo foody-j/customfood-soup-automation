@@ -20,57 +20,31 @@
     </div>
     <div class="header-right">
       <span id="identity-badge" class="badge badge-plain" title="과제 / 장치 식별자">—</span>
+      <button id="status-chip" class="status-chip" type="button" data-goto="device" title="Jetson 상태 — 누르면 장치·설정 탭">
+        <i id="status-chip-dot" class="status-dot"></i><span id="status-chip-text">Jetson 확인 중</span>
+      </button>
       <span id="mock-badge" class="badge badge-mock hidden">모의 모드</span>
       <span id="server-badge" class="conn-badge off"><i class="conn-dot"></i><span id="server-badge-text">관리 서버 연결 확인 중</span></span>
     </div>
   </header>
 
-  <!-- ── Jetson 상태 ───────────────────────────────────────────────────── -->
-  <section class="card hero">
-    <div class="hero-main">
-      <div class="hero-status">
-        <span id="status-dot" class="status-dot"></span>
-        <div>
-          <div id="status-label" class="status-label">확인 중</div>
-          <div id="status-reason" class="status-reason">—</div>
-        </div>
-      </div>
-      <button id="btn-refresh" class="btn">지금 확인</button>
-    </div>
-    <dl class="kv">
-      <div><dt>연결</dt><dd id="link-state">—</dd></div>
-      <div><dt>대상</dt><dd id="link-target" class="mono">—</dd></div>
-      <div><dt>마지막 정상 응답</dt><dd id="link-lastok">—</dd></div>
-      <div><dt>전원</dt><dd id="power-state">—</dd></div>
-    </dl>
-    <p id="stale-warning" class="warning hidden">상태값이 낡았습니다 — 아래 수치는 갱신이 멈춘 마지막 값입니다.</p>
-  </section>
+  <nav class="tabs" role="tablist" aria-label="화면 구분">
+    <button class="tab" role="tab" type="button" data-tab="run" aria-selected="true">실험</button>
+    <button class="tab" role="tab" type="button" data-tab="device" aria-selected="false">장치·설정</button>
+    <button class="tab" role="tab" type="button" data-tab="history" aria-selected="false">이력</button>
+  </nav>
 
-  <!-- ── 카메라 미리보기 (독립 컴포넌트 camera-preview.js가 이 자리에 그린다) ── -->
-  <section class="card">
-    <div class="card-head">
-      <h2>카메라 미리보기</h2>
-      <span class="hint">Jetson의 축소 JPEG(최대 2fps)만 받아 봅니다. 스트림을 바꿔도 <b>촬영·원본 저장은 그대로</b>입니다.</span>
-    </div>
-    <div id="camera-preview"></div>
-  </section>
-
-  <!-- ── 열화상·PT100 (독립 컴포넌트 sensor-preview.js가 이 자리에 그린다) ── -->
-  <section class="card">
-    <div class="card-head">
-      <h2>열화상 · PT100</h2>
-      <span class="hint">Jetson 미리보기 값(JSON)을 관리 서버가 중계합니다. 수집 주기·원본 저장은 바뀌지 않습니다.</span>
-    </div>
-    <div id="sensor-preview"></div>
-  </section>
-
-  <div class="grid">
+  <!-- ══ 탭: 실험 — 촬영·사건 기록을 위에, 보면서 확인할 화면을 아래에 ══ -->
+  <div class="tab-panel" data-panel="run" role="tabpanel">
+  <div class="grid grid-2">
     <!-- ── 촬영 ────────────────────────────────────────────────────────── -->
     <section class="card">
       <h2>촬영</h2>
       <div id="session-box" class="session-box">
         <div class="session-none">진행 중인 세션 없음</div>
       </div>
+      <!-- 시작 입력 — 진행 중인 세션이 있으면 숨긴다(진행 중에는 세션 정보·중지 버튼만) -->
+      <div id="start-form">
       <div class="preset-row">
         <span class="muted">프리셋</span>
         <button id="btn-preset-check" class="btn btn-small" type="button">점검 60초 (가열 없음)</button>
@@ -111,6 +85,7 @@
         <span>카메라 미리보기 켜기 <span class="muted">— Jetson이 축소 JPEG를 따로 만듭니다. 저장되는 원본은 같습니다.</span></span>
       </label>
       <div id="preflight" class="preflight"><span class="muted">시작 전 점검 — 불러오는 중…</span></div>
+      </div>
       <div class="btn-row">
         <button id="btn-start" class="btn btn-primary">촬영 시작</button>
         <button id="btn-stop" class="btn">촬영 중지</button>
@@ -146,7 +121,51 @@
       <p id="mark-msg" class="msg hidden"></p>
       <ul id="mark-list" class="mark-list"><li class="muted">기록된 사건 없음</li></ul>
     </section>
+  </div>
 
+  <!-- ── 열화상·PT100 (독립 컴포넌트 sensor-preview.js가 이 자리에 그린다) ── -->
+  <section class="card">
+    <div class="card-head">
+      <h2>열화상 · PT100</h2>
+      <span class="hint">Jetson 미리보기 값(JSON)을 관리 서버가 중계합니다. 수집 주기·원본 저장은 바뀌지 않습니다.</span>
+    </div>
+    <div id="sensor-preview"></div>
+  </section>
+
+  <!-- ── 카메라 미리보기 (독립 컴포넌트 camera-preview.js가 이 자리에 그린다) ── -->
+  <section class="card">
+    <div class="card-head">
+      <h2>카메라 미리보기</h2>
+      <span class="hint">Jetson의 축소 JPEG(최대 2fps)만 받아 봅니다. 스트림을 바꿔도 <b>촬영·원본 저장은 그대로</b>입니다.</span>
+    </div>
+    <div id="camera-preview"></div>
+  </section>
+  </div>
+
+  <!-- ══ 탭: 장치·설정 ══ -->
+  <div class="tab-panel hidden" data-panel="device" role="tabpanel">
+  <!-- ── Jetson 상태 ───────────────────────────────────────────────────── -->
+  <section class="card hero">
+    <div class="hero-main">
+      <div class="hero-status">
+        <span id="status-dot" class="status-dot"></span>
+        <div>
+          <div id="status-label" class="status-label">확인 중</div>
+          <div id="status-reason" class="status-reason">—</div>
+        </div>
+      </div>
+      <button id="btn-refresh" class="btn">지금 확인</button>
+    </div>
+    <dl class="kv">
+      <div><dt>연결</dt><dd id="link-state">—</dd></div>
+      <div><dt>대상</dt><dd id="link-target" class="mono">—</dd></div>
+      <div><dt>마지막 정상 응답</dt><dd id="link-lastok">—</dd></div>
+      <div><dt>전원</dt><dd id="power-state">—</dd></div>
+    </dl>
+    <p id="stale-warning" class="warning hidden">상태값이 낡았습니다 — 아래 수치는 갱신이 멈춘 마지막 값입니다.</p>
+  </section>
+
+  <div class="grid">
     <!-- ── 장치 ────────────────────────────────────────────────────────── -->
     <section class="card">
       <h2>장치 · 저장소</h2>
@@ -222,7 +241,10 @@
       <button id="btn-mock-join" class="btn">네트워크 복구</button>
     </div>
   </section>
+  </div>
 
+  <!-- ══ 탭: 이력 ══ -->
+  <div class="tab-panel hidden" data-panel="history" role="tabpanel">
   <!-- ── 실험 이력 ───────────────────────────────────────────────────── -->
   <section class="card">
     <div class="card-head">
@@ -251,6 +273,7 @@
       <tbody id="event-rows"><tr><td colspan="3" class="muted">불러오는 중…</td></tr></tbody>
     </table>
   </section>
+  </div>
 
   <footer class="foot">
     <span id="foot-time">—</span>

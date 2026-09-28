@@ -423,6 +423,9 @@ function render(s) {
 
   const view = STATUS_VIEW[s.jetson_status] || STATUS_VIEW.unknown;
   $('status-dot').className = `status-dot ${view.dot}`;
+  $('status-chip-dot').className = `status-dot ${view.dot}`;
+  $('status-chip-text').textContent = `Jetson ${view.label}`;
+  $('status-chip').title = `${s.status_reason} — 누르면 장치·설정 탭`;
   $('status-label').textContent = `Jetson — ${view.label}`;
   $('status-reason').textContent = s.status_reason;
 
@@ -446,6 +449,8 @@ function render(s) {
   renderCameraPreviewGate(s);
   renderSensorPreviewGate(s);
   renderPreflight(s);
+  $('start-form').classList.toggle('hidden', !!s.active_session);
+  $('btn-start').classList.toggle('hidden', !!s.active_session);
   const canStart = s.jetson_status === 'online' && !s.active_session;
   $('btn-start').disabled = !canStart || busy;
   $('btn-stop').disabled = !s.active_session || busy;
@@ -469,6 +474,27 @@ function render(s) {
 
   $('foot-time').textContent = `서버 시각 ${localTime(s.server_time)}`;
   $('mock-card').classList.toggle('hidden', !s.link.mock);
+}
+
+// ── 탭 ─────────────────────────────────────────────────────────────────────
+// 숨긴 탭의 미리보기 컴포넌트는 화면 밖으로 판정돼 스스로 요청을 멈춘다(IntersectionObserver).
+const TAB_KEY = 'soup.tab';
+function showTab(name) {
+  const tabs = [...document.querySelectorAll('.tab')];
+  if (!tabs.some((t) => t.dataset.tab === name)) name = 'run';
+  tabs.forEach((t) => t.setAttribute('aria-selected', t.dataset.tab === name ? 'true' : 'false'));
+  document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== name));
+  try { localStorage.setItem(TAB_KEY, name); } catch (_) { /* 기억 못 해도 동작 */ }
+  if (name === 'history') loadSessions();
+  window.scrollTo(0, 0);
+}
+
+function bindTabs() {
+  document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => showTab(t.dataset.tab)));
+  $('status-chip').addEventListener('click', () => showTab($('status-chip').dataset.goto));
+  let saved = 'run';
+  try { saved = localStorage.getItem(TAB_KEY) || 'run'; } catch (_) { /* 기본 탭 */ }
+  showTab(saved);
 }
 
 async function loadSessions() {
@@ -719,6 +745,7 @@ async function mountSensorPreview() {
 }
 
 bind();
+bindTabs();
 try { $('in-preview').checked = localStorage.getItem('soup.previewOn') !== '0'; } catch (_) { /* 기본 켜짐 */ }
 mountCameraPreview();
 mountSensorPreview();
