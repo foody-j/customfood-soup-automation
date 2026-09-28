@@ -383,3 +383,37 @@ def test_record_pack_roundtrip():
             rec, extra = storage_mod.pack_record(arr, comp)
             line = {"dtype": str(arr.dtype), "shape": list(arr.shape), **extra}
             np.testing.assert_array_equal(storage_mod.unpack_record(rec, line), arr)
+
+
+def test_status_does_not_wait_for_slow_probe(tmp_path):
+    """느린 probe(Gemini SDK 탐색 ≈ 2초)는 백그라운드에서만 돈다 — /status는 TTL이 지나도 캐시로 즉시 답한다."""
+    from app.sensors.mock import build_mock_sensors
+    from app.service import CollectorService
+    from conftest import make_settings
+
+    sensors = build_mock_sensors()
+    slow = sensors[0]
+    real_probe = slow.probe
+    calls = []
+
+    def slow_probe():
+        calls.append(time.monotonic())
+        time.sleep(0.6)
+        return real_probe()
+
+    slow.probe = slow_probe
+    service = CollectorService(make_settings(tmp_path, probe_ttl_sec=0.3), sensors=sensors)
+    service.start()  # 첫 확인은 기동 때 한 번(동기)
+    try:
+        worst = 0.0
+        end = time.monotonic() + 2.0
+        while time.monotonic() < end:
+            t = time.monotonic()
+            report = service.status()
+            worst = max(worst, time.monotonic() - t)
+            time.sleep(0.05)
+        assert worst < 0.3, f"status가 probe를 기다림: {worst:.2f}s"
+        assert len(calls) >= 2  # 백그라운드 갱신이 실제로 돌았다
+        assert any(s.sensor_id == slow.sensor_id and s.connected for s in report.sensors)
+    finally:
+        service.close()

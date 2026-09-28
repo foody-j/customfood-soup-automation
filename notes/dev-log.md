@@ -2,6 +2,38 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-09-28 — 공통 계약을 Pi·Jetson 양쪽에서 개발
+
+- 사용자 요청으로 Windows 필수 통합 규칙을 해제했다. 각 장비 전용 코드는 담당을 유지하고 공통 문서·스키마·중앙 노트는
+  어느 쪽에서든 수정할 수 있도록 지침과 `tools/dev_session.py`의 경로 검사·Claude 시작 프롬프트를 맞췄다.
+- 공통 변경별 담당 브랜치, 호환성 유지, 상대 구현 인계·테스트·적용 순서를 문서화했다.
+  자동 동기화 방식과 기존 push/merge 권한은 유지한다. 장비 설치·운영 배포는 수행하지 않았다.
+- 결정/이유/대안: `notes/windows/20260928-development-workflow.md`의 후속 결정.
+- 검증: `python -m unittest discover -s tools/tests -v` **8개 통과**. 양쪽 공통 파일 허용과 전용 구간 차단,
+  기존 작업 보존·최신 main 반영·실패 처리 회귀 검증을 포함한다.
+
+## 2026-09-28 — Pi·Jetson 개발 구간 분리와 작업 시작 자동 최신화
+
+- 사용자 요청으로 역할별 수정 경로·작업 브랜치·노트 경로를 나눴다. 공통 API 계약과 중앙 노트는 통합 담당이 맡는다.
+- `tools/dev_session.py`: 최신 origin/main을 fetch하고 새 역할별 worktree에서 Claude를 실행한다.
+  운영 폴더·기존 작업·미커밋 변경을 건드리지 않으며, 인증/네트워크 실패나 중복 작업명은 오류로 중단한다.
+- 커밋 전과 Claude 종료 후 역할 범위를 검사한다. 기존 push/merge deny와 무인 실행 정책은 유지한다.
+- 상세 절차·배포 구분·최초 실행 방법: `docs/development-workflow.md`. 역할별 기록: `notes/windows/20260928-development-workflow.md`.
+- 검증: 임시 Git 원격·복제본으로 최신 main 기반 생성, 원래 브랜치/미커밋 보존, 커밋/스테이징/비추적·이름 변경 범위,
+  중복 이름 보존, 잘못된 역할·작업명·무인 모드 거절, fetch 실패를 테스트했다. **7개 테스트 통과**.
+  실제 Pi/Jetson에서 Claude 실행은 미검증.
+
+## 2026-09-28 — Jetson `/status` 간헐 2초 지연 수정 + 운영 env `real` (Pi 실물 연동에서 발견된 문제)
+
+- 재현: `/status` 30회 중앙 0.027 s·**최대 2.33 s**. 센서별 probe 실측 — GMSL 126/150 ms, 열화상 32 ms, PT100 4 ms,
+  **Gemini `cam_depth_0` 2,277 ms(재측 2,025 ms)**. 캐시(TTL 10 s)가 만료되면 그다음 `/status`가 전 센서 재탐색을 기다렸다
+  → Pi가 순간 `service_down` 기록.
+- 수정: `CollectorService`가 기동 후 **백그라운드 스레드로 TTL마다 probe 갱신**, `status`는 잠금 없이 캐시만 읽음(갱신은 새 dict로
+  통째로 교체). 세션 시작 경로는 기존대로 `_refresh_probes()`. TTL 0 이하(시험 설정)는 스레드 없이 요청마다 탐색.
+  테스트 추가: 0.6 s 걸리는 probe에서도 status 최악 < 0.3 s(이전 코드에서는 실패 확인). 전체 63 통과.
+- 운영 env `COLLECTOR_SENSOR_MODE=auto` → **`real`** — `mock_*` 4개가 Pi 장비 목록에 섞여 나가던 것.
+- 적용은 `/etc/default/jetson-collector` 복사 + 서비스 재시작(sudo, 사람).
+
 ## 2026-09-27 — Pi 감시: 한 번의 늦은 응답으로 '서비스 중단'을 선언하지 않음
 
 - 실물에서 Jetson `/api/v1/status`가 가끔 2초 제한을 넘겨(40회 중 1회 2.34 s) Pi가 online↔service_down을 오가며
