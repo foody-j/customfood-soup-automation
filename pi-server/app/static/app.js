@@ -692,7 +692,7 @@ async function endLiveIfRunning() {
   let s = await api('/api/status');
   if (!s.active_session) return;
   if (!isLive(s.active_session)) throw new Error('진행 중인 녹화가 있습니다. 먼저 중지하세요.');
-  await api('/api/capture/stop', { method: 'POST', body: JSON.stringify({ session_id: s.active_session.session_id }) });
+  await api('/api/capture/stop', { method: 'POST', body: JSON.stringify({ session_id: s.active_session.session_id, reason: 'live_to_recording' }) });
   for (let i = 0; i < 20; i += 1) {
     s = await api('/api/status/refresh', { method: 'POST' });
     if (!s.active_session) return;

@@ -61,3 +61,13 @@ POST /api/v1/capture/start
 2. Jetson 담당이 위 1~5 구현·테스트 → main 병합 → Jetson 서비스 재시작(진행 중 세션 없을 때).
 3. Pi 화면에 라이브 버튼이 나타나면 실물 확인: 라이브 1분 → Jetson `data_root` 새 디렉터리 없음·디스크 변화 없음 → '라이브 끝내고 촬영 시작'.
    순서가 바뀌어도 안전하다(버튼은 capability가 있어야만 보인다).
+
+## 실물 검증 (2026-09-28, Jetson `fb591bc` 반영 후)
+- Jetson `status.capabilities = ["live_view"]`, Pi 화면에 '라이브 보기 (저장 안 함)' 버튼 표시.
+- 라이브 `live-20260928T080625Z-2382` 약 40초: status `record:false`·`frames_written 0`·running, **Jetson 세션 목록 새 항목 없음**,
+  디스크 여유 변화 −0.33 MB(서비스 로그 등 — 같은 시간 녹화 ≈ 0.9 GB와 비교). 수신 `cam_rgb_0/1` 408·`cam_depth_0` color 221/depth 442/ir 442·
+  열화상 81·PT100 41. 화면: 카메라 3면·열화상(25.1~33.1 ℃)·PT100(24.35 ℃) 모두 '수신 중'. 캡처 `docs/img/pi-real-live-view-20260928.png`.
+- '점검 60초' → '라이브 끝내고 촬영 시작' → 라이브 stopped(저장 요약 없음) → 녹화 `sess-20260928T080710Z-80dd` 60초 자동 중지·저장 확인
+  (프레임 3,198). 콘솔 오류 없음.
+- 보완(이 브랜치): 라이브→녹화 전환 시 중지 사유 `live_to_recording`을 남긴다(검증 때는 사유가 비어 있었다).
+- 관찰: 라이브 중 Gemini color 수신이 depth·IR의 절반(40초 221 vs 442) — Jetson 담당 확인 거리(녹화에서도 같은지).
