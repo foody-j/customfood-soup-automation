@@ -143,6 +143,11 @@ function durationText(sec) {
   return r ? `${m}분 ${r}초` : `${m}분`;
 }
 
+/** D-037 라이브 보기 — 원본을 저장하지 않는 미리보기 세션 */
+function isLive(sess) {
+  return !!(sess && sess.config && sess.config.record === false);
+}
+
 function isAutoStop(reason) {
   return typeof reason === 'string' && reason.startsWith(MAX_DURATION_REASON);
 }
@@ -261,7 +266,8 @@ function renderSession(s) {
     ${maxDurationLine(sess, active)}
     ${endLine(sess)}
     <div class="session-meta">
-      저장 결과: ${sess.jetson_summary ? '확인됨' : `<b>${UNKNOWN}</b>`}
+      저장 결과: ${isLive(sess) ? '저장 안 함 (라이브 보기)'
+        : sess.jetson_summary ? '확인됨' : `<b>${UNKNOWN}</b>`}
     </div>`;
 }
 
@@ -296,7 +302,7 @@ function endLine(sess) {
 /** 시작 전 점검 — 기본 센서 누락·모의 여부·남은 용량·미리보기·최대 시간·예상 저장량을 한눈에. */
 function renderPreflight(s) {
   const box = $('preflight');
-  if (s.active_session) { box.classList.add('hidden'); return; }
+  if (s.active_session && !isLive(s.active_session)) { box.classList.add('hidden'); return; }
   box.classList.remove('hidden');
   const items = [];
   const report = s.report;
@@ -449,11 +455,19 @@ function render(s) {
   renderCameraPreviewGate(s);
   renderSensorPreviewGate(s);
   renderPreflight(s);
-  $('start-form').classList.toggle('hidden', !!s.active_session);
-  $('btn-start').classList.toggle('hidden', !!s.active_session);
-  const canStart = s.jetson_status === 'online' && !s.active_session;
+  // 녹화 중에는 시작 입력을 숨긴다. 라이브 보기 중에는 그대로 두어 바로 녹화로 넘어갈 수 있게 한다.
+  const live = isLive(s.active_session);
+  const recording = !!s.active_session && !live;
+  $('start-form').classList.toggle('hidden', recording);
+  $('btn-start').classList.toggle('hidden', recording);
+  const canStart = s.jetson_status === 'online' && (!s.active_session || live);
   $('btn-start').disabled = !canStart || busy;
+  $('btn-start').textContent = live ? '라이브 끝내고 촬영 시작' : '촬영 시작';
   $('btn-stop').disabled = !s.active_session || busy;
+  $('btn-stop').textContent = live ? '라이브 끝내기' : '촬영 중지';
+  const liveOk = !!(s.report && (s.report.capabilities || []).includes('live_view'));
+  $('btn-live').classList.toggle('hidden', !liveOk || !!s.active_session);
+  $('btn-live').disabled = s.jetson_status !== 'online' || busy;
   document.querySelectorAll('.btn-mark').forEach((b) => { b.disabled = busy; });
 
   const storage = s.report && s.report.storage;
@@ -504,7 +518,7 @@ async function loadSessions() {
     $('session-rows').innerHTML = rows.length
       ? rows.map((r) => {
           const [label, cls] = SESSION_VIEW[r.state] || [r.state, ''];
-          const saved = r.jetson_summary
+          const saved = isLive(r) ? '<span class="muted">저장 안 함 (라이브)</span>' : r.jetson_summary
             ? `${r.jetson_summary.files != null ? r.jetson_summary.files.toLocaleString() + '개' : ''} ${bytesText(r.jetson_summary.bytes_written)}`
             : `<span class="muted">${UNKNOWN}</span>`;
           return `<tr>
@@ -592,8 +606,10 @@ function bind() {
       `센서: ${(saved.sensors || []).join(', ') || '(설정 비어 있음)'}`,
     ];
     if (missing.length) lines.push(`기본 센서 중 설정에 없음: ${missing.join(', ')}`);
+    if (lastStatus && isLive(lastStatus.active_session)) lines.unshift('진행 중인 라이브 보기를 끝내고 녹화를 시작합니다.');
     if ($('mock-badge') && !$('mock-badge').classList.contains('hidden')) lines.push('※ 모의 모드 — 실측 데이터가 아닙니다.');
     if (!window.confirm(`이 설정으로 촬영을 시작할까요?\n\n${lines.join('\n')}`)) return null;
+    await endLiveIfRunning();
     const sess = await api('/api/capture/start', { method: 'POST', body: JSON.stringify(body) });
     loadSessions();
     return `촬영 시작됨: ${sess.session_id}`;
@@ -658,6 +674,10 @@ function bind() {
   });
   $('in-maxdur-custom').addEventListener('change', saveMaxDuration);
   $('in-preview').addEventListener('change', () => { if (lastStatus) renderPreflight(lastStatus); });
+  $('btn-live').addEventListener('click', () => withBusy(async () => {
+    const sess = await api('/api/live/start', { method: 'POST', body: JSON.stringify({}) });
+    return `라이브 보기 시작: ${sess.session_id} — 저장하지 않습니다. 최대 ${durationText(sess.config.max_duration_sec)} 뒤 자동 종료.`;
+  }, $('capture-msg')));
   $('btn-preset-check').addEventListener('click', () => applyPreset('check'));
   $('btn-preset-trial').addEventListener('click', () => applyPreset('trial'));
 
@@ -665,6 +685,20 @@ function bind() {
   $('btn-mock-off').addEventListener('click', mock('/api/mock/jetson/power', { on: false }));
   $('btn-mock-cut').addEventListener('click', mock('/api/mock/jetson/link', { cut: true }));
   $('btn-mock-join').addEventListener('click', mock('/api/mock/jetson/link', { cut: false }));
+}
+
+/** 라이브 보기 중이면 끝내고, Jetson이 세션을 닫을 때까지(최대 20초) 기다린다. 녹화 세션은 건드리지 않는다. */
+async function endLiveIfRunning() {
+  let s = await api('/api/status');
+  if (!s.active_session) return;
+  if (!isLive(s.active_session)) throw new Error('진행 중인 녹화가 있습니다. 먼저 중지하세요.');
+  await api('/api/capture/stop', { method: 'POST', body: JSON.stringify({ session_id: s.active_session.session_id }) });
+  for (let i = 0; i < 20; i += 1) {
+    s = await api('/api/status/refresh', { method: 'POST' });
+    if (!s.active_session) return;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error('라이브 보기가 아직 끝나지 않았습니다. 잠시 뒤 다시 시작하세요.');
 }
 
 /** 최대 촬영 시간을 실험 설정에 저장한다(재조회·다음 시작에 그대로 쓰이도록). */

@@ -93,6 +93,8 @@ class MockJetsonClient:
         self.pt100_invalid_reason: str | None = None
         #: 가장 최근에 닫힌 세션 스냅샷(실물의 `last_session`)
         self._last_session: dict[str, Any] | None = None
+        #: D-037 라이브 보기 지원 여부. False면 옛 Jetson처럼 `record`를 무시하고 녹화한다(시험용).
+        self.live_view_supported = True
 
     def _now(self) -> float:
         return time.monotonic() + self._offset
@@ -150,7 +152,7 @@ class MockJetsonClient:
             if max_dur is not None and elapsed >= max_dur:
                 elapsed = max_dur
             fps = float(self._capture_config.get("fps") or 10)
-            self._capture.frames_written = int(elapsed * max(fps, 0.1))
+            self._capture.frames_written = 0 if self._live else int(elapsed * max(fps, 0.1))
             if max_dur is not None and now - self._capture_started_mono >= max_dur:
                 # 실물(session.py)과 같은 문구 — Pi는 이 사유 문자열로만 '시간 제한 종료'를 안다
                 self._begin_stop(f"max_duration_sec={max_dur:g} 도달")
@@ -161,12 +163,19 @@ class MockJetsonClient:
         ):
             self._finish_stop()
 
+    @property
+    def _live(self) -> bool:
+        """이 세션이 기록 없는 라이브 보기인지 — 지원하는 경우에만 `record:false`를 따른다."""
+        return self.live_view_supported and self._capture_config.get("record") is False
+
     def _max_duration(self) -> float | None:
         try:
             value = float(self._capture_config.get("max_duration_sec") or 0)
         except (TypeError, ValueError):
             return None
-        return value if math.isfinite(value) and value > 0 else None
+        if not (math.isfinite(value) and value > 0):
+            return 600.0 if self._live else None  # 라이브는 잊히지 않게 기본 600초(D-037)
+        return value
 
     def _begin_stop(self, reason: str | None) -> None:
         """running → stopping. 저장 마무리는 `finalize_sec` 뒤 `_finish_stop()`이 끝낸다."""
@@ -177,7 +186,8 @@ class MockJetsonClient:
             max_dur = self._max_duration()
             if max_dur is not None:
                 ran = min(ran, max_dur)
-            self._used_bytes += int(ran * _BYTES_PER_SEC)
+            if not self._live:  # 라이브는 원본을 쓰지 않는다
+                self._used_bytes += int(ran * _BYTES_PER_SEC)
         self._capture_started_mono = None
         now_iso = utcnow_iso()
         self._capture.state = CaptureState.STOPPING
@@ -193,7 +203,8 @@ class MockJetsonClient:
         self._finalize_at = None
         self._capture.state = CaptureState.STOPPED
         self._capture.phases = {**self._capture.phases, "files_closed": now_iso, "completed": now_iso}
-        self._last_summary = self._build_summary()
+        if not self._live:  # 라이브는 저장 결과 요약을 갱신하지 않는다(D-037)
+            self._last_summary = self._build_summary()
         self._last_session = {
             "session_id": self._capture.session_id,
             "state": CaptureState.STOPPED.value,
@@ -201,7 +212,8 @@ class MockJetsonClient:
             "stop_reason": self._capture.stop_reason,
             "end_reason": "stopped",
             "last_error": None,
-            "path": f"/data/raw/{self._capture.session_id}",
+            "path": None if self._live else f"/data/raw/{self._capture.session_id}",
+            "record": not self._live,
         }
 
     @property
@@ -229,7 +241,8 @@ class MockJetsonClient:
         if not self._api_up:
             raise JetsonUnreachable("모의 Jetson 수집 서비스 무응답")
         used = self._used_bytes
-        if self._capture.state is CaptureState.RUNNING and self._capture_started_mono is not None:
+        if (self._capture.state is CaptureState.RUNNING and self._capture_started_mono is not None
+                and not self._live):
             used += int((self._now() - self._capture_started_mono) * _BYTES_PER_SEC)
         uptime = self._now() - (self._powered_at or self._now())
         return JetsonReport(
@@ -256,6 +269,7 @@ class MockJetsonClient:
                 for sid, kind, detail in MOCK_SENSORS
             ],
             last_session_summary=self._last_summary,
+            capabilities=["live_view"] if self.live_view_supported else [],
             last_session=dict(self._last_session) if self._last_session else None,
             mock=True,
         )
@@ -281,6 +295,8 @@ class MockJetsonClient:
                 message=None if same else "이미 다른 세션이 진행 중",
             )
         self._capture_config = dict(config or {})
+        if self._live:  # 보는 것이 목적 — 미리보기를 강제로 켠다(D-037)
+            self._capture_config["preview"] = {**(self._capture_config.get("preview") or {}), "enabled": True}
         self._capture_started_mono = self._now()
         started = utcnow_iso()
         self._capture = JetsonCapture(
@@ -289,6 +305,7 @@ class MockJetsonClient:
             started_at=started,
             frames_written=0,
             phases={"requested": started, "starting": started, "running": started},
+            record=(not self._live) if self.live_view_supported else None,
         )
         return CaptureAck(accepted=True, session_id=session_id, state=CaptureState.RUNNING)
 

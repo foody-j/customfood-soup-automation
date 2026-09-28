@@ -28,7 +28,14 @@ from fastapi import APIRouter, Body, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
-from .capture import CaptureConflict, CaptureService, CaptureUnavailable, SessionNotFound
+from .capture import (
+    LIVE_DEFAULT_MAX_SEC,
+    LIVE_VIEW_CAPABILITY,
+    CaptureConflict,
+    CaptureService,
+    CaptureUnavailable,
+    SessionNotFound,
+)
 from .config import (
     DEFAULT_PREVIEW_CAMERAS,
     DEFAULT_SENSOR_PREVIEWS,
@@ -47,6 +54,7 @@ from .models import (
     HostMetricInfo,
     IdentityInfo,
     IdentityUpdate,
+    LiveStartRequest,
     MarkRequest,
     MockPowerRequest,
     SessionInfo,
@@ -200,6 +208,55 @@ async def capture_start(
     try:
         return await _capture(request).start(
             body, actor=_actor(request), request_id=request_id
+        )
+    except CaptureConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except CaptureUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post("/live/start", response_model=SessionInfo)
+async def live_start(
+    request: Request,
+    response: Response,
+    body: LiveStartRequest = Body(default_factory=LiveStartRequest),
+) -> SessionInfo:
+    """라이브 보기 — **원본을 저장하지 않는** 미리보기 세션(D-037, `docs/pi-jetson-api.md` §3.1).
+
+    저장된 실험 설정의 센서·fps에 `record:false`·미리보기 켬·최대 시간(기본 600초)을 얹어 시작한다.
+    Jetson이 `live_view`를 알리지 않으면 409 — 옛 Jetson은 `record`를 무시하고 녹화하기 때문이다.
+    중지는 `POST /api/capture/stop`.
+    """
+    request_id = request.headers.get("x-request-id") or new_request_id()
+    response.headers["X-Request-Id"] = request_id
+    report = _monitor(request).last_report
+    if report is None or LIVE_VIEW_CAPABILITY not in report.capabilities:
+        raise HTTPException(
+            status_code=409,
+            detail="Jetson이 라이브 보기(저장 안 함)를 지원한다고 알리지 않았습니다 — 녹화 세션으로만 볼 수 있습니다",
+        )
+    saved = _db(request).get_config()
+    preview = dict(saved.get("preview") or {})
+    config = {
+        **saved,
+        "record": False,
+        "preview": {**preview, "enabled": True, "max_fps": preview.get("max_fps") or 1},
+        "max_duration_sec": body.max_duration_sec or LIVE_DEFAULT_MAX_SEC,
+    }
+    _db(request).log_event(
+        level=EventLevel.INFO,
+        source=_actor(request),
+        code="live.start_called",
+        message="라이브 보기(저장 안 함) 시작 API 호출 접수",
+        request_id=request_id,
+        detail=_origin_detail(request),
+    )
+    try:
+        return await _capture(request).start(
+            StartCaptureRequest(name="라이브 보기 (저장 안 함)", config=config),
+            actor=_actor(request),
+            request_id=request_id,
+            session_prefix="live",
         )
     except CaptureConflict as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

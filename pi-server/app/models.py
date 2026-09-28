@@ -110,6 +110,8 @@ class JetsonCapture(BaseModel):
     phases: dict[str, str | None] = Field(default_factory=dict)
     #: 중지 요청 사유. 최대 촬영 시간이면 Jetson이 `max_duration_sec=<초> 도달`로 적는다.
     stop_reason: str | None = None
+    #: 원본을 기록하는 세션인지(D-037 라이브 보기면 false). 모르는 Jetson은 보내지 않는다(null).
+    record: bool | None = None
 
 
 class StorageResult(BaseModel):
@@ -144,6 +146,8 @@ class JetsonReport(BaseModel):
     last_session_summary: StorageResult | None = None
     #: 마지막으로 닫힌 세션의 스냅샷(선택 — Jetson 확장 필드). `end_reason`·`stop_reason`·`phases`를 읽는다.
     last_session: dict[str, Any] | None = None
+    #: Jetson이 지원을 알리는 선택 기능(예: `live_view` — D-037). 없으면 비어 있다.
+    capabilities: list[str] = Field(default_factory=list)
     #: 모의 장치가 만든 보고임을 명시. UI가 "모의 모드" 배지를 띄우는 근거.
     mock: bool = False
 
@@ -313,6 +317,12 @@ class ExperimentConfig(BaseModel):
         if "max_duration_sec" in extra:
             raise ValueError("max_duration_sec은 extra가 아니라 최상위 필드로 보내야 Jetson이 읽음")
         return extra
+
+
+class LiveStartRequest(BaseModel):
+    """라이브 보기(원본 저장 안 함, D-037). 비우면 600초 뒤 Jetson이 스스로 끝낸다."""
+
+    max_duration_sec: float | None = Field(default=None, gt=0, le=3600)
 
 
 class MockPowerRequest(BaseModel):

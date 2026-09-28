@@ -49,6 +49,13 @@ JETSON_LIVE_STATES = (CaptureState.STARTING, CaptureState.RUNNING, CaptureState.
 #: Jetson이 최대 촬영 시간으로 스스로 멈출 때 `stop_reason`에 쓰는 접두사(jetson/collector session.py).
 #: 종료 이유는 이 문자열로만 판단한다 — `end_reason=stopped`만으로 시간 제한 종료라고 추정하지 않는다.
 MAX_DURATION_REASON_PREFIX = "max_duration_sec="
+#: D-037 라이브 보기 — Jetson이 이 기능을 알릴 때만 `record:false`를 보낸다(옛 Jetson은 무시하고 녹화함).
+LIVE_VIEW_CAPABILITY = "live_view"
+LIVE_DEFAULT_MAX_SEC = 600
+
+
+def is_live_config(config: dict[str, Any] | None) -> bool:
+    return isinstance(config, dict) and config.get("record") is False
 
 
 def is_max_duration_stop(stop_reason: str | None) -> bool:
@@ -97,7 +104,12 @@ class CaptureService:
 
     # ── 시작 ───────────────────────────────────────────────────────────────
     async def start(
-        self, req: StartCaptureRequest, *, actor: str = "user", request_id: str | None = None
+        self,
+        req: StartCaptureRequest,
+        *,
+        actor: str = "user",
+        request_id: str | None = None,
+        session_prefix: str = "sess",
     ) -> SessionInfo:
         request_id = request_id or new_request_id()
         async with self._lock:
@@ -120,7 +132,7 @@ class CaptureService:
             # 시작 시점의 설정을 **스냅샷으로 박제**한다. 이후 전역 설정이 바뀌어도
             # 이 실험이 어떤 조건에서 돌았는지는 변하지 않는다.
             config: dict[str, Any] = req.config if req.config is not None else self._db.get_config()
-            session_id = new_session_id()
+            session_id = new_session_id(prefix=session_prefix)
             sent_at = utcnow_iso()
             started_monotonic = monotonic()
 
@@ -348,6 +360,38 @@ class CaptureService:
             self._reconcile_locked(report)
             self._absorb_end_info(report)
             self._absorb_storage_result(report)
+            unconfirmed_live = self._check_live_confirmed(report)
+        if unconfirmed_live:
+            # 녹화 중일 수 있다 — 사람이 모르는 원본이 쌓이지 않게 바로 멈춘다
+            try:
+                await self._jetson.stop_capture(session_id=unconfirmed_live, reason="live_not_confirmed")
+            except (JetsonUnreachable, JetsonError) as exc:
+                log.warning("라이브 미확인 세션 중지 실패(다음 주기 재시도): %s", exc)
+
+    def _check_live_confirmed(self, report: JetsonReport) -> str | None:
+        """라이브(`record:false`)로 시작한 세션을 Jetson이 `record:false`로 되돌려주는지 확인한다.
+
+        되돌려주지 않으면(옛 Jetson이 필드를 무시함) 녹화 중일 수 있으므로 세션 ID를 돌려 중지하게 한다.
+        """
+        cap = report.capture
+        if cap.state not in JETSON_ACTIVE_STATES or not cap.session_id or cap.record is False:
+            return None
+        row = self._db.get_session(cap.session_id)
+        if row is None or not is_live_config(row.get("config")):
+            return None
+        already = self._db.list_events(session_id=cap.session_id, limit=1, code="live.not_confirmed")
+        if not already:
+            self._db.log_event(
+                level=EventLevel.ERROR,
+                source="monitor",
+                code="live.not_confirmed",
+                message=(
+                    "라이브 보기로 시작했는데 Jetson이 '기록 안 함'을 확인해 주지 않음 — 녹화 중일 수 있어 중지 요청"
+                ),
+                session_id=cap.session_id,
+                detail={"jetson_record": cap.record, "capabilities": report.capabilities},
+            )
+        return cap.session_id
 
     def _reconcile_locked(self, report: JetsonReport) -> None:
         jetson_capture = report.capture

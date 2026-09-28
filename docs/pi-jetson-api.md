@@ -176,6 +176,41 @@ Jetson `/viewer` 점검 세션은 기본 600초로 연다.
   (거절은 오류가 아니라 정상 응답이다). Pi는 이를 409로 사용자에게 전달한다.
 - 5xx는 "서비스 고장"으로 해석된다.
 
+### 3.1 라이브 보기 — 기록 없는 미리보기 세션 (계약 2026-09-28, D-037 · Jetson 구현 대기)
+
+카메라 위치·초점·솥 배치를 맞출 때 **원본을 저장하지 않고** 미리보기만 보기 위한 세션이다.
+기존 시작·중지·미리보기·상태 계약을 그대로 쓰고 `config.record`만 추가한다(선택 필드, 기본 `true`).
+
+```jsonc
+// Jetson이 지원을 알린다 — GET /api/v1/status 최상위(확장 필드)
+{ ..., "capabilities": ["live_view"] }
+
+// 요청 — Pi는 위 capability를 확인한 뒤에만 record:false를 보낸다
+{ "session_id": "live-20260928T050000Z-a1b2", "name": "라이브 보기",
+  "config": { "sensors": ["cam_rgb_0","cam_rgb_1","cam_depth_0","thermal_0","pt100_0"], "fps": 10,
+              "record": false, "preview": { "enabled": true, "max_fps": 1 }, "max_duration_sec": 600 } }
+
+// 진행 중 status — 기록하지 않음을 되돌려 확인해 준다
+{ "capture": { "state": "running", "session_id": "live-...", "record": false, "frames_written": 0, ... } }
+```
+
+| 규칙 | 내용 |
+|---|---|
+| **호환(필수)** | 옛 Jetson은 모르는 `record`를 무시하고 **녹화한다**. 그래서 Pi는 `capabilities`에 `live_view`가 있을 때만 `record:false`를 보낸다. 없으면 라이브 보기 버튼 자체를 숨긴다. `record`가 없거나 `true`면 기존 동작과 완전히 같다 |
+| 저장 | 원본(프레임·`records.bin`·`index.jsonl`)과 manifest를 쓰지 않는다. `data_root`에 세션 디렉터리를 만들지 않아 `/api/v1/sessions` 녹화 목록에 섞이지 않는다(디스크 증가 ≈ 0). 사건은 서비스 로그에 남긴다 |
+| 미리보기 | `record:false`면 `preview.enabled`를 **켠 것으로 강제**한다(보는 것이 목적). JPEG·`preview_array` 엔드포인트와 규칙은 그대로 |
+| 최대 시간 | `max_duration_sec`이 없거나 0이면 Jetson이 **600초**를 적용한다(센서를 잡고 잊히는 것 방지). 정지 사유는 기존과 같은 `max_duration_sec=<값> 도달` |
+| 상태 | `capture.record`(확장 필드)로 `false`를 되돌려준다. `frames_written`은 0, 수신량은 `streams[].received`로 본다. 상태 전이(running → stopping → stopped)는 기존과 같다 — 기록기 마무리가 없어 빨리 끝난다 |
+| 저장 결과 | `last_session_summary`를 **갱신하지 않는다**(직전 녹화의 요약을 유지 — Pi가 라이브를 '저장 완료'로 적지 않게). `last_session`에는 `record:false`로 남겨도 된다 |
+| 배타성 | 세션은 한 번에 하나. 라이브 중 다른 `session_id`의 시작은 기존처럼 `accepted:false`. Pi는 라이브를 먼저 중지한 뒤 녹화를 시작한다 |
+| 세션 ID | Pi가 `live-` 접두사로 만든다(녹화 `sess-`와 구분). 저장 디렉터리가 없으므로 같은 ID 재사용 검사는 필요 없다 |
+
+**Pi 동작:** `POST /api/live/start`(선택 본문 `{max_duration_sec}`)가 저장된 실험 설정의 센서·fps에 `record:false`,
+미리보기 켬, 최대 시간(기본 600초)을 얹어 시작한다. Jetson이 `live_view`를 알리지 않으면 409.
+시작 후 Jetson status가 이 세션을 `record:false`로 되돌려주지 않으면 녹화 중일 수 있으므로 **즉시 중지 요청**하고
+`live.not_confirmed`(error)를 남긴다. 라이브 세션은 Pi 기록에 남되 '라이브 보기(저장 안 함)'로 표시하고 저장 결과를 기다리지 않는다.
+중지는 기존 `POST /api/capture/stop`. 화면의 '촬영 시작'은 라이브 중이면 라이브를 끝낸 뒤 녹화를 시작한다.
+
 ## 4. `POST /api/v1/capture/stop`
 
 ```jsonc

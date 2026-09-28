@@ -25,13 +25,13 @@ def utcnow_iso() -> str:
     return iso(utcnow())  # type: ignore[return-value]
 
 
-def new_session_id(now: datetime | None = None) -> str:
+def new_session_id(now: datetime | None = None, prefix: str = "sess") -> str:
     """`sess-20260911T143000Z-a1b2` — 디렉터리명으로 그대로 쓸 수 있는 형식.
 
     Pi의 실험 메타데이터와 Jetson의 원본 저장 경로를 잇는 공통 키(인계 플랜 §3).
     """
     stamp = (now or utcnow()).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    return f"sess-{stamp}-{secrets.token_hex(2)}"
+    return f"{prefix}-{stamp}-{secrets.token_hex(2)}"
 
 
 def age_sec(since: datetime | None, now: datetime | None = None) -> float | None:
