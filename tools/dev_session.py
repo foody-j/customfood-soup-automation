@@ -16,6 +16,16 @@ SCOPES = {
     "pi": ("pi-server/", "docs/pi/", "notes/pi/"),
     "jetson": ("jetson/", "cam-adaptor/", "docs/jetson/", "notes/jetson/"),
 }
+SHARED_PREFIXES = ("shared/",)
+SHARED_FILES = ("dashboard/src/data/schema.js", "notes/dev-log.md", "notes/decisions.md")
+
+
+def shared(path: str) -> bool:
+    return (
+        path in SHARED_FILES
+        or any(path.startswith(prefix) for prefix in SHARED_PREFIXES)
+        or (path.startswith("docs/") and not path.startswith(("docs/pi/", "docs/jetson/")))
+    )
 
 
 def git(root: Path, *args: str) -> str:
@@ -35,7 +45,7 @@ def repo_root(cwd: Path) -> Path:
 
 def allowed(role: str, path: str) -> bool:
     # Paths come from git --no-renames; both sides of a rename must be in scope.
-    return any(path.startswith(prefix) for prefix in SCOPES[role])
+    return any(path.startswith(prefix) for prefix in SCOPES[role]) or shared(path)
 
 
 def check(root: Path, role: str) -> list[str]:
@@ -102,8 +112,12 @@ def main() -> int:
         return 0
     prompt = (
         f"This checkout's role is {args.role}. Read CLAUDE.md and docs/development-workflow.md first. "
-        f"Edit only {', '.join(SCOPES[args.role])}. Record work in notes/{args.role}/{args.task}.md. "
-        "Shared contracts and root notes are maintained by the integration session. "
+        f"Device-owned paths: {', '.join(SCOPES[args.role])}. Record work in notes/{args.role}/{args.task}.md. "
+        "Either role may also edit shared/, common docs/ (excluding the other role's docs), "
+        "dashboard/src/data/schema.js, notes/dev-log.md and notes/decisions.md. "
+        "For shared contract work, coordinate one owning branch, preserve compatibility where possible, "
+        "and record payload examples, peer-device changes, tests and rollout order in the task note. "
+        "Windows is not a required integration gate. Do not edit the other device's implementation. "
         f"Run python3 tools/dev_session.py check {args.role} before each commit. "
         "Preserve existing permission restrictions. Do not change or restart the runtime checkout. "
         "Ask the user for this task's objective if it has not been provided."

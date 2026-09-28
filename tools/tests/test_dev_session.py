@@ -66,11 +66,11 @@ class WorkflowTest(unittest.TestCase):
         target = self.start()
         self.write(target, "pi-server/new.py", "allowed\n")
         self.assertEqual(workflow.check(target, "pi"), [])
-        self.write(target, "notes/dev-log.md", "shared\n")
-        self.assertIn("notes/dev-log.md", workflow.check(target, "pi"))
-        self.git(target, "add", "notes/dev-log.md")
+        self.write(target, "tools/other.py", "outside scope\n")
+        self.assertIn("tools/other.py", workflow.check(target, "pi"))
+        self.git(target, "add", "tools/other.py")
         self.git(target, "commit", "-m", "out of scope")
-        self.assertIn("notes/dev-log.md", workflow.check(target, "pi"))
+        self.assertIn("tools/other.py", workflow.check(target, "pi"))
         self.write(target, "jetson/app.py", "changed\n")
         self.git(target, "add", "jetson/app.py")
         self.write(target, "jetson/app.py", "jetson\n")
@@ -80,6 +80,29 @@ class WorkflowTest(unittest.TestCase):
         target = self.start()
         self.git(target, "mv", "jetson/app.py", "pi-server/moved.py")
         self.assertIn("jetson/app.py", workflow.check(target, "pi"))
+
+    def test_both_roles_can_commit_shared_contract_changes(self):
+        paths = (
+            "docs/pi-jetson-api.md", "docs/data-schema.md", "docs/model-architecture.md",
+            "shared/schema.json", "dashboard/src/data/schema.js",
+            "notes/dev-log.md", "notes/decisions.md",
+        )
+        for role in ("pi", "jetson"):
+            with self.subTest(role=role), patch.dict(os.environ, {"AI_AGENT_RUNNER": "0"}):
+                target = workflow.prepare(self.repo, role, "contract")
+                for path in paths:
+                    self.write(target, path, "shared change\n")
+                self.assertEqual(workflow.check(target, role), [])
+                self.git(target, "add", ".")
+                self.assertEqual(workflow.check(target, role), [])
+                self.git(target, "commit", "-m", "shared contract")
+                self.assertEqual(workflow.check(target, role), [])
+                peer = "jetson" if role == "pi" else "pi"
+                blocked = (f"docs/{peer}/setup.md", f"notes/{peer}/task.md",
+                           "dashboard/src/App.jsx", ".claude/settings.json", "shared-secret.env")
+                for path in blocked:
+                    self.write(target, path, "outside scope\n")
+                self.assertEqual(workflow.check(target, role), sorted(blocked))
 
     def test_existing_task_is_never_reset(self):
         target = self.start()
