@@ -23,6 +23,17 @@
   중복 이름 보존, 잘못된 역할·작업명·무인 모드 거절, fetch 실패를 테스트했다. **7개 테스트 통과**.
   실제 Pi/Jetson에서 Claude 실행은 미검증.
 
+## 2026-09-28 — Jetson `/status` 간헐 2초 지연 수정 + 운영 env `real` (Pi 실물 연동에서 발견된 문제)
+
+- 재현: `/status` 30회 중앙 0.027 s·**최대 2.33 s**. 센서별 probe 실측 — GMSL 126/150 ms, 열화상 32 ms, PT100 4 ms,
+  **Gemini `cam_depth_0` 2,277 ms(재측 2,025 ms)**. 캐시(TTL 10 s)가 만료되면 그다음 `/status`가 전 센서 재탐색을 기다렸다
+  → Pi가 순간 `service_down` 기록.
+- 수정: `CollectorService`가 기동 후 **백그라운드 스레드로 TTL마다 probe 갱신**, `status`는 잠금 없이 캐시만 읽음(갱신은 새 dict로
+  통째로 교체). 세션 시작 경로는 기존대로 `_refresh_probes()`. TTL 0 이하(시험 설정)는 스레드 없이 요청마다 탐색.
+  테스트 추가: 0.6 s 걸리는 probe에서도 status 최악 < 0.3 s(이전 코드에서는 실패 확인). 전체 63 통과.
+- 운영 env `COLLECTOR_SENSOR_MODE=auto` → **`real`** — `mock_*` 4개가 Pi 장비 목록에 섞여 나가던 것.
+- 적용은 `/etc/default/jetson-collector` 복사 + 서비스 재시작(sudo, 사람).
+
 ## 2026-09-25 — Windows 인계: Pi MLX90614 제거와 운영 온도원 문서 동기화
 
 - `main`의 `d5f2611`(Jetson 작업 머지)을 받아 D-030·D-031에 맞춰 남은 Pi·문서 작업을 반영했다.

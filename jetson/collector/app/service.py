@@ -45,6 +45,8 @@ class CollectorService:
         self._probe_cache: dict[str, SensorProbe] = {}
         self._probe_at = 0.0
         self._probe_lock = threading.Lock()
+        self._probe_stop = threading.Event()
+        self._probe_thread: threading.Thread | None = None
         self._sysmon = SystemMonitor(settings.data_root, settings.system_interval_sec)
         self.recovered: list[dict[str, Any]] = []
         self._boot_id = boot_id()
@@ -55,9 +57,15 @@ class CollectorService:
         self._recover()
         self._sysmon.start()
         self._refresh_probes(force=True)
+        # status는 캐시만 읽고, 갱신은 이 스레드가 한다 — Gemini SDK 탐색이 매번 약 2초라 요청 경로에서
+        # 다시 probe하면 TTL마다 /status가 2초 넘게 걸렸다(2026-09-28 실측, Pi가 service_down으로 오판).
+        if self.settings.probe_ttl_sec > 0:  # 0 이하 = 요청마다 새로 확인(시험용) — 스레드 없음
+            self._probe_thread = threading.Thread(target=self._probe_loop, name="probe-refresh", daemon=True)
+            self._probe_thread.start()
         log.info("%s %s 기동 — 센서 %d개, 저장 %s", SERVICE_NAME, VERSION, len(self.sensors), self.settings.data_root)
 
     def close(self) -> None:
+        self._probe_stop.set()
         self._sysmon.stop()
         with self._lock:
             session = self._session
@@ -85,19 +93,35 @@ class CollectorService:
             with self._lock:
                 if self._session is not None and not self._session.finished:
                     active_ids = {s.sensor_id for s in self._session.sensors}
+            fresh = dict(self._probe_cache)
             for s in self.sensors:
-                if s.sensor_id in active_ids and s.sensor_id in self._probe_cache:
+                if s.sensor_id in active_ids and s.sensor_id in fresh:
                     continue
                 try:
-                    self._probe_cache[s.sensor_id] = s.probe()
+                    fresh[s.sensor_id] = s.probe()
                 except Exception as exc:
-                    self._probe_cache[s.sensor_id] = SensorProbe(connected=False, simulated=s.simulated,
-                                                                 detail=f"probe 실패: {exc!r}", reason="probe_exception")
+                    fresh[s.sensor_id] = SensorProbe(connected=False, simulated=s.simulated,
+                                                     detail=f"probe 실패: {exc!r}", reason="probe_exception")
+            self._probe_cache = fresh  # 통째로 바꿔 끼운다 — 잠금 없이 읽는 status가 반쯤 갱신된 값을 보지 않게
             self._probe_at = time.monotonic()
-            return dict(self._probe_cache)
+            return dict(fresh)
+
+    def _probe_loop(self) -> None:
+        while not self._probe_stop.wait(self.settings.probe_ttl_sec):
+            try:
+                self._refresh_probes(force=True)
+            except Exception as exc:  # 갱신 실패로 스레드가 죽지 않게 — 마지막 캐시를 계속 보여 준다
+                self._note_error("probe_refresh_failed", repr(exc))
+
+    def _cached_probes(self) -> dict[str, SensorProbe]:
+        """status용: 잠금·장치 접근 없이 마지막 캐시. 기동 전(캐시 비어 있음)이나 TTL 0 이하면 직접 갱신한다."""
+        cache = self._probe_cache
+        if not cache or self.settings.probe_ttl_sec <= 0:
+            return self._refresh_probes()
+        return dict(cache)
 
     def sensor_infos(self) -> list[SensorInfo]:
-        probes = self._refresh_probes()
+        probes = self._cached_probes()
         stats = self._sensor_stats()
         out = []
         for s in self.sensors:

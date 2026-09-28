@@ -47,7 +47,8 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 
 | 변수 | 기본 | 뜻 |
 |---|---|---|
-| `COLLECTOR_SENSOR_MODE` | `mock` | `mock` 모의만 / `auto` 실기기+미지원 보고+`mock_*` / `real` 실기기만 |
+| `COLLECTOR_SENSOR_MODE` | `mock` | `mock` 모의만 / `auto` 실기기+미지원 보고+`mock_*` / `real` 실기기만(운영 env 기본) |
+| `COLLECTOR_PROBE_TTL` | 10 | 센서 연결 확인 갱신 주기(초). 백그라운드 스레드가 갱신하고 `/status`는 캐시만 읽는다(0 이하 = 요청마다) |
 | `COLLECTOR_V4L2_DEVICES` | `/dev/video4` | ISX031F 지정(쉼표 구분) → `cam_rgb_0`, `cam_rgb_1`… 경로 또는 **`gmsl:<포트>`**(Sensing SG4A — 노드 번호가 Gemini 2 때문에 밀려도 포트로 찾는다). 현재 장비는 `gmsl:0,gmsl:1` |
 | `COLLECTOR_ORBBEC_SERIAL` | (없음) | Gemini 2가 여러 대일 때 선택할 USB 장치 시리얼 |
 | `COLLECTOR_ORBBEC_FPS` | 10 | 세션 설정에 `fps`가 없을 때 Gemini 2 세 스트림의 기본 fps. 0이면 SDK 기본(30 — depth+IR 약 115 MB/s) |

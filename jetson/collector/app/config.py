@@ -104,7 +104,8 @@ class Settings:
     #: 세션 설정에 fps가 없을 때 Gemini 2 세 스트림에 쓸 기본 fps. 0이면 SDK 기본(30).
     #: 30 fps는 depth+IR만 약 115 MB/s를 써서 긴 조리 세션에 맞지 않는다(D-026).
     orbbec_fps: int = 10
-    #: 센서 탐색(probe) 결과 캐시 수명. status는 2초마다 오므로 매번 탐색하지 않는다.
+    #: 센서 탐색(probe) 갱신 주기. 백그라운드 스레드가 이 주기로 갱신하고 status는 캐시만 읽는다.
+    #: 0 이하면 스레드 없이 요청마다 탐색(시험용).
     probe_ttl_sec: float = 10.0
 
     # ── I²C·SPI 센서 5대 (docs/jetson-five-sensor-guide.md) ────────────────
