@@ -47,6 +47,8 @@ Fedora 검토·병합을 반드시 거칠 필요는 없다.** 해당 변경을 �
 - **검토 절차 예시:** `git fetch origin --prune` → `git log main..origin/<브랜치>`·`git diff main...origin/<브랜치>` →
   해당 역할 범위 확인(`git switch` 후 `python3 tools/dev_session.py check <역할>`) → 테스트 → 병합 준비.
   `.claude/settings.json`이 push/merge를 deny하므로 실제 병합·push는 사용자가 터미널에서 실행한다.
+- **작업 지시서:** Fedora가 장비 담당에게 맡길 일은 `notes/fedora/orders/YYYYMMDD-<작업명>-<pi|jetson>.md`에
+  장비 Claude에 그대로 줄 수 있게 쓴다(목표·근거·수정 파일·하지 말 것·완료 조건). 형식은 `notes/fedora/orders/README.md`.
 - `tools/dev_session.py`의 역할은 pi·jetson 두 가지다. Fedora 작업은 사용자와 범위를 정해 `fedora/<작업>` 브랜치에서 한다.
 
 ## 노트 충돌 방지

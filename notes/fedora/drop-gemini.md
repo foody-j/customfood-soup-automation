@@ -12,6 +12,8 @@
 - 과거 실험 기록(`notes/data/experiments/2026091*~0927*`)과 Gemini 설치 문서(`docs/gemini2-jetson-setup.md`)는 보존.
 - Pi·Jetson 코드는 수정하지 않았다(각 장비 담당 범위).
 
+작업 지시서: `notes/fedora/orders/20261001-drop-gemini-jetson.md`, `notes/fedora/orders/20261001-drop-gemini-pi.md`.
+
 ## 인계 — Jetson (`jetson/<작업>` 브랜치)
 - 운영 env(`jetson/collector/systemd/jetson-collector.env`)·`config.py` 기본 구성에서 Gemini 2 탐색 제외 방법 결정
   (Orbbec 어댑터 코드 삭제 여부는 Jetson 담당 판단. 남겨두되 기본 비활성 권장 — 과거 원본 읽기 `storage.unpack_record`는 유지).
