@@ -9,11 +9,12 @@
 | Pi | `pi-server/`, `docs/pi/`, `notes/pi/` | 관리 화면, API 중계, 실험 제어·메타데이터, Pi 서비스 |
 | Jetson | `jetson/`, `cam-adaptor/`, `docs/jetson/`, `notes/jetson/` | 센서·SDK·드라이버, 원본 수집·압축, 장치 설정, Jetson 서비스 |
 | Pi·Jetson 공동 | `shared/`, 공통 `docs/`, `dashboard/src/data/schema.js`, `notes/dev-log.md`, `notes/decisions.md` | API·데이터 계약, 설계 문서, 병합 기록 |
+| Fedora(개발·통합 서버) | `notes/fedora/`, 병합 시 중앙 노트 요약, 사용자와 정한 공통 도구·연구 데이터·학습 작업 | 브랜치 검토, 통합 테스트, 병합 준비, 연구 데이터 관리·학습 |
 | 별도 작업 범위 | 그 밖의 경로 | 나머지 React `dashboard/`, 공통 도구·에이전트 설정 등. 필요 시 사용자와 작업 범위를 정한다 |
 
 Pi에서 Jetson 코드를 읽는 것은 가능하지만 수정은 해당 담당에게 전달한다. 반대도 같다.
 공통 `docs/`는 `docs/pi/`와 `docs/jetson/`을 제외한 문서다. 공통 계약은 **어느 장비에서든 수정할 수 있고,
-Windows 검토·병합을 반드시 거칠 필요는 없다.** 해당 변경을 맡은 쪽이 계약과 인계를 책임진다.
+Fedora 검토·병합을 반드시 거칠 필요는 없다.** 해당 변경을 맡은 쪽이 계약과 인계를 책임진다.
 
 ### 공통 계약을 바꾸는 순서
 
@@ -27,9 +28,26 @@ Windows 검토·병합을 반드시 거칠 필요는 없다.** 해당 변경을 
    테스트 결과와 미검증 사항, 장비별 적용 순서를 적어 전달한다. 상대 장비 구현은 그 담당이 후속 브랜치에서 한다.
 4. 가능하면 선택 필드 추가·기존 필드 유지로 호환성을 보존한다. 삭제·이름 변경·필수 필드 추가처럼 기존 장비를
    깨뜨리는 변경은 양쪽 구현과 조합 테스트를 준비한 뒤 함께 통합한다. 먼저 main에 깨진 계약만 반영하지 않는다.
-5. 병합 담당은 변경마다 정하며 Pi·Jetson·Windows 어디서든 맡을 수 있다. 현재 push/merge 권한 제한은 아래와 같다.
+5. 병합 담당은 변경마다 정하며 Pi·Jetson·Fedora 어디서든 맡을 수 있다. 현재 push/merge 권한 제한은 아래와 같다.
 
 기존 계약을 재사용하는 작업은 각자 독립 진행한다.
+
+## Fedora 개발·통합 서버 (2026-10-01)
+
+기존 Windows의 검토·통합 역할을 Fedora PC로 옮겼다. 과거 기록(`notes/windows/`, 중앙 노트의 Windows 언급)은 그대로 둔다.
+
+- **맡는 일:** 원격 `pi/*`·`jetson/*` 브랜치 검토, 조합·통합 테스트, 병합 준비(중앙 노트 요약·D 번호 부여),
+  연구 데이터 관리(`notes/data/` 규칙)와 학습 작업.
+- **필수 관문이 아니다.** Pi·Jetson은 지금처럼 각자 담당 브랜치를 공유하고 변경별 병합 담당을 정한다.
+  Fedora가 맡는 것은 사용자가 그 변경의 검토·병합을 맡긴 경우다.
+- **운영 장비는 건드리지 않는다.** Fedora에서 Pi·Jetson 운영 서비스·운영 폴더를 자동으로 pull·변경·재시작하지 않는다.
+  운영 적용은 아래 "개발 최신화와 운영 배포는 구분"대로 담당 장비에서 한다.
+- **기록:** Fedora 작업은 `notes/fedora/<작업명>.md`에 남기고, 병합을 맡은 변경은 중앙 노트에 요약한다.
+  대용량 원본·학습 산출물(체크포인트 등)과 자격증명은 Git 밖에 두고 위치·조건만 기록한다.
+- **검토 절차 예시:** `git fetch origin --prune` → `git log main..origin/<브랜치>`·`git diff main...origin/<브랜치>` →
+  해당 역할 범위 확인(`git switch` 후 `python3 tools/dev_session.py check <역할>`) → 테스트 → 병합 준비.
+  `.claude/settings.json`이 push/merge를 deny하므로 실제 병합·push는 사용자가 터미널에서 실행한다.
+- `tools/dev_session.py`의 역할은 pi·jetson 두 가지다. Fedora 작업은 사용자와 범위를 정해 `fedora/<작업>` 브랜치에서 한다.
 
 ## 노트 충돌 방지
 

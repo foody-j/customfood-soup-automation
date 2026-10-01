@@ -2,6 +2,13 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-10-01 — Fedora PC를 개발·통합 서버로 지정 (Windows 역할 이전)
+
+- 기존 Windows의 검토·통합 역할을 Fedora PC로 옮겼다. Fedora는 브랜치 검토·통합 테스트·병합 준비·연구 데이터 관리·학습을 맡되
+  필수 경유지는 아니며, Pi·Jetson 운영 서비스는 자동으로 변경·재시작하지 않는다. 지침(`CLAUDE.md`, `AGENTS.md`,
+  `docs/development-workflow.md`)과 런처 프롬프트를 맞췄고 과거 Windows 기록은 보존했다. D-038, 상세 `notes/fedora/integration-server.md`.
+- 시작 시점 원격 브랜치 5개는 모두 main에 병합 완료 — 미통합 작업 없음. `tools/tests` 8개 통과.
+
 ## 2026-09-28 — 라이브 보기 실물 검증: 저장 0, 라이브 → 녹화 전환·자동 종료 정상
 
 - Jetson 구현(`fb591bc`) 반영 후 Pi 화면에서 라이브 40초: `record:false`·프레임 0·Jetson 세션 디렉터리 없음·디스크 변화 −0.33 MB,

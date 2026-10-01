@@ -11,7 +11,10 @@
   `dashboard/src/data/schema.js`, `notes/dev-log.md`, `notes/decisions.md`.
   나머지 React dashboard·공통 도구·에이전트 설정은 기본 역할 범위 밖이다.
 - 공통 계약 변경은 작업별 담당 브랜치 하나를 정하고 상대 구현·호환성·적용 순서를 역할 노트에 인계한다.
-  Windows 경유는 필수가 아니다. 상대 장비 전용 코드는 해당 담당이 수정한다.
+  Fedora 경유는 필수가 아니다. 상대 장비 전용 코드는 해당 담당이 수정한다.
+- Fedora PC(2026-10-01~)는 개발·통합 서버로 브랜치 검토, 통합 테스트, 병합 준비와 연구 데이터 관리·학습 작업을 맡는다.
+  기록은 `notes/fedora/<작업명>.md`. Pi·Jetson 운영 서비스는 자동으로 변경·재시작하지 않는다.
+  (과거 Windows 통합 역할은 Fedora로 옮겼다. `notes/windows/`는 과거 기록으로 보존한다.)
 - 장비 작업의 개발 노트·결정 제안은 `notes/<역할>/<작업명>.md`에 남긴다. 중앙 노트 요약·D 번호는 해당 변경의 병합 담당이 통합 시 부여한다.
   아래 중앙 노트 작성 규칙은 장비별 기록 후 병합 요약으로 충족한다.
 - `python3 tools/dev_session.py start <pi|jetson> <작업명>`으로 최신 main에서 격리된 작업을 시작한다.

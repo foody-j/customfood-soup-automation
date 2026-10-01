@@ -117,7 +117,7 @@ def main() -> int:
         "dashboard/src/data/schema.js, notes/dev-log.md and notes/decisions.md. "
         "For shared contract work, coordinate one owning branch, preserve compatibility where possible, "
         "and record payload examples, peer-device changes, tests and rollout order in the task note. "
-        "Windows is not a required integration gate. Do not edit the other device's implementation. "
+        "The Fedora integration server is not a required gate. Do not edit the other device's implementation. "
         f"Run python3 tools/dev_session.py check {args.role} before each commit. "
         "Preserve existing permission restrictions. Do not change or restart the runtime checkout. "
         "Ask the user for this task's objective if it has not been provided."
