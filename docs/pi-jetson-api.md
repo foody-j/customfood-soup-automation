@@ -120,6 +120,8 @@ Pi의 실험 기록 기능이 쓰는 값이다. **전부 선택(optional)** 이�
 
 `kind` 값(현재): `rgb_gmsl2` · `depth_usb` · `thermal_i2c` · `rtd_spi`(MAX31865 + PT100).
 새 종류는 이 문서와 `pi-server/app/models.py`에 함께 추가한다.
+2026-10-01(D-039): Orbbec Gemini 2(`cam_depth_0`, `depth_usb`)는 장비 구성에서 뺀다. 과거 세션 호환을 위해 `depth_usb` 값과
+`cam_depth_0` 응답 처리는 계약에서 지우지 않으며, 새 세션의 기본 센서 목록에는 넣지 않는다.
 
 2026-09-25 동기화(D-030·D-031): MLX90614의 `point_temp_0/1`·`point_temp_i2c`는 현재 수집 목록에서
 제외했다. 열화상은 `thermal_0`(D55 한 대, I²C 직결), PT100은 `pt100_0`(개발·검증용)이다.
@@ -128,7 +130,7 @@ Pi 모의 목록은 카메라 3대와 열화상 한 대이며(2026-09-27 첫 조
 과거 세션에 남은 센서 ID나 미지의 `kind` 문자열을 삭제·차단하지 않는다.
 솥 내장 온도센서는 모델의 운영 온도원으로 계획했지만 읽기 인터페이스와 수집 담당 장비가 미확정이므로,
 연결된 Jetson 센서로 추가하지 않는다. 값을 읽지 못하면 PT100을 운영에 사용하는 방안을 검증한다.
-Gemini 2의 `ir` 영상 스트림은 MLX90614와 별개이며 유지한다.
+Gemini 2의 `ir` 영상 스트림은 MLX90614와 별개였다(D-039로 Gemini 2는 구성에서 제외).
 
 ### 확장 필드 (2026-09-12, Jetson 구현이 추가로 보냄 — Pi는 무시해도 됨)
 
@@ -187,7 +189,7 @@ Jetson `/viewer` 점검 세션은 기본 600초로 연다.
 
 // 요청 — Pi는 위 capability를 확인한 뒤에만 record:false를 보낸다
 { "session_id": "live-20260928T050000Z-a1b2", "name": "라이브 보기",
-  "config": { "sensors": ["cam_rgb_0","cam_rgb_1","cam_depth_0","thermal_0","pt100_0"], "fps": 10,
+  "config": { "sensors": ["cam_rgb_0","cam_rgb_1","thermal_0","pt100_0"], "fps": 10,
               "record": false, "preview": { "enabled": true, "max_fps": 1 }, "max_duration_sec": 600 } }
 
 // 진행 중 status — 기록하지 않음을 되돌려 확인해 준다
