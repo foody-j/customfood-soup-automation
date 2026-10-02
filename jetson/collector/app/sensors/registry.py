@@ -47,7 +47,8 @@ def build_sensors(settings: Settings) -> list[SensorAdapter]:
     sensors: list[SensorAdapter] = []
     for i, dev in enumerate(settings.v4l2_devices):
         sensors.append(Isx031fGmsl2Camera(f"cam_rgb_{i}", dev, link_index=i))
-    sensors.append(OrbbecGemini2(settings.orbbec_serial, default_fps=settings.orbbec_fps))
+    if settings.orbbec_enabled:  # D-039: 기본 제외(습기에 약함). 켜면 예전처럼 cam_depth_0
+        sensors.append(OrbbecGemini2(settings.orbbec_serial, default_fps=settings.orbbec_fps))
     sensors += build_physical_sensors(settings)
     if settings.sensor_mode != SENSOR_MODE_REAL:
         # auto: 실기기가 없는 자리를 모의로 채우지 않는다 — 모의는 별도 ID로만 존재

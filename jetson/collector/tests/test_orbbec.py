@@ -213,7 +213,7 @@ def test_sdk_absent_and_non_gemini_devices_are_not_reported_connected(monkeypatc
         raise SensorError("pyorbbecsdk2 없음")
 
     monkeypatch.setattr(orbbec, "_sdk_module", missing_sdk)
-    absent = OrbbecGemini2()
+    absent = OrbbecGemini2(usb_lookup=lambda: None)  # 실제 USB 유무와 무관하게 SDK 경로를 시험한다
     probe = absent.probe()
     assert probe.connected is False and probe.simulated is False and probe.verified is False
     assert "pyorbbecsdk2" in probe.reason
@@ -291,7 +291,7 @@ def test_default_fps_applies_only_when_session_gives_none_and_keeps_default_size
     camera.open({"fps": 30})  # 세션이 준 값이 기본값보다 우선
     assert camera.applied_config()["profiles"]["depth"]["fps"] == 30
     camera.close()
-    sensors = build_sensors(Settings.from_env(sensor_mode="real", v4l2_devices=()))
+    sensors = build_sensors(Settings.from_env(sensor_mode="real", v4l2_devices=(), orbbec_enabled=True))
     assert next(s for s in sensors if s.sensor_id == "cam_depth_0")._default_fps == 10
 
 
@@ -369,12 +369,23 @@ def test_timeout_missing_streams_receive_error_and_bad_scale():
         camera.read()
 
 
+def test_registry_excludes_gemini_by_default_and_includes_when_enabled():
+    """D-039: Gemini 2는 기본 구성에서 빠진다(탐색·보고·수집 없음). 켜면 예전처럼 cam_depth_0."""
+    for mode in ("real", "auto"):
+        ids = [s.sensor_id for s in build_sensors(Settings(sensor_mode=mode, v4l2_devices=()))]
+        assert "cam_depth_0" not in ids and not any(isinstance(s, OrbbecGemini2)
+                                                    for s in build_sensors(Settings(sensor_mode=mode, v4l2_devices=())))
+    assert Settings.from_env(sensor_mode="real").orbbec_enabled is False
+    on = build_sensors(Settings.from_env(sensor_mode="real", v4l2_devices=(), orbbec_enabled=True))
+    assert isinstance(next(s for s in on if s.sensor_id == "cam_depth_0"), OrbbecGemini2)
+
+
 def test_registry_uses_real_adapter_only_for_real_modes():
-    real = build_sensors(Settings(sensor_mode="real", v4l2_devices=(), orbbec_serial="G2-002"))
+    real = build_sensors(Settings(sensor_mode="real", v4l2_devices=(), orbbec_serial="G2-002", orbbec_enabled=True))
     real_depth = next(s for s in real if s.sensor_id == "cam_depth_0")
     assert isinstance(real_depth, OrbbecGemini2) and real_depth.serial == "G2-002"
     assert real_depth.simulated is False
-    auto = build_sensors(Settings(sensor_mode="auto", v4l2_devices=()))
+    auto = build_sensors(Settings(sensor_mode="auto", v4l2_devices=(), orbbec_enabled=True))
     assert isinstance(next(s for s in auto if s.sensor_id == "cam_depth_0"), OrbbecGemini2)
     assert next(s for s in auto if s.sensor_id == "mock_cam_depth_0").simulated is True
     mock = build_sensors(Settings(sensor_mode="mock", v4l2_devices=()))
