@@ -13,7 +13,7 @@ from app.jetson.base import JetsonError, JetsonUnreachable
 from app.jetson.http_client import HttpJetsonClient
 from conftest import make_settings
 
-SENSORS = ["cam_rgb_0", "cam_rgb_1", "cam_depth_0", "thermal_0", "pt100_0"]
+SENSORS = ["cam_rgb_0", "cam_rgb_1", "thermal_0", "pt100_0"]
 TRIAL = {"sensors": SENSORS, "fps": 10, "preview": {"enabled": True, "max_fps": 1}}
 
 
@@ -83,7 +83,7 @@ def test_preview_array_error_mapping(client):
     # JPEG 대상이 아닌 스트림은 그대로 404, 없는 센서도 404
     client.post("/api/capture/stop", json={})
     start(client)
-    assert client.get("/api/preview_array/cam_depth_0/depth").status_code == 404
+    assert client.get("/api/preview_array/cam_rgb_0/rgb").status_code == 404
     assert client.get("/api/preview_array/nope/temp").status_code == 404
     # Jetson 단절 → 503
     client.post("/api/mock/jetson/link", json={"cut": True})

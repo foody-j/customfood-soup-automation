@@ -2,7 +2,7 @@
 /* 카메라 미리보기 컴포넌트 — 기존 화면에 끼워 넣는 **독립 모듈**.
  *
  * 하는 일: Jetson 저속 JPEG 미리보기(관리 서버가 중계하는 GET {apiBase}/{sensor_id}/{stream_id})를
- * 받아 카메라별 패널에 그리고, 스트림 전환(Gemini 2: Color/Depth/IR)·주기 갱신·연결 상태 표시를 맡는다.
+ * 받아 카메라별 패널에 그리고, 스트림 전환(한 카메라에 스트림이 여럿일 때)·주기 갱신·연결 상태 표시를 맡는다.
  * 하지 않는 일: 촬영·원본 저장·Jetson 설정 변경. 스트림 전환은 **무엇을 볼지**만 바꾼다 —
  * Jetson에는 조회(GET) 말고 아무것도 보내지 않는다.
  *
@@ -13,8 +13,8 @@
  *     apiBase: '/api/preview',            // 필수. 다른 출처면 'http://pi:8100/api/preview'
  *     cameras: [                          // 필수
  *       { id: 'gmsl2_1', label: 'GMSL2 ①', sensor_id: 'cam_rgb_0', streams: [{ id: 'rgb', label: 'RGB' }] },
- *       { id: 'gemini2', label: 'Gemini 2', sensor_id: 'cam_depth_0',
- *         streams: [{ id: 'color', label: 'Color' }, { id: 'depth', label: 'Depth' }, { id: 'ir', label: 'IR' }] },
+ *       { id: 'gmsl2_2', label: 'GMSL2 ②', sensor_id: 'cam_rgb_1', streams: [{ id: 'rgb', label: 'RGB' }] },
+ *       // 스트림이 여럿인 카메라는 패널에 전환 버튼이 생긴다: streams: [{ id: 'color', ... }, { id: 'depth', ... }]
  *     ],
  *     intervalMs: 1000,                   // 선택(기본 1000, 하한 250)
  *     staleAfterMs: 5000,                 // 선택 — 이보다 오래 새 프레임이 없으면 "지연"

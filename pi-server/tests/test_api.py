@@ -513,7 +513,7 @@ def test_sensor_stats_and_storage_summary_are_surfaced(client):
     # D-030·D-031: 제거한 비접촉 센서를 장비 상태에 다시 노출하지 않는다.
     # 첫 조리 시험 구성: 카메라 3 + 열화상 1 + PT100 1
     assert {s["sensor_id"] for s in sensors} == {
-        "cam_rgb_0", "cam_rgb_1", "cam_depth_0", "thermal_0", "pt100_0",
+        "cam_rgb_0", "cam_rgb_1", "thermal_0", "pt100_0",
     }
     assert all(s["kind"] != "point_temp_i2c" for s in sensors)
     assert sensors[0]["stats"]["frames_written"] >= 0
@@ -577,44 +577,47 @@ def test_restart_keeps_experiment_records_and_flags_open_session(client_factory)
 # ─────────────────────────────────────────────────────────────────────────────
 # 미리보기 중계
 # ─────────────────────────────────────────────────────────────────────────────
-PREVIEW_ON = {"sensors": ["cam_depth_0"], "fps": 10, "preview": {"enabled": True, "max_fps": 2}}
+PREVIEW_ON = {"sensors": ["cam_rgb_0", "cam_rgb_1"], "fps": 10, "preview": {"enabled": True, "max_fps": 2}}
 
 
 def test_preview_requires_active_session(client):
-    assert client.get("/api/preview/cam_depth_0/color").status_code == 404
+    assert client.get("/api/preview/cam_rgb_0/rgb").status_code == 404
 
 
-def test_preview_relays_each_gemini_stream(client):
+def test_preview_relays_each_camera(client):
     sess = client.post("/api/capture/start", json={"name": "미리보기", "config": PREVIEW_ON}).json()
-    for stream in ("color", "depth", "ir"):
-        res = client.get(f"/api/preview/cam_depth_0/{stream}")
-        assert res.status_code == 200, stream
+    for sensor in ("cam_rgb_0", "cam_rgb_1"):
+        res = client.get(f"/api/preview/{sensor}/rgb")
+        assert res.status_code == 200, sensor
         assert res.headers["content-type"].startswith("image/")
         assert res.headers["cache-control"] == "no-store"
         assert res.headers["x-preview-session-id"] == sess["session_id"]
-        assert f"cam_depth_0/{stream}".encode() in res.content
-    # 미리보기 대상이 아닌 스트림·없는 센서는 그림이 없다
+        assert f"{sensor}/rgb".encode() in res.content
+    # 미리보기 대상이 아닌 스트림·그 센서에 없는 스트림·없는 센서는 그림이 없다
     assert client.get("/api/preview/thermal_0/temp_array").status_code == 404
+    assert client.get("/api/preview/cam_rgb_0/depth").status_code == 404
     assert client.get("/api/preview/nope/color").status_code == 404
+    # D-039: Gemini 2는 모의 구성에서 빠졌다
+    assert client.get("/api/preview/cam_depth_0/color").status_code == 404
 
 
 def test_preview_off_session_has_no_frame_and_config_untouched(client):
     """미리보기를 켜지 않은 세션은 404. 미리보기 조회는 세션 설정·이벤트를 바꾸지 않는다."""
     sess = client.post(
-        "/api/capture/start", json={"name": "원본만", "config": {"sensors": ["cam_depth_0"]}}
+        "/api/capture/start", json={"name": "원본만", "config": {"sensors": ["cam_rgb_0"]}}
     ).json()
     before = len(client.get("/api/events?limit=1000").json())
-    assert client.get("/api/preview/cam_depth_0/depth").status_code == 404
+    assert client.get("/api/preview/cam_rgb_0/rgb").status_code == 404
     assert len(client.get("/api/events?limit=1000").json()) == before
     assert client.get(f"/api/sessions/{sess['session_id']}").json()["config"] == {
-        "sensors": ["cam_depth_0"]
+        "sensors": ["cam_rgb_0"]
     }
 
 
 def test_preview_unreachable_is_503(client):
     client.post("/api/capture/start", json={"name": "끊김", "config": PREVIEW_ON})
     client.post("/api/mock/jetson/link", json={"cut": True})
-    assert client.get("/api/preview/cam_depth_0/color").status_code == 503
+    assert client.get("/api/preview/cam_rgb_0/rgb").status_code == 503
 
 
 def test_preview_setting_is_validated_and_snapshotted(client):
@@ -627,30 +630,31 @@ def test_preview_setting_is_validated_and_snapshotted(client):
     # 시작 요청에 config를 안 실으면 저장된 설정(미리보기 포함)이 그대로 박제된다
     sess = client.post("/api/capture/start", json={"name": "박제"}).json()
     assert sess["config"]["preview"]["enabled"] is True
-    assert client.get("/api/preview/cam_depth_0/ir").status_code == 200
+    assert client.get("/api/preview/cam_rgb_1/rgb").status_code == 200
 
 
 def test_preview_component_config_default_three_cameras(client):
     cfg = client.get("/api/preview/config").json()
     assert cfg["api_base"] == "/api/preview" and cfg["config_error"] is None
     assert [(c["sensor_id"], [s["id"] for s in c["streams"]]) for c in cfg["cameras"]] == [
-        ("cam_rgb_0", ["rgb"]), ("cam_rgb_1", ["rgb"]), ("cam_depth_0", ["color", "depth", "ir"]),
-    ]
+        ("cam_rgb_0", ["rgb"]), ("cam_rgb_1", ["rgb"]),
+    ]  # D-039: Gemini 2 패널 없음
 
 
 def test_preview_component_config_from_env_value(client_factory):
-    custom = '[{"sensor_id": "cam_depth_0", "label": "깊이", "streams": ["depth", {"id": "ir", "label": "IR"}]}]'
+    # 스트림이 여럿인 카메라도 설정으로 붙일 수 있다(전환 기능은 일반 기능)
+    custom = '[{"sensor_id": "cam_rgb_0", "label": "주 카메라", "streams": ["rgb", {"id": "raw", "label": "RAW"}]}]'
     cfg = client_factory(preview_cameras_json=custom, preview_interval_ms=100).get("/api/preview/config").json()
     assert cfg["interval_ms"] == 500  # Jetson이 2fps 상한이라 더 빨리 부르지 않는다
     assert cfg["cameras"] == [{
-        "id": "cam_depth_0", "label": "깊이", "sensor_id": "cam_depth_0",
-        "streams": [{"id": "depth", "label": "depth"}, {"id": "ir", "label": "IR"}],
+        "id": "cam_rgb_0", "label": "주 카메라", "sensor_id": "cam_rgb_0",
+        "streams": [{"id": "rgb", "label": "rgb"}, {"id": "raw", "label": "RAW"}],
     }]
 
 
 def test_preview_component_config_bad_value_falls_back(client_factory):
     cfg = client_factory(preview_cameras_json="{not json").get("/api/preview/config").json()
-    assert len(cfg["cameras"]) == 3 and "SOUP_PREVIEW_CAMERAS" in cfg["config_error"]
+    assert len(cfg["cameras"]) == 2 and "SOUP_PREVIEW_CAMERAS" in cfg["config_error"]
 
 
 def test_http_client_preview_maps_jetson_responses(tmp_path):
@@ -667,11 +671,11 @@ def test_http_client_preview_maps_jetson_responses(tmp_path):
 
     def handler(request: httpx.Request) -> httpx.Response:
         seen.append(str(request.url))
-        if request.url.path.endswith("/cam_depth_0/depth"):
+        if request.url.path.endswith("/cam_rgb_0/rgb"):
             return httpx.Response(200, content=b"\xff\xd8jpeg", headers={
                 "content-type": "image/jpeg", "x-preview-session-id": "s1",
                 "x-preview-host-utc": "2026-09-18T00:00:00.000Z", "x-preview-sequence": "7"})
-        if request.url.path.endswith("/cam_depth_0/ir"):
+        if request.url.path.endswith("/cam_rgb_1/rgb"):
             return httpx.Response(200, text="<html>", headers={"content-type": "text/html"})
         return httpx.Response(404, json={"detail": "없음"})
 
@@ -681,13 +685,13 @@ def test_http_client_preview_maps_jetson_responses(tmp_path):
         client = HttpJetsonClient(make_settings(tmp_path, jetson_base_url="http://jetson:8000"))
         await client._client.aclose()
         client._client = httpx.AsyncClient(base_url=client.base_url, transport=httpx.MockTransport(handler))
-        frame = await client.fetch_preview(sensor_id="cam_depth_0", stream_id="depth", session_id="s1")
+        frame = await client.fetch_preview(sensor_id="cam_rgb_0", stream_id="rgb", session_id="s1")
         assert (frame.content, frame.media_type, frame.session_id, frame.sequence) == (
             b"\xff\xd8jpeg", "image/jpeg", "s1", "7")
-        assert await client.fetch_preview(sensor_id="cam_depth_0", stream_id="color") is None
+        assert await client.fetch_preview(sensor_id="thermal_0", stream_id="temp_array") is None
         with pytest.raises(JetsonError):
-            await client.fetch_preview(sensor_id="cam_depth_0", stream_id="ir")
+            await client.fetch_preview(sensor_id="cam_rgb_1", stream_id="rgb")
         await client.close()
 
     asyncio.run(run())
-    assert seen[0] == "http://jetson:8000/api/v1/capture/preview/cam_depth_0/depth?session_id=s1"
+    assert seen[0] == "http://jetson:8000/api/v1/capture/preview/cam_rgb_0/rgb?session_id=s1"

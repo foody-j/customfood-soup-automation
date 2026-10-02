@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-TRIAL = {"sensors": ["cam_rgb_0", "cam_rgb_1", "cam_depth_0", "thermal_0", "pt100_0"], "fps": 10}
+TRIAL = {"sensors": ["cam_rgb_0", "cam_rgb_1", "thermal_0", "pt100_0"], "fps": 10}
 
 
 def refresh(client: TestClient) -> dict:
@@ -51,7 +51,7 @@ def test_live_saves_nothing_and_previews(client):
     assert status["report"]["capture"]["frames_written"] == 0
     assert status["report"]["storage"]["free_bytes"] == free_before
     assert client.get("/api/preview_array/pt100_0/temp").status_code == 200
-    assert client.get("/api/preview/cam_depth_0/color").status_code == 200
+    assert client.get("/api/preview/cam_rgb_0/rgb").status_code == 200
     assert "live.not_confirmed" not in codes(client, sid)
 
     client.post("/api/capture/stop", json={})

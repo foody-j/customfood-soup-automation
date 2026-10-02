@@ -34,12 +34,11 @@ from ..models import (
 from ..util import utcnow_iso
 from .base import JetsonUnreachable, PreviewArray, PreviewFrame
 
-# 현재 운영 구성 기준(notes/decisions.md D-030·D-031).
+# 현재 운영 구성 기준(notes/decisions.md D-030·D-031·D-039 — Gemini 2 제외).
 # 전부 simulated=True — 이 목록은 "연결돼 있다"가 아니라 "붙일 예정"을 뜻한다.
 MOCK_SENSORS = [
     ("cam_rgb_0", "rgb_gmsl2", "Sensing ISX031F (FG12-4CH /dev/video4)"),
     ("cam_rgb_1", "rgb_gmsl2", "Sensing ISX031F 2번 (position=Video_1100)"),
-    ("cam_depth_0", "depth_usb", "Orbbec Gemini 2 (USB3, 모의)"),
     ("thermal_0", "thermal_i2c", "MLX90640 D55 32x24 (55°×35°, 모의)"),
     ("pt100_0", "rtd_spi", "PT100 + MAX31865 (CE0, 모의)"),
 ]
@@ -48,7 +47,6 @@ MOCK_SENSORS = [
 MOCK_STREAMS = {
     "cam_rgb_0": ["rgb"],
     "cam_rgb_1": ["rgb"],
-    "cam_depth_0": ["color", "depth", "ir"],
     "thermal_0": ["temp_array"],
     "pt100_0": ["temp"],
 }
