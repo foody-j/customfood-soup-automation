@@ -9,6 +9,8 @@
 - `docs/roadmap-2026-11.md`(0~6단계·일정·위험), `docs/cooking-protocol.md`(역할·고정/변경 조건·과조리까지 촬영·임시 판정 기준).
 - 지시서: Pi `doneness-marks`(정답 사건·조건 키-값·데이터셋 프리셋·시계 오차), Jetson `cook-ready`(저장량·PT100·카메라·시계).
 - 결정 대기: Fedora↔Jetson 전송 경로, 지도교수 판정 기준, RGB fps.
+- `research/` 1차: Jetson 세션 읽기·sha256 전수 검증·rsync 반출·Pi 내보내기 저장·QC·카탈로그 CLI. 테스트 8개는 Jetson 실제
+  기록 코드로 가짜 세션을 만들어 통과. 실물 세션 반출은 전송 경로 확정 후. 상세 `notes/fedora/research-pipeline.md`.
 
 ## 2026-10-02 — Pi Gemini 2 제외 반영(`pi/drop-gemini`) · Jetson 물 끓이기 리허설 기록 병합
 
