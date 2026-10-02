@@ -17,6 +17,12 @@ Fedora가 맡는다. 계획 전문은 `docs/roadmap-2026-11.md`.
   `compute_checksums`로 생성 → Fedora 검증이 Jetson 체크섬과 일치, 데이터 손상·미완료 세션 거부·검증 실패 사본 보존 확인.
 - 로컬 경로 SRC로 list→pull→qc 수동 실행 확인. **실물 Jetson 세션·원격 rsync는 미검증**(전송 경로 미정).
 
+## Fedora 서버 상태 (2026-10-02)
+- GPU RTX 5070 Ti는 nouveau로 동작 — NVIDIA 드라이버 없음(CUDA 불가). Secure Boot 켜짐 → akmod 서명 키(MOK) 등록에
+  부팅 화면이 필요한데 Fedora PC에 모니터가 없어 **보류**. 필수 결과물(데이터셋·보고서)은 CPU로 진행, 모니터를 연결할 수 있을 때
+  RPM Fusion `akmod-nvidia`(open 모듈) 설치.
+- 미세팅: SSH 키 없음, Jetson(10.42.0.52) 접속 불가, Pi Tailscale offline, 보조 디스크 sdb(477 GB NTFS) 미마운트, Node 없음.
+
 ## 남은 일
 - 전송 경로 결정 후 실물 세션으로 pull·검증(10분 세션 기준 소요 시간 기록).
 - 4단계: 라벨(`labels.py`, 시계 오차 보정), 1 Hz 표·parquet, `DATASET.md`.
