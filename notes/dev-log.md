@@ -6,7 +6,10 @@
 
 - GMSL2 카메라보다 습기에 약해 조리 증기 환경에 맞지 않아 뺀다. 모델 입력에 쓰지 않았으므로 모델 설계 영향 없음.
   계약의 `depth_usb`·`cam_depth_0`은 과거 세션 호환을 위해 남기고 기본 목록·예시에서만 뺐다. 과거 수집 기록은 보존.
-- Pi·Jetson 코드 정리는 각 담당에게 인계(`notes/fedora/drop-gemini.md`). 09-28의 "Gemini color 절반 속도" 확인 거리는 종결.
+- Pi·Jetson 코드 정리는 각 담당에게 작업 지시서로 인계(`notes/fedora/orders/20261001-drop-gemini-{pi,jetson}.md`).
+  09-28의 "Gemini color 절반 속도" 확인 거리는 종결.
+- Fedora가 장비 담당에게 일을 맡기는 **작업 지시서** 형식을 새로 정했다(`notes/fedora/orders/README.md`):
+  장비 Claude에 그대로 줄 수 있게 목표·근거·수정 파일·하지 말 것·완료 조건을 적는다. 기존 역할 노트 인계 절차는 그대로 유지.
 
 ## 2026-10-01 — Fedora PC를 개발·통합 서버로 지정 (Windows 역할 이전)
 
