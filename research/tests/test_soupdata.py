@@ -64,7 +64,8 @@ def test_pull_verify_qc_catalog(tmp_path, data_root, session_dir):
     sid = session_dir.name
     assert soupctl.main(["pull", src, sid]) == 0
     assert (data_root / "raw" / sid / "manifest.json").is_file()
-    assert json.loads((data_root / "verify" / f"{sid}.json").read_text())["ok"]
+    ver = json.loads((data_root / "verify" / f"{sid}.json").read_text())
+    assert ver["ok"] and ver["path"] == str(data_root / "raw" / sid)
     assert soupctl.main(["pull", src, sid]) == 0  # 두 번째는 건너뜀
     (data_root / "pi").mkdir()
     (data_root / "pi" / f"{sid}.json").write_text(json.dumps({

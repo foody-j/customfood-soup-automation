@@ -94,6 +94,7 @@ def cmd_pull(a) -> int:
             fails += 1
             continue
         incoming.rename(final)
+        _save_verify(sid, final, require=not a.allow_unverified)  # 기록 경로를 확정 위치로(재해시 — 이동 뒤 상태 확인 겸)
         print(f"{sid}: 받음·검증 OK (sha256 {res['checked']}건) → {final}")
     return 1 if fails else 0
 

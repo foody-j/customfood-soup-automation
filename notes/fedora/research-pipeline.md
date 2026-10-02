@@ -23,6 +23,13 @@ Fedora가 맡는다. 계획 전문은 `docs/roadmap-2026-11.md`.
   RPM Fusion `akmod-nvidia`(open 모듈) 설치.
 - 미세팅: SSH 키 없음, Jetson(10.42.0.52) 접속 불가, Pi Tailscale offline, 보조 디스크 sdb(477 GB NTFS) 미마운트, Node 없음.
 
+## 첫 실물 반출 (2026-10-02)
+- 9/28 물 끓이기 `sess-20260928T113621Z-2b33`(8.0 GB, Gemini 포함 7스트림)을 네트워크(Pi 점프)로 반출: **1,794 s(≈4.8 MB/s)**,
+  sha256 16건 전수 일치. 이후 반출은 외장 SSD로 한다(10/02 결정).
+- QC 15.8 s: 수치가 `notes/jetson/boil-rehearsal.md`와 일치(RGB 6,009/6,009, 열화상 1,202, PT100 602, PT100 최고 93.82 ℃,
+  열화상 최고 87.6 ℃, depth 무효 2). 1 Hz 표 601행 0.45 s — 정답 사건 없는 세션이라 라벨은 비어 있음(예상대로).
+- 고친 점: 검증 기록(`verify/<id>.json`)의 `path`가 임시 폴더로 남던 문제 → 확정 위치로 다시 기록.
+
 ## 남은 일
 - 전송 경로 결정 후 실물 세션으로 pull·검증(10분 세션 기준 소요 시간 기록).
 - 4단계: 라벨(`labels.py`, 시계 오차 보정), 1 Hz 표·parquet, `DATASET.md`.
