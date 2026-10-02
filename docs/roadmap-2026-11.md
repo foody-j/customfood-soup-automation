@@ -34,7 +34,8 @@
 
 ## 결정 대기
 
-1. **Fedora↔Jetson 전송 경로** — 권장: Jetson에 Tailscale 설치 후 Fedora에서 직접 rsync. 대안: Pi SSH 점프, 외장 SSD.
+1. ~~Fedora↔Jetson 전송 경로~~ — **결정(10/02): 원본은 외장 SSD로 물리 반출.** 네트워크(Pi 점프 SSH)는 확인·소량 작업용
+   (실측 약 4.8 MB/s, 8 GB에 약 30분).
 2. **맛보기·완료 판정 기준과 인원** — 지도교수 확인. 그 전엔 `docs/cooking-protocol.md`의 임시 기준.
 3. **RGB 저장 fps** — 1단계 저장량 실측 후. 설계 문서(`docs/gt-definition-design.md` §3.1)는 1~2 fps로 충분하다고 봄.
 

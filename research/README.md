@@ -26,7 +26,7 @@ catalog.csv              세션 목록·조건·정답 사건 수·검증 여부
 
 ```bash
 R=research/.venv/bin/python
-SRC=ubuntu@<jetson>:/home/ubuntu/collector-data   # 전송 경로 확정 후. 외장 SSD면 로컬 경로
+SRC=/run/media/$USER/<SSD>/collector-data          # 기본: 외장 SSD로 옮긴 원본. (소량·확인용 원격: soup-jetson:/home/ubuntu/collector-data)
 $R research/tools/soupctl.py list  $SRC
 $R research/tools/soupctl.py pull  $SRC <session_id>        # 종료·체크섬 완료 세션만, 검증 실패 시 확정 안 함
 $R research/tools/soupctl.py pi-meta http://<pi>:8100 <session_id>
