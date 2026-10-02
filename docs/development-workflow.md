@@ -9,7 +9,7 @@
 | Pi | `pi-server/`, `docs/pi/`, `notes/pi/` | 관리 화면, API 중계, 실험 제어·메타데이터, Pi 서비스 |
 | Jetson | `jetson/`, `cam-adaptor/`, `docs/jetson/`, `notes/jetson/` | 센서·SDK·드라이버, 원본 수집·압축, 장치 설정, Jetson 서비스 |
 | Pi·Jetson 공동 | `shared/`, 공통 `docs/`, `dashboard/src/data/schema.js`, `notes/dev-log.md`, `notes/decisions.md` | API·데이터 계약, 설계 문서, 병합 기록 |
-| Fedora(개발·통합 서버) | `notes/fedora/`, 병합 시 중앙 노트 요약, 사용자와 정한 공통 도구·연구 데이터·학습 작업 | 브랜치 검토, 통합 테스트, 병합 준비, 연구 데이터 관리·학습 |
+| Fedora(개발·통합 서버) | `research/`, `notes/fedora/`, 병합 시 중앙 노트 요약, 사용자와 정한 공통 도구 | 브랜치 검토, 통합 테스트, 병합 준비, 연구 데이터 관리·학습 |
 | 별도 작업 범위 | 그 밖의 경로 | 나머지 React `dashboard/`, 공통 도구·에이전트 설정 등. 필요 시 사용자와 작업 범위를 정한다 |
 
 Pi에서 Jetson 코드를 읽는 것은 가능하지만 수정은 해당 담당에게 전달한다. 반대도 같다.
@@ -49,6 +49,8 @@ Fedora 검토·병합을 반드시 거칠 필요는 없다.** 해당 변경을 �
   `.claude/settings.json`이 push/merge를 deny하므로 실제 병합·push는 사용자가 터미널에서 실행한다.
 - **작업 지시서:** Fedora가 장비 담당에게 맡길 일은 `notes/fedora/orders/YYYYMMDD-<작업명>-<pi|jetson>.md`에
   장비 Claude에 그대로 줄 수 있게 쓴다(목표·근거·수정 파일·하지 말 것·완료 조건). 형식은 `notes/fedora/orders/README.md`.
+- **연구 데이터·학습 코드:** `research/`(반출·검증·카탈로그·라벨·데이터셋·분석). 원본은 Fedora `~/soup-data/`(Git 밖).
+  일정·범위는 `docs/roadmap-2026-11.md`.
 - `tools/dev_session.py`의 역할은 pi·jetson 두 가지다. Fedora 작업은 사용자와 범위를 정해 `fedora/<작업>` 브랜치에서 한다.
 
 ## 노트 충돌 방지
