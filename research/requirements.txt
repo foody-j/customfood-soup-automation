@@ -2,4 +2,6 @@
 # 설치: python3 -m venv research/.venv && research/.venv/bin/pip install -r research/requirements.txt
 numpy>=1.26
 lz4>=4.3
+pandas>=2.2
+pyarrow>=15
 pytest>=8.0

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -29,12 +30,18 @@ def _mods():
 
 
 def make_session(root: Path, sid: str = "sess-test-0001", *, frames: int = 5, state: str = "stopped",
-                 checksums: bool = True) -> Path:
+                 checksums: bool = True, start: datetime | None = None, step_s: float = 1.0) -> Path:
+    """`start`를 주면 샘플 i의 수신 시각을 start + i·step_s로 찍는다(긴 세션 흉내). 안 주면 실제 현재 시각."""
     st, base, clock, config = _mods()
     settings = config.Settings()
     store = st.SessionStore(root, sid)
     store.create({"session_id": sid, "name": "테스트", "state": "running", "clock": clock.clock_relation()})
-    store.set_phase("running")
+    def stamp(i: float):
+        if start is None:
+            return clock.HostStamp.now()
+        return clock.HostStamp(utc=clock.iso(start + timedelta(seconds=i * step_s)), mono_ns=int(i * step_s * 1e9))
+
+    store.set_phase("running", clock.iso(start) if start else None)
     specs = [
         ("cam_rgb_0", base.StreamSpec("rgb", base.DATA_IMAGE)),
         ("thermal_0", base.StreamSpec("temp_array", base.DATA_ARRAY, unit="degC", dtype="float32", shape=(24, 32))),
@@ -47,23 +54,23 @@ def make_session(root: Path, sid: str = "sess-test-0001", *, frames: int = 5, st
         writers.append((sensor_id, spec, w))
     for i in range(frames):
         for sensor_id, spec, w in writers:
-            host = clock.HostStamp.now()
+            host = stamp(i)
             if spec.data_kind == base.DATA_IMAGE:
-                smp = base.Sample("rgb", i, host, None, np.full((8, 8, 3), i * 10, np.uint8), width=8, height=8)
+                smp = base.Sample("rgb", i, host, None, np.full((8, 8, 3), (i * 10) % 256, np.uint8), width=8, height=8)
             elif spec.data_kind == base.DATA_ARRAY:
                 smp = base.Sample("temp_array", i, host, None, np.full((24, 32), 20.0 + i, np.float32))
             else:
                 smp = base.Sample("temp", i, host, None, {"temp_c": 25.0 + i, "resistance_ohm": 110.0, "rtd_raw": 1})
             w.submit(smp)
     # 무효 샘플 1개(PT100 읽기 실패) — 미저장으로 세어야 한다
-    writers[2][2].submit(base.Sample("temp", frames, clock.HostStamp.now(), None, None, valid=False,
+    writers[2][2].submit(base.Sample("temp", frames, stamp(frames), None, None, valid=False,
                                      invalid_reason="io_error"))
     files = []
     for _, _, w in writers:
         w.stop()
         w.join(timeout=5)
         files += w.manifest_entries()
-    store.set_phase("stop_requested")
+    store.set_phase("stop_requested", clock.iso(start + timedelta(seconds=frames * step_s)) if start else None)
     store.append_event("info", "test", "테스트 세션")
     store.append_stats({"ts": clock.utcnow_iso(), "kind": "capture"})
     store.write_manifest(files, state=state, summary={"frames_written": frames * 3, "frames_dropped": 0,

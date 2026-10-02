@@ -12,7 +12,8 @@
 1. **정답 사건 종류 추가** — `pi-server/app/models.py` `MarkKind`·`MARK_LABELS`:
    `boil_start`(끓음 시작), `taste`(맛보기), `done_start`(완료 시작), `done_end`(완료 끝), `overcooked`(과조리), `lid`(뚜껑).
    - `taste`는 판정값 필수: `undercooked | done | overcooked`(`shared/schema.json` `doneness` 값과 같은 문자열).
-     `lid`는 `on | off`. 구현 예: `MarkRequest`에 선택 필드 `value: str | None` 추가, kind별 허용값 검사 → 이벤트 `detail.value`.
+     `lid`는 `on | off`. 구현 예: `MarkRequest`에 선택 필드 `value: str | None` 추가, kind별 허용값 검사 → 이벤트 `detail.value`
+     (Fedora `research/soupdata/qc.py` `pi_marks`가 `detail.value`를 읽는다).
      (필드 이름·방식은 Pi 판단. 기존 요청은 그대로 동작해야 함)
    - 이벤트 `code`는 기존 규칙대로 `mark.<kind>`. 사후 입력(`occurred_at`) 그대로 지원.
 2. **실험 화면** — `app/static/index.html`·`app.js`: "조리 정답" 버튼 줄(끓음 시작 · 맛보기 미완/완료/과조리 · 완료 시작 · 완료 끝 · 과조리 · 뚜껑 덮음/엶).
@@ -24,7 +25,9 @@
    Jetson 실측 후 Fedora가 별도 지시). 문구는 `docs/cooking-protocol.md` 4절과 맞춘다.
 5. **종료 전 경고** — 데이터셋 세션에서 `done_start`나 `overcooked` 사건이 없으면 중지 확인창에 경고(중지는 막지 않음).
 6. **Pi↔Jetson 시계 오차 기록** — 상태 프로브 응답의 Jetson `device_time`과 Pi 요청·응답 시각으로 오차 추정
-   (`offset = device_time − (t_req + t_resp)/2`, 왕복 시간도 함께). 세션 시작·중지 시점 값을 세션 메타(또는 이벤트)로 남기고 내보내기에 포함.
+   (`offset = device_time − (t_req + t_resp)/2`, 왕복 시간도 함께). 세션 시작·중지 시점 값을 세션 메타로 남기고 내보내기에 포함.
+   **Fedora 라벨 코드가 읽는 형태:** 세션 객체의 `clock_offsets: [{"at": <Pi UTC>, "offset_s": <Jetson−Pi 초>, "rtt_s": <왕복 초>}, …]`
+   (`research/soupdata/labels.py` `clock_offset`). 다른 형태로 하면 노트에 적어 Fedora가 맞춘다.
    장치 시각을 고치거나 사건 시각을 바꾸지 않는다 — 측정만 남긴다(보정은 Fedora 라벨 단계).
 7. **내보내기 확인** — `/api/sessions/{id}/export` json에 사건 `kind`·`value`·`occurred_at`·`late_entry`, `params`, 시계 오차가 모두 들어가는지.
 

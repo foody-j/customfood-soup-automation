@@ -32,7 +32,16 @@ $R research/tools/soupctl.py pull  $SRC <session_id>        # 종료·체크섬 
 $R research/tools/soupctl.py pi-meta http://<pi>:8100 <session_id>
 $R research/tools/soupctl.py qc <session_id> --out notes/data/experiments/YYYYMMDD_<session_id>.md
 $R research/tools/soupctl.py catalog
+$R research/tools/soupctl.py labels <session_id>      # 라벨 구간·경고·맛보기 불일치 확인
 ```
+
+## 데이터셋 버전 만들기
+
+```bash
+$R research/tools/soupctl.py build-dataset v1          # 검증 OK 세션 전부 → ~/soup-data/datasets/v1/
+```
+동결된 버전은 덮어쓰지 않는다(같은 이름이면 거부). 설명서 틀은 `research/DATASET.md`, 라벨 규칙은 `soupdata/labels.py` 머리말.
+PT100 보정값은 `~/soup-data/calibration.json`: `{"pt100_0": {"a": 1.0, "b": 0.0, "source": "…"}}`.
 
 - Jetson 원본 삭제는 하지 않는다. `verify/<id>.json`이 OK인 세션만 Jetson 담당에게 정리 가능하다고 알린다.
 - 검증에서 메타 파일(`session.json`·`events.jsonl`·`stats.jsonl`) 불일치는 경고다(체크섬 뒤 Jetson이 갱신할 수 있음).
@@ -44,5 +53,7 @@ $R research/tools/soupctl.py catalog
 - `soupdata/session.py` — 세션 읽기(스트림 목록·index·이미지 경로·배열 레코드·스칼라).
 - `soupdata/verify.py` — manifest 기준 sha256 전수 검증(디렉터리 규칙은 Jetson `compute_checksums`와 동일).
 - `soupdata/qc.py` — 스트림별 저장·미저장·fps·최대 간격, 값 범위, Pi 정답 사건, 카탈로그 행.
+- `soupdata/labels.py` — Pi 정답 사건 → 미완/완료/과조리 구간(시계 오차 보정, 누락·중복 경고, 맛보기 불일치).
+- `soupdata/dataset.py` — 세션 → 1 Hz 표(과거 샘플만 사용), 세션 단위 분할, 데이터셋 버전(parquet·summary).
 - `tools/soupctl.py` — CLI.
 - `tests/` — 가짜 세션을 **Jetson 실제 기록 코드**(StreamWriter·SessionStore)로 만들어 검증한다.

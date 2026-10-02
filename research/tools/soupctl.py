@@ -7,6 +7,8 @@
     soupctl.py pi-meta <PI_URL> <session_id> ...  Pi 세션 내보내기(json) 저장 → pi/<id>.json
     soupctl.py qc     <session_id> [--out FILE]   QC 요약 Markdown
     soupctl.py catalog                            catalog.csv 갱신
+    soupctl.py labels <session_id>                Pi 정답 사건 → 라벨 구간·경고·맛보기 불일치
+    soupctl.py build-dataset <version> [ids...]   datasets/<version>/ (세션별 parquet·splits·summary). 기존 버전 덮어쓰기 거부
 
 SRC: rsync 원본 위치. 원격 `user@host:/home/ubuntu/collector-data` 또는 로컬(외장 SSD) 경로.
 데이터 루트: `$SOUP_DATA_ROOT`(기본 `~/soup-data`) — raw/<id>, pi/<id>.json, verify/<id>.json, catalog.csv.
@@ -161,6 +163,31 @@ def cmd_catalog(a) -> int:
     return 0
 
 
+def cmd_labels(a) -> int:
+    from soupdata.labels import build_timeline
+
+    _, pi, _ = _load(a.session_id)
+    if pi is None:
+        print(f"{a.session_id}: Pi 내보내기 없음 — 먼저 pi-meta", file=sys.stderr)
+        return 1
+    print(json.dumps(build_timeline(pi).to_dict(), ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_build_dataset(a) -> int:
+    from soupdata.dataset import build_dataset
+
+    summary = build_dataset(data_root(), a.version, a.session_ids or None)
+    used = sum(len(v) for v in summary["splits"].values())
+    counts = {k: len(v) for k, v in summary["splits"].items()}
+    print(f"데이터셋 {a.version}: 세션 {used}개 사용 · 분할 {counts}")
+    print(f"행 라벨 분포: {summary['label_counts_rows']}")
+    for s in summary["sessions"]:
+        if s.get("skipped"):
+            print(f"  제외 {s['session_id']}: {s['skipped']}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -173,6 +200,9 @@ def main(argv: list[str] | None = None) -> int:
     s.set_defaults(fn=cmd_pi_meta)
     s = sub.add_parser("qc"); s.add_argument("session_id"); s.add_argument("--out"); s.set_defaults(fn=cmd_qc)
     s = sub.add_parser("catalog"); s.set_defaults(fn=cmd_catalog)
+    s = sub.add_parser("labels"); s.add_argument("session_id"); s.set_defaults(fn=cmd_labels)
+    s = sub.add_parser("build-dataset"); s.add_argument("version"); s.add_argument("session_ids", nargs="*")
+    s.set_defaults(fn=cmd_build_dataset)
     a = p.parse_args(argv)
     if shutil.which("rsync") is None and a.cmd in ("list", "pull"):
         print("rsync가 필요합니다", file=sys.stderr)
