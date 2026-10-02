@@ -2,6 +2,14 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-10-02 — Pi Gemini 2 제외 반영(`pi/drop-gemini`) · Jetson 물 끓이기 리허설 기록 병합
+
+- Pi: 기본 미리보기 2면(GMSL2 ①·②), 모의 센서와 프리셋 기본 센서에서 `cam_depth_0` 제거(4센서). 지시서 밖으로 프리셋
+  `TRIAL_SENSORS`도 뺐다 — Jetson은 미연결 센서를 요청하면 시작을 거절하므로. 과거 세션의 `cam_depth_0` 이력·내보내기 호환 테스트 추가.
+  Fedora 검토: 변경이 `pi-server/`·`notes/pi/`에 한정, `pytest` 60 통과. 실물 확인은 Jetson 재연결 후(상세 `notes/pi/drop-gemini.md`).
+- Jetson `jetson/boil-rehearsal`(09-28 물 10분, 이미 main 병합): 5센서 드롭 0, 인덕션 가열 중 SPI·I²C 오류 0.
+  PT100이 끓는 물에서 93 ℃대(탐침 깊이 부족 추정) → 깊게 고정 후 재확인, 안 되면 2점 보정. 상세 `notes/jetson/boil-rehearsal.md`.
+
 ## 2026-10-01 — Orbbec Gemini 2를 장비 구성에서 제외 (D-039)
 
 - GMSL2 카메라보다 습기에 약해 조리 증기 환경에 맞지 않아 뺀다. 모델 입력에 쓰지 않았으므로 모델 설계 영향 없음.
