@@ -2,6 +2,13 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-10-03 — Jetson 원본 정리 기능(`jetson-prune`) 준비
+
+- 사용자 제안: Jetson 공간이 부족하니 Fedora로 옮겨진 세션은 Jetson에서 지우되 직전 세션은 남긴다.
+  `soupctl.py jetson-prune`: Fedora 검증 OK·사본 존재 세션만, 최신 N개(기본 2) 보존, 삭제 직전 manifest·파일 수·크기 재대조,
+  촬영 중·Pi 무응답이면 중단, `--yes` 없으면 미리보기, 삭제 기록 `logs/prune.log`. 야간 작업에는 `--prune-keep`으로 연결(아직 끔).
+- 테스트 22개 통과(로컬 가짜 Jetson으로 삭제·보류·보존 확인). 실제 Jetson 대상 실행은 사용자가 미리보기로 확인한 뒤 켠다.
+
 ## 2026-10-03 — Pi 정답 사건·Jetson Gemini 제외 병합, 데이터 저장·로그 점검
 
 - 병합 `cfd7459`: `pi/doneness-marks`(정답 사건 6종·조건 키-값·데이터셋 프리셋·종료 전 경고·Pi↔Jetson 시계 오차, pytest 71)와

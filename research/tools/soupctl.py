@@ -11,6 +11,8 @@
     soupctl.py nightly <PI_URL> <SRC> [--until HH:MM] [--bwlimit KBPS]
                                                   야간 일괄: Pi DB 백업 → 새 세션 반출·검증 → Pi 내보내기 → QC → 카탈로그.
                                                   촬영 중이면 반출하지 않고, 반출 중 촬영이 시작되면 멈춘다(다음 밤에 이어 받음)
+    soupctl.py jetson-prune <PI_URL> <SRC> [--keep N] [--yes]
+                                                  Fedora 검증 OK 세션의 Jetson 원본 삭제(최신 N개는 남김). --yes 없으면 미리보기만
     soupctl.py labels <session_id>                Pi 정답 사건 → 라벨 구간·경고·맛보기 불일치
     soupctl.py build-dataset <version> [ids...]   datasets/<version>/ (세션별 parquet·splits·summary). 기존 버전 덮어쓰기 거부
 
@@ -284,7 +286,114 @@ def cmd_nightly(a) -> int:
         (root / "qc").mkdir(exist_ok=True)
         run(cmd_qc, argparse.Namespace(session_id=sid, out=str(root / "qc" / f"{sid}.md")))
     run(cmd_catalog, argparse.Namespace())
+    if a.prune_keep is not None:
+        log(f"Jetson 정리(검증 사본 있는 세션, 최신 {a.prune_keep}개 보존)")
+        fails += run(cmd_jetson_prune, argparse.Namespace(pi_url=a.pi_url, src=a.src, keep=a.prune_keep, yes=True)) != 0
     log(f"야간 작업 끝 — 받음 {len(pulled)}, 실패 {fails}")
+    return 1 if fails else 0
+
+
+SESSION_ID_RE = __import__("re").compile(r"^sess-\d{8}T\d{6}Z-[0-9A-Za-z]+$")
+
+
+def _split_src(src: str) -> tuple[str | None, str]:
+    """`host:/path` → (host, path), 로컬 경로 → (None, path)."""
+    if ":" in src and not src.startswith("/"):
+        host, path = src.split(":", 1)
+        return host, path.rstrip("/")
+    return None, src.rstrip("/")
+
+
+def _remote_dir_stats(src: str, sid: str) -> tuple[int, int] | None:
+    """Jetson 세션 디렉터리의 (파일 수, 총 바이트). 실패 시 None."""
+    host, base = _split_src(src)
+    if host is None:
+        p = Path(base) / sid
+        files = [f for f in p.rglob("*") if f.is_file()]
+        return len(files), sum(f.stat().st_size for f in files)
+    r = subprocess.run(["ssh", "-o", "BatchMode=yes", host, "find", f"{base}/{sid}", "-type", "f", "-printf", "'%s\\n'"],  # 원격 셸이 \n을 먹지 않게 따옴표
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        return None
+    sizes = [int(x) for x in r.stdout.split()]
+    return len(sizes), sum(sizes)
+
+
+def _local_dir_stats(p: Path) -> tuple[int, int]:
+    files = [f for f in p.rglob("*") if f.is_file()]
+    return len(files), sum(f.stat().st_size for f in files)
+
+
+def prune_plan(src: str, keep: int) -> tuple[list[str], list[tuple[str, str]]]:
+    """(지울 세션, [(남길 세션, 이유)]). 원격 목록 기준, 최신 `keep`개는 무조건 남긴다."""
+    root = data_root()
+    names = [n for n in (remote_sessions(src) or []) if n.startswith("sess-")]
+    names.sort(key=lambda n: n[5:21])  # sess-YYYYMMDDTHHMMSSZ 시각순
+    protected = set(names[-keep:]) if keep > 0 else set()
+    delete, kept = [], []
+    for sid in names:
+        if sid in protected:
+            kept.append((sid, f"최신 {keep}개"))
+            continue
+        if not SESSION_ID_RE.match(sid):
+            kept.append((sid, "세션 ID 형식 아님"))
+            continue
+        ver = read_json(root / "verify" / f"{sid}.json")
+        local = root / "raw" / sid
+        if not (ver and ver.get("ok") and local.is_dir() and (local / "manifest.json").is_file()):
+            kept.append((sid, "Fedora 검증 사본 없음"))
+            continue
+        delete.append(sid)
+    return delete, kept
+
+
+def cmd_jetson_prune(a) -> int:
+    """Fedora에 검증된 사본이 있는 세션만 Jetson에서 지운다. 지우기 직전에 한 번 더 대조한다.
+
+    안전장치: 촬영 중·Pi 응답 없음이면 중단 / 최신 N개 보존 / Fedora 검증 OK·사본 존재 / 원격·Fedora manifest 동일 /
+    파일 수·총 바이트 동일 / 세션 ID 형식 검사 / `--yes` 없으면 미리보기만. 삭제 기록은 `logs/prune.log`.
+    """
+    root = data_root()
+    active = pi_capture_active(a.pi_url)
+    if active is not False:
+        print("중단 — " + ("촬영 진행 중" if active else "Pi 상태 확인 불가"), file=sys.stderr)
+        return 1
+    delete, kept = prune_plan(a.src, a.keep)
+    for sid, why in kept:
+        print(f"  남김 {sid} ({why})")
+    if not delete:
+        print("지울 세션 없음")
+        return 0
+    host, base = _split_src(a.src)
+    fails = 0
+    (root / "logs").mkdir(parents=True, exist_ok=True)
+    for sid in delete:
+        local = root / "raw" / sid
+        with tempfile.TemporaryDirectory() as td:
+            r = _rsync([_src(a.src, sid, "manifest.json"), td + "/"])
+            remote_manifest = (Path(td) / "manifest.json").read_bytes() if r.returncode == 0 else None
+        if remote_manifest != (local / "manifest.json").read_bytes():
+            print(f"  보류 {sid}: Jetson manifest가 Fedora 사본과 다름", file=sys.stderr)
+            fails += 1
+            continue
+        rs, ls = _remote_dir_stats(a.src, sid), _local_dir_stats(local)
+        if rs != ls:
+            print(f"  보류 {sid}: 파일 수·크기 다름 (Jetson {rs}, Fedora {ls})", file=sys.stderr)
+            fails += 1
+            continue
+        if not a.yes:
+            print(f"  지울 예정 {sid} ({ls[0]}파일, {ls[1] / 1e9:.2f} GB) — 실제 삭제는 --yes")
+            continue
+        if host is None:
+            shutil.rmtree(Path(base) / sid)
+            ok = True
+        else:
+            ok = subprocess.run(["ssh", "-o", "BatchMode=yes", host, "rm", "-rf", "--", f"{base}/{sid}"]).returncode == 0
+        line = f"{__import__('datetime').datetime.now():%Y-%m-%d %H:%M:%S} {'삭제' if ok else '삭제 실패'} {a.src}/{sid} ({ls[0]}파일, {ls[1]} B)"
+        with open(root / "logs" / "prune.log", "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+        print("  " + line)
+        fails += not ok
     return 1 if fails else 0
 
 
@@ -367,7 +476,12 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--bwlimit", type=int, default=None, help="rsync 대역 제한 KB/s")
     s.add_argument("--keep", type=int, default=60, help="Pi DB 백업 보관 개수")
     s.add_argument("--since", default=None, help="YYYYMMDD — 세션 ID 날짜가 이 날 이후인 것만(과거 시험 세션 제외)")
+    s.add_argument("--prune-keep", type=int, default=None, help="주면 마지막에 jetson-prune --yes 실행(최신 N개 보존)")
     s.set_defaults(fn=cmd_nightly)
+    s = sub.add_parser("jetson-prune"); s.add_argument("pi_url"); s.add_argument("src")
+    s.add_argument("--keep", type=int, default=2, help="최신 N개는 검증 여부와 무관하게 남김")
+    s.add_argument("--yes", action="store_true", help="실제 삭제(없으면 미리보기)")
+    s.set_defaults(fn=cmd_jetson_prune)
     s = sub.add_parser("labels"); s.add_argument("session_id"); s.set_defaults(fn=cmd_labels)
     s = sub.add_parser("build-dataset"); s.add_argument("version"); s.add_argument("session_ids", nargs="*")
     s.set_defaults(fn=cmd_build_dataset)

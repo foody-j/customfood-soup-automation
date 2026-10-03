@@ -22,6 +22,10 @@
   rsync를 멈추고(부분 파일 보존) 다음 밤에 이어 받는다. Nice 10·IO idle.
 - **경로:** Fedora ↔ Pi는 Tailscale **직접 연결**(같은 공유기, `direct 192.168.0.47`, 외부 중계 없음), Pi ↔ Jetson은 직결 이더넷(10.42.0.0/24).
   실측 약 4.8 MB/s(병목 추정: 무선). 촬영 시간과 겹치지 않으므로 수집에 영향 없음.
+- **Jetson 원본 정리(제안, 켜기 전 사용자 확인):** `soupctl.py jetson-prune` — Fedora 검증 OK이고 사본이 있는 세션만 Jetson에서 지운다.
+  최신 2개는 무조건 보존. 지우기 직전 Jetson·Fedora의 manifest 동일, 파일 수·총 바이트 동일을 다시 대조하고, 촬영 중이거나 Pi 응답이 없으면 중단.
+  `--yes` 없으면 미리보기만. 기록 `~/soup-data/logs/prune.log`. 야간 작업에 넣으려면 서비스 `ExecStart`에 `--prune-keep 2`.
+  주의: 지운 뒤엔 원본이 Fedora 1벌뿐이다(백업 디스크 없음).
 - **외장 SSD는 예비:** 네트워크 장애 시 `soupctl.py pull <SSD>/collector-data <id>`.
 - 관리: 끄기 `systemctl --user disable --now soup-nightly.timer`, 다음 실행 `systemctl --user list-timers`, 수동 실행 `systemctl --user start soup-nightly`.
 

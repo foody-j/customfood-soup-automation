@@ -149,3 +149,37 @@ def test_nightly_pulls_new_sessions_and_skips_when_capturing(tmp_path, data_root
     state["active"] = None  # Pi 응답 없음 → 안전하게 반출 안 함
     soupctl.main(["nightly", "http://pi:8100", str(src), "--until", ""])
     assert not (data_root / "raw" / "sess-n3").exists()
+
+
+def _mk_sid(i: int) -> str:
+    return f"sess-2026101{i}T010000Z-ab{i}"
+
+
+def test_jetson_prune_only_verified_and_keeps_latest(tmp_path, data_root, monkeypatch):
+    src = tmp_path / "jetson"
+    for i in range(1, 6):
+        make_session(src, _mk_sid(i))
+    monkeypatch.setattr(soupctl, "pi_capture_active", lambda url: False)
+    for i in (1, 2, 3, 5):  # 4는 Fedora로 안 받음
+        assert soupctl.main(["pull", str(src), _mk_sid(i)]) == 0
+    # 미리보기: 아무것도 안 지움
+    assert soupctl.main(["jetson-prune", "http://pi", str(src), "--keep", "2"]) == 0
+    assert all((src / _mk_sid(i)).exists() for i in range(1, 6))
+    # 3번은 Jetson 쪽이 Fedora 사본과 달라짐(파일 추가) → 보류
+    (src / _mk_sid(3) / "extra.bin").write_bytes(b"x")
+    assert soupctl.main(["jetson-prune", "http://pi", str(src), "--keep", "2", "--yes"]) == 1
+    left = {p.name for p in src.iterdir()}
+    assert _mk_sid(1) not in left and _mk_sid(2) not in left          # 검증 OK·오래됨 → 삭제
+    assert {_mk_sid(3), _mk_sid(4), _mk_sid(5)} <= left                 # 불일치·미검증·최신
+    assert "삭제" in (data_root / "logs" / "prune.log").read_text()
+    assert (data_root / "raw" / _mk_sid(1)).is_dir()                    # Fedora 사본은 그대로
+
+
+def test_jetson_prune_refuses_while_capturing(tmp_path, data_root, monkeypatch):
+    src = tmp_path / "jetson"
+    make_session(src, _mk_sid(1))
+    assert soupctl.main(["pull", str(src), _mk_sid(1)]) == 0
+    for state in (True, None):
+        monkeypatch.setattr(soupctl, "pi_capture_active", lambda url, s=state: s)
+        assert soupctl.main(["jetson-prune", "http://pi", str(src), "--keep", "0", "--yes"]) == 1
+        assert (src / _mk_sid(1)).exists()
