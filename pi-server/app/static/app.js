@@ -37,7 +37,22 @@ const MARK_VIEW = {
   'mark.heat': '가열 변경',
   'mark.stir': '교반',
   'mark.note': '메모',
+  'mark.boil_start': '끓음 시작',
+  'mark.taste': '맛보기',
+  'mark.done_start': '완료 시작',
+  'mark.done_end': '완료 끝',
+  'mark.overcooked': '과조리',
+  'mark.lid': '뚜껑',
 };
+/** 사건 값 표시 이름(서버 MARK_VALUES와 같음). taste 값은 shared/schema.json doneness 문자열 */
+const MARK_VALUE_VIEW = {
+  undercooked: '미완', done: '완료', overcooked: '과조리', on: '덮음', off: '엶',
+};
+/** 데이터셋 세션에서 종료 전에 확인할 정답 사건(라벨의 기준점) */
+const DATASET_KEY_MARKS = { 'mark.done_start': '완료 시작', 'mark.overcooked': '과조리' };
+const PARAM_FIELDS = ['heat_level', 'water_added_ml', 'lid_initial', 'start_temp_c',
+  'probe_depth_mm', 'product_weight_g', 'taster'];
+const PARAM_TEXT = new Set(['lid_initial', 'taster']);
 
 const UNKNOWN = '미확인';
 let busy = false;
@@ -63,6 +78,14 @@ const PRESETS = {
     conditions: '가열 없음 · 전체 센서 수집 점검',
     note: '',
     max_duration_sec: 60,
+  },
+  dataset: {
+    // docs/cooking-protocol.md §4 — 과조리까지 촬영해야 3단계 라벨이 생긴다
+    name: '소고기무국 데이터셋',
+    ingredients: '비비고 소고기무국 2봉 — 실측 중량 ___ g',
+    conditions: '솥 24 cm·인덕션 중앙 · 출력 ___단 · 추가 물 ___ mL · 뚜껑 ___ · 시작 국물 ___ ℃ · 탐침 깊이 ___ mm',
+    note: '프로토콜 v0.1 — 재료 투입→가열 변경→끓음 시작→맛보기(2분, 완료 근처 1분)→완료 시작/끝→과조리(완료 끝 뒤 ≥10분)→가열 종료→1분 뒤 중지',
+    max_duration_sec: 3600,
   },
   trial: {
     name: '소고기무국 재가열 관찰',
@@ -265,11 +288,37 @@ function renderSession(s) {
     ${sess.conditions ? `<div class="session-meta">조건: ${escapeHtml(sess.conditions)}</div>` : ''}
     ${sess.note ? `<div class="session-meta">메모: ${escapeHtml(sess.note)}</div>` : ''}
     ${maxDurationLine(sess, active)}
+    ${paramsLine(sess)}
     ${endLine(sess)}
     <div class="session-meta">
       저장 결과: ${isLive(sess) ? '저장 안 함 (라이브 보기)'
         : sess.jetson_summary ? '확인됨' : `<b>${UNKNOWN}</b>`}
     </div>`;
+}
+
+const PARAM_VIEW = {
+  heat_level: ['출력', '단'], water_added_ml: ['추가 물', ' mL'], lid_initial: ['뚜껑', ''],
+  start_temp_c: ['시작', ' ℃'], probe_depth_mm: ['탐침', ' mm'], product_weight_g: ['중량', ' g'], taster: ['맛', ''],
+};
+
+/** 구조화 조건·시계 오차 한 줄. 빈 값은 '미기록'으로 보이게 해서 빠뜨린 칸을 알 수 있게 한다. */
+function paramsLine(sess) {
+  const parts = [];
+  if (sess.params) {
+    parts.push(Object.entries(PARAM_VIEW).map(([k, [label, unit]]) => {
+      const v = sess.params[k];
+      if (v == null) return `${label} <span class="muted">미기록</span>`;
+      const shown = k === 'lid_initial' ? (MARK_VALUE_VIEW[v] || v) : escapeHtml(v);
+      return `${label} ${shown}${unit}`;
+    }).join(' · '));
+  }
+  const offs = sess.clock_offsets || [];
+  if (offs.length) {
+    const best = offs.reduce((a, b) => ((b.rtt_s ?? 1e9) < (a.rtt_s ?? 1e9) ? b : a));
+    const off = Math.abs(best.offset_s) < 0.0005 ? 0 : best.offset_s;
+    parts.push(`시계 오차 Jetson−Pi ${off > 0 ? '+' : off < 0 ? '' : '±'}${off.toFixed(3)}초 (왕복 ${(best.rtt_s * 1000).toFixed(0)} ms, ${offs.length}회 측정)`);
+  }
+  return parts.map((p) => `<div class="session-meta">${p}</div>`).join('');
 }
 
 function maxDurationLine(sess, active) {
@@ -399,7 +448,9 @@ function renderEvents(rows) {
  *  최근 이벤트 목록에서 걸러내면 링크 상태 변화 같은 잦은 이벤트에 밀려 사라진다. */
 async function loadMarks() {
   try {
-    renderMarks(await api('/api/events?origin=manual&limit=10'));
+    // 진행 중인 세션이 있으면 그 세션 사건만(지난 실험 메모가 섞이지 않게)
+    const sid = lastStatus && lastStatus.active_session && lastStatus.active_session.session_id;
+    renderMarks(await api(`/api/events?origin=manual&limit=10${sid ? `&session_id=${encodeURIComponent(sid)}` : ''}`));
   } catch (_) { /* 다음 주기에 다시 */ }
 }
 
@@ -408,9 +459,11 @@ function renderMarks(marks) {
     ? marks.slice(0, 8).map((e) => {
         const when = e.occurred_at || e.ts;
         const late = e.occurred_at && e.occurred_at !== e.ts;
-        const kind = MARK_VIEW[e.code] || e.code;
+        const value = e.detail && e.detail.value;
+        const kind = (MARK_VIEW[e.code] || e.code) + (value ? `: ${MARK_VALUE_VIEW[value] || value}` : '');
         const text = (e.detail && e.detail.text) || '';
-        return `<li><span class="mark-time">${localTime(when)}</span>
+        return `<li class="mark-item" title="눌러서 정정 메모 쓰기"
+            data-fix="${escapeHtml(`정정: ${localTime(when)} ${kind} — `)}"><span class="mark-time">${localTime(when)}</span>
           <span class="mark-kind">${escapeHtml(kind)}</span>
           <span>${escapeHtml(text)}</span>
           ${late ? '<span class="pill wait">사후 입력</span>' : ''}</li>`;
@@ -470,6 +523,8 @@ function render(s) {
   $('btn-live').classList.toggle('hidden', !liveOk || !!s.active_session);
   $('btn-live').disabled = s.jetson_status !== 'online' || busy;
   document.querySelectorAll('.btn-mark').forEach((b) => { b.disabled = busy; });
+  // 조리 정답은 녹화 중인 세션에만 붙인다(라이브 보기·세션 없음이면 꺼 둠)
+  document.querySelectorAll('.btn-gt').forEach((b) => { b.disabled = busy || !recording; });
 
   const storage = s.report && s.report.storage;
   if (storage) {
@@ -586,6 +641,8 @@ function bind() {
       ingredients: $('in-ingredients').value || null,
       conditions: $('in-conditions').value || null,
     };
+    const params = collectParams();
+    if (params) body.params = params;
     const previewOn = $('in-preview').checked;
     try { localStorage.setItem('soup.previewOn', previewOn ? '1' : '0'); } catch (_) { /* 무시 */ }
     // 저장된 실험 설정을 그대로 쓰되 미리보기 켜기/끄기와 최대 촬영 시간은 **명시적으로** 보낸다
@@ -617,6 +674,8 @@ function bind() {
   }, $('capture-msg')));
 
   $('btn-stop').addEventListener('click', () => withBusy(async () => {
+    const warn = await missingDatasetMarks();
+    if (warn && !window.confirm(`정답 사건이 빠져 있습니다: ${warn}\n이대로면 이 세션은 라벨을 만들 수 없습니다(완료 시작·과조리가 기준점).\n\n그래도 중지할까요?`)) return null;
     const sess = await api('/api/capture/stop', { method: 'POST', body: JSON.stringify({}) });
     loadSessions();
     return `촬영 중지됨: ${sess.session_id} (${sess.state})`;
@@ -628,6 +687,7 @@ function bind() {
       const quick = btn.dataset.text || '';
       const body = {
         kind: btn.dataset.kind,
+        value: btn.dataset.value || null,
         text: (quick && typed ? `${quick} — ${typed}` : quick || typed) || null,
         occurred_at: markTimeToUtc(),
       };
@@ -679,6 +739,13 @@ function bind() {
     const sess = await api('/api/live/start', { method: 'POST', body: JSON.stringify({}) });
     return `라이브 보기 시작: ${sess.session_id} — 저장하지 않습니다. 최대 ${durationText(sess.config.max_duration_sec)} 뒤 자동 종료.`;
   }, $('capture-msg')));
+  $('btn-preset-dataset').addEventListener('click', () => applyPreset('dataset'));
+  $('mark-list').addEventListener('click', (ev) => {
+    const li = ev.target.closest('.mark-item');
+    if (!li) return;
+    $('mark-text').value = li.dataset.fix;  // 삭제 대신 정정 메모 — 원래 사건은 그대로 남는다
+    $('mark-text').focus();
+  });
   $('btn-preset-check').addEventListener('click', () => applyPreset('check'));
   $('btn-preset-trial').addEventListener('click', () => applyPreset('trial'));
 
@@ -715,6 +782,35 @@ async function saveMaxDuration() {
   if (lastStatus) renderPreflight(lastStatus);
 }
 
+/** 데이터셋 조건 칸 → params. 하나도 안 채웠고 데이터셋 프리셋도 아니면 null(보내지 않음). 빈 칸은 null. */
+function collectParams() {
+  const out = {};
+  let filled = false;
+  PARAM_FIELDS.forEach((k) => {
+    const raw = $(`p-${k}`).value.trim();
+    if (raw === '') { out[k] = null; return; }
+    filled = true;
+    out[k] = PARAM_TEXT.has(k) ? raw : Number(raw);
+  });
+  const dataset = (savedConfig.extra || {}).preset === 'dataset';
+  return filled || dataset ? out : null;
+}
+
+function isDatasetSession(sess) {
+  return !!(sess && sess.config && sess.config.extra && sess.config.extra.preset === 'dataset');
+}
+
+/** 데이터셋 세션인데 완료 시작·과조리 사건이 없으면 빠진 이름을 돌려준다(없으면 null). 중지는 막지 않는다. */
+async function missingDatasetMarks() {
+  const s = await api('/api/status');
+  const sess = s.active_session;
+  if (!isDatasetSession(sess)) return null;
+  const evs = await api(`/api/events?origin=manual&limit=500&session_id=${encodeURIComponent(sess.session_id)}`);
+  const seen = new Set(evs.map((e) => e.code));
+  const missing = Object.entries(DATASET_KEY_MARKS).filter(([code]) => !seen.has(code)).map(([, name]) => name);
+  return missing.length ? missing.join(', ') : null;
+}
+
 /** 프리셋: 입력칸을 채우고 센서·fps·최대 시간·미리보기를 실험 설정에 저장한다. 값은 모두 편집 가능. */
 function applyPreset(key) {
   const p = PRESETS[key];
@@ -728,8 +824,12 @@ function applyPreset(key) {
     const preview = { ...(saved.preview || {}), enabled: true, max_fps: 1 };
     savedConfig = await api('/api/config', {
       method: 'PUT',
-      body: JSON.stringify({ sensors: TRIAL_SENSORS, fps: 10, max_duration_sec: p.max_duration_sec, preview }),
+      body: JSON.stringify({
+        sensors: TRIAL_SENSORS, fps: 10, max_duration_sec: p.max_duration_sec, preview,
+        extra: { ...(saved.extra || {}), preset: key },  // 데이터셋 세션 구분(종료 전 정답 사건 확인)
+      }),
     });
+    $('params-box').open = key === 'dataset';
     setMaxDurationUi(p.max_duration_sec);
     fillConfigForm(savedConfig);
     return `프리셋 적용: ${p.name} — 센서 ${TRIAL_SENSORS.length}개·10 fps·미리보기 1 Hz·최대 ${durationText(p.max_duration_sec)}. ___ 칸은 현장 실측값으로 채우세요.`;

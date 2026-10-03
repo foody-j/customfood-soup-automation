@@ -356,3 +356,15 @@ input:focus, select:focus {
 @media (max-width: 520px) {
   .tab { flex: 1; padding: 9px 8px; font-size: 13.5px; }
 }
+
+/* ── 조리 정답 사건 · 데이터셋 조건 ─────────────────────────────────────── */
+.gt-head { margin-top: 16px; font-size: 13px; font-weight: 600; }
+.gt-head .muted { font-weight: 400; font-size: 12px; }
+.gt-row { margin-top: 8px; }
+.btn-gt { background: var(--blue-bg); border-color: rgba(60, 145, 190, .35); }
+.btn-gt.gt-key { background: var(--lavender-100); border-color: var(--lavender-300); font-weight: 600; }
+.mark-item { cursor: pointer; }
+.mark-item:hover { background: var(--gray-200); }
+.params-box { margin-top: 12px; border: 1px solid var(--gray-300); border-radius: var(--r-sm); padding: 8px 12px; background: #FFF; }
+.params-box summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--gray-700); }
+.params-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 10px; margin-top: 10px; }

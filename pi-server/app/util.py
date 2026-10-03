@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import secrets
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 
 def utcnow() -> datetime:
@@ -67,3 +67,23 @@ def monotonic() -> float:
 def elapsed_ms(started_monotonic: float) -> float:
     """monotonic 기준 경과시간(ms). 명령 왕복 지연 측정용."""
     return round((time.monotonic() - started_monotonic) * 1000, 1)
+
+
+def clock_sample(t_req: datetime, mono_req: float, mono_resp: float, device_time: str | None) -> dict | None:
+    """Pi↔Jetson 시계 오차 1회 측정. `offset_s = device_time − (t_req + t_resp)/2`(Jetson − Pi, 초).
+
+    요청·응답 사이 경과는 monotonic으로 재서 벽시계 보정에 흔들리지 않게 한다. 장치 시각이 없거나 읽을 수 없으면 None.
+    측정값만 돌려준다 — 어떤 시각도 고치지 않는다(보정은 Fedora 라벨 단계).
+    """
+    if not device_time:
+        return None
+    try:
+        dev = datetime.fromisoformat(device_time.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dev.tzinfo is None:
+        return None
+    rtt = max(0.0, mono_resp - mono_req)
+    mid = t_req + timedelta(seconds=rtt / 2)
+    return {"at": iso(mid), "offset_s": round((dev - mid).total_seconds(), 4), "rtt_s": round(rtt, 4)}
+

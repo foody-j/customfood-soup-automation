@@ -104,6 +104,8 @@ ADDED_COLUMNS: dict[str, dict[str, str]] = {
         "conditions": "TEXT",    # 실험 조건 (자유 텍스트)
         "jetson_summary": "TEXT",  # 종료 시점의 Jetson 저장 결과 요약(JSON)
         "jetson_end": "TEXT",      # Jetson이 보고한 종료 정보(stop_reason·end_reason·phases, JSON)
+        "params": "TEXT",          # 구조화된 실험 조건(SessionParams, JSON)
+        "clock_offsets": "TEXT",   # Pi↔Jetson 시계 오차 측정 목록(JSON 배열)
         "schema_version": "INTEGER",
     },
 }
@@ -113,6 +115,16 @@ ADDED_COLUMNS: dict[str, dict[str, str]] = {
 event_log = logging.getLogger("app.events")
 
 _LEVEL_TO_LOGGING = {"info": logging.INFO, "warn": logging.WARNING, "error": logging.ERROR}
+
+
+def _loads_list(raw: str | None) -> list[Any]:
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    return parsed if isinstance(parsed, list) else []
 
 
 def _loads(raw: str | None) -> dict[str, Any]:
@@ -355,6 +367,7 @@ class Database:
         allowed = {
             "name", "note", "state", "stopped_at", "config", "jetson_ack", "source",
             "ingredients", "conditions", "jetson_summary", "jetson_end", "project_id", "device_id",
+            "params", "clock_offsets",
         }
         sets: list[str] = []
         params: list[Any] = []
@@ -363,8 +376,10 @@ class Database:
                 raise KeyError(f"세션에 없는 필드: {key}")
             if key == "state" and isinstance(value, CaptureState):
                 value = value.value
-            if key in ("config", "jetson_summary", "jetson_end") and not isinstance(value, (str, type(None))):
+            if key in ("config", "jetson_summary", "jetson_end", "params") and not isinstance(value, (str, type(None))):
                 value = json.dumps(value or {}, ensure_ascii=False)
+            if key == "clock_offsets" and isinstance(value, list):
+                value = json.dumps(value, ensure_ascii=False)
             if key == "jetson_ack":
                 value = 1 if value else 0
             sets.append(f"{key} = ?")
@@ -424,6 +439,8 @@ class Database:
         data["config"] = _loads(data.get("config"))
         data["jetson_summary"] = _loads(data.get("jetson_summary")) or None
         data["jetson_end"] = _loads(data.get("jetson_end")) or None
+        data["params"] = _loads(data.get("params")) or None
+        data["clock_offsets"] = _loads_list(data.get("clock_offsets")) or None
         data["jetson_ack"] = bool(data.get("jetson_ack"))
         data.pop("updated_at", None)
         return data

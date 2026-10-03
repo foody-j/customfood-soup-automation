@@ -29,6 +29,7 @@ from .identity import Identity
 from .jetson.base import JetsonClient, JetsonError, JetsonUnreachable
 from .models import (
     MARK_LABELS,
+    MARK_VALUES,
     CaptureState,
     EventLevel,
     JetsonReport,
@@ -37,7 +38,7 @@ from .models import (
     StartCaptureRequest,
     StopCaptureRequest,
 )
-from .util import elapsed_ms, monotonic, new_request_id, new_session_id, utcnow_iso
+from .util import clock_sample, elapsed_ms, monotonic, new_request_id, new_session_id, utcnow, utcnow_iso
 
 log = logging.getLogger(__name__)
 
@@ -150,6 +151,9 @@ class CaptureService:
                 ingredients=req.ingredients,
                 conditions=req.conditions,
             )
+            if req.params is not None:
+                # 빈 값도 null로 함께 남긴다 — 어떤 칸을 비웠는지가 기록이다
+                self._db.update_session(session_id, params=req.params.model_dump())
             self._db.log_event(
                 level=EventLevel.INFO,
                 source=actor,
@@ -214,6 +218,7 @@ class CaptureService:
                     "jetson_state": ack.state.value,
                 },
             )
+            await self._record_clock(session_id, "start")
             return _to_info(self._db.get_session(session_id))  # type: ignore[return-value]
 
     # ── 중지 ───────────────────────────────────────────────────────────────
@@ -327,6 +332,7 @@ class CaptureService:
                     "latency_ms": latency_ms,
                 },
             )
+            await self._record_clock(session_id, "stop")
             return _to_info(self._db.get_session(session_id))  # type: ignore[return-value]
 
     # ── 실험 중 사건(수동 입력) ──────────────────────────────────────────────
@@ -341,6 +347,8 @@ class CaptureService:
             active = self._db.active_session()
             session_id = active["session_id"] if active else None
         label = MARK_LABELS[req.kind]
+        if req.value is not None:
+            label = f"{label}({MARK_VALUES[req.kind][req.value]})"
         text = (req.text or "").strip()
         late = bool(req.occurred_at)
         return self._db.log_event(
@@ -351,13 +359,20 @@ class CaptureService:
             session_id=session_id,
             origin="manual",
             occurred_at=req.occurred_at,
-            detail={"kind": req.kind.value, "text": text or None, "late_entry": late},
+            detail={
+                "kind": req.kind.value,
+                "value": req.value,  # Fedora research/soupdata/qc.py pi_marks가 읽는다
+                "text": text or None,
+                "late_entry": late,
+            },
         )
 
     # ── 재동기화 (프로브가 정상 응답을 받을 때마다 호출) ─────────────────────
-    async def reconcile(self, report: JetsonReport) -> None:
+    async def reconcile(self, report: JetsonReport, clock: dict | None = None) -> None:
         async with self._lock:
-            self._reconcile_locked(report)
+            finished = self._reconcile_locked(report)
+            if clock is not None:
+                self._note_clock_from_probe(report, clock, finished)
             self._absorb_end_info(report)
             self._absorb_storage_result(report)
             unconfirmed_live = self._check_live_confirmed(report)
@@ -393,7 +408,8 @@ class CaptureService:
             )
         return cap.session_id
 
-    def _reconcile_locked(self, report: JetsonReport) -> None:
+    def _reconcile_locked(self, report: JetsonReport) -> str | None:
+        """Pi 기록을 Jetson 사실에 맞춘다. 이번 조회로 종료가 확정된 세션 ID를 돌려준다(없으면 None)."""
         jetson_capture = report.capture
         jetson_id = jetson_capture.session_id
         jetson_active = jetson_capture.state in JETSON_LIVE_STATES and bool(jetson_id)
@@ -432,6 +448,7 @@ class CaptureService:
         if pi_row is not None and not jetson_active:
             # Pi는 진행 중으로 알고 있는데 Jetson은 아님
             if jetson_id == pi_row["session_id"] and jetson_capture.state in FINISHED_STATES:
+                finished = pi_row["session_id"]
                 self._db.update_session(
                     pi_row["session_id"],
                     state=jetson_capture.state,
@@ -452,6 +469,7 @@ class CaptureService:
                     session_id=pi_row["session_id"],
                     origin="jetson",
                 )
+                return finished
             else:
                 self._db.update_session(
                     pi_row["session_id"], state=CaptureState.UNKNOWN, stopped_at=utcnow_iso()
@@ -494,6 +512,39 @@ class CaptureService:
             origin="jetson",
             occurred_at=device_started_at,
         )
+
+    # ── Pi↔Jetson 시계 오차 기록(측정만, 보정은 Fedora 라벨 단계) ───────────
+    def _append_clock(self, session_id: str, sample: dict, event: str) -> None:
+        row = self._db.get_session(session_id)
+        if row is None:
+            return
+        items = list(row.get("clock_offsets") or [])
+        items.append({**sample, "event": event})
+        self._db.update_session(session_id, clock_offsets=items)
+
+    async def _record_clock(self, session_id: str, event: str) -> None:
+        """세션 시작·중지 직후 상태를 한 번 더 조회해 시계 오차를 잰다. 실패해도 조작은 성공으로 둔다."""
+        t_req, mono_req = utcnow(), monotonic()
+        try:
+            report = await self._jetson.fetch_status()
+        except (JetsonUnreachable, JetsonError) as exc:
+            log.info("시계 오차 측정 실패(%s, %s): %s", session_id, event, exc)
+            return
+        sample = clock_sample(t_req, mono_req, monotonic(), report.device_time)
+        if sample is not None:
+            self._append_clock(session_id, {**sample, "source": f"{event}_probe"}, event)
+
+    def _note_clock_from_probe(self, report: JetsonReport, clock: dict, finished: str | None) -> None:
+        """감시 프로브의 측정으로 빈 자리를 채운다: 시작 측정이 없는 진행 중 세션, Jetson이 스스로 끝낸 세션."""
+        if finished:
+            row = self._db.get_session(finished)
+            if row and not any(c.get("event") == "stop" for c in row.get("clock_offsets") or []):
+                self._append_clock(finished, clock, "stop")
+        cap = report.capture
+        if cap.session_id and cap.state in JETSON_LIVE_STATES:
+            row = self._db.get_session(cap.session_id)
+            if row and not row.get("clock_offsets"):
+                self._append_clock(cap.session_id, clock, "start")
 
     def _absorb_end_info(self, report: JetsonReport) -> None:
         """Jetson이 보고한 **종료 사실**(중지 사유·단계 시각·종료 이유)을 세션에 붙인다.

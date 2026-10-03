@@ -24,6 +24,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
 from fastapi import APIRouter, Body, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
@@ -58,6 +59,7 @@ from .models import (
     MarkRequest,
     MockPowerRequest,
     SessionInfo,
+    SessionParams,
     StartCaptureRequest,
     StatusResponse,
     StopCaptureRequest,
@@ -443,7 +445,7 @@ async def get_session(request: Request, session_id: str) -> SessionInfo:
 async def patch_session(
     request: Request, session_id: str, body: dict[str, Any] = Body(...)
 ) -> SessionInfo:
-    """실험 정보(이름·재료·조건·메모)를 나중에 보완한다.
+    """실험 정보(이름·재료·조건·메모·구조화 조건 params)를 나중에 보완한다.
 
     **설정 스냅샷(config)과 촬영 상태는 여기서 바꿀 수 없다** — 그건 기록이지
     편집 대상이 아니다. 변경 전후 값을 사건으로 남긴다.
@@ -452,8 +454,14 @@ async def patch_session(
     before = db.get_session(session_id)
     if before is None:
         raise HTTPException(status_code=404, detail=f"세션 없음: {session_id}")
-    editable = {"name", "note", "ingredients", "conditions"}
+    editable = {"name", "note", "ingredients", "conditions", "params"}
     changes = {k: v for k, v in body.items() if k in editable}
+    if "params" in changes and changes["params"] is not None:
+        # 구조화 조건은 같은 검사를 거친다(사후 보완). 통째로 바꾸고 이전 값은 사건에 남는다.
+        try:
+            changes["params"] = SessionParams.model_validate(changes["params"]).model_dump()
+        except ValidationError as exc:
+            raise HTTPException(status_code=422, detail=exc.errors(include_url=False)) from exc
     if not changes:
         raise HTTPException(
             status_code=400, detail=f"수정 가능한 항목: {', '.join(sorted(editable))}"

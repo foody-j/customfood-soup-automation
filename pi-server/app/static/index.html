@@ -49,6 +49,7 @@
         <span class="muted">프리셋</span>
         <button id="btn-preset-check" class="btn btn-small" type="button">점검 60초 (가열 없음)</button>
         <button id="btn-preset-trial" class="btn btn-small" type="button">소고기무국 재가열 관찰</button>
+        <button id="btn-preset-dataset" class="btn btn-small" type="button">소고기무국 데이터셋</button>
       </div>
       <div class="form">
         <label>실험 이름
@@ -64,6 +65,21 @@
           <input id="in-note" type="text" placeholder="변경점·특이사항" />
         </label>
       </div>
+      <!-- 데이터셋 조건 — 자유 문구와 별도로 숫자·선택값으로 저장(세션 params, 내보내기 포함). 비운 칸은 null -->
+      <details id="params-box" class="params-box">
+        <summary>데이터셋 조건 (구조화 값 — 비우면 '미기록')</summary>
+        <div class="params-grid">
+          <label>인덕션 출력(단) <input id="p-heat_level" type="number" step="0.5" min="0" max="30" /></label>
+          <label>추가 물(mL) <input id="p-water_added_ml" type="number" step="10" min="0" max="5000" /></label>
+          <label>뚜껑(시작)
+            <select id="p-lid_initial"><option value="">—</option><option value="on">덮음</option><option value="off">엶</option></select>
+          </label>
+          <label>시작 국물 온도(℃) <input id="p-start_temp_c" type="number" step="0.1" min="-20" max="120" /></label>
+          <label>탐침 깊이(mm) <input id="p-probe_depth_mm" type="number" step="1" min="0" max="500" /></label>
+          <label>실측 중량(g) <input id="p-product_weight_g" type="number" step="1" min="0" max="10000" /></label>
+          <label>맛본 사람(이니셜) <input id="p-taster" type="text" maxlength="20" /></label>
+        </div>
+      </details>
       <div class="form-row">
         <label>최대 촬영 시간
           <select id="in-maxdur">
@@ -120,6 +136,19 @@
         <button class="btn btn-mark btn-quick" data-kind="note" data-text="지속 끓음">지속 끓음</button>
         <button class="btn btn-mark btn-quick" data-kind="heat" data-text="가열 종료">가열 종료</button>
       </div>
+      <div class="gt-head">조리 정답 <span class="muted">— 녹화 중에만. 데이터셋 라벨로 그대로 쓰입니다(docs/cooking-protocol.md §4)</span></div>
+      <div class="btn-row mark-row gt-row">
+        <button class="btn btn-mark btn-gt" data-kind="boil_start">끓음 시작</button>
+        <button class="btn btn-mark btn-gt" data-kind="taste" data-value="undercooked">맛보기: 미완</button>
+        <button class="btn btn-mark btn-gt" data-kind="taste" data-value="done">맛보기: 완료</button>
+        <button class="btn btn-mark btn-gt" data-kind="taste" data-value="overcooked">맛보기: 과조리</button>
+        <button class="btn btn-mark btn-gt gt-key" data-kind="done_start">완료 시작</button>
+        <button class="btn btn-mark btn-gt gt-key" data-kind="done_end">완료 끝</button>
+        <button class="btn btn-mark btn-gt gt-key" data-kind="overcooked">과조리</button>
+        <button class="btn btn-mark btn-gt" data-kind="lid" data-value="on">뚜껑 덮음</button>
+        <button class="btn btn-mark btn-gt" data-kind="lid" data-value="off">뚜껑 엶</button>
+      </div>
+      <p class="hint">잘못 눌렀으면 지우지 말고 아래 목록에서 그 항목을 눌러 <b>메모로 정정</b>을 남기세요.</p>
       <p id="mark-msg" class="msg hidden"></p>
       <ul id="mark-list" class="mark-list"><li class="muted">기록된 사건 없음</li></ul>
     </section>

@@ -8,9 +8,9 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -207,6 +207,10 @@ class SessionInfo(BaseModel):
     jetson_summary: dict[str, Any] | None = None
     #: Jetson이 보고한 종료 정보(state·stop_reason·end_reason·phases·last_error). 받은 것만 담는다.
     jetson_end: dict[str, Any] | None = None
+    #: 구조화된 실험 조건(`SessionParams`). 없던 세션은 null.
+    params: dict[str, Any] | None = None
+    #: Pi↔Jetson 시계 오차 측정 `[{at, offset_s, rtt_s, event, source}]` — 측정만 남기고 시각을 고치지 않는다.
+    clock_offsets: list[dict[str, Any]] | None = None
     schema_version: int | None = None
 
 
@@ -251,6 +255,21 @@ class StatusResponse(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 # 요청 본문
 # ─────────────────────────────────────────────────────────────────────────────
+class SessionParams(BaseModel):
+    """데이터셋 세션의 구조화된 조건(`docs/cooking-protocol.md` §3·§4). 자유 문구 `conditions`와 함께 저장한다.
+
+    모르는 값은 비운다(null) — 0으로 채우지 않는다.
+    """
+
+    heat_level: float | None = Field(default=None, ge=0, le=30)          # 인덕션 출력 단계 숫자
+    water_added_ml: float | None = Field(default=None, ge=0, le=5000)
+    lid_initial: Literal["on", "off"] | None = None
+    start_temp_c: float | None = Field(default=None, ge=-20, le=120)     # 시작 국물 온도
+    probe_depth_mm: float | None = Field(default=None, ge=0, le=500)     # PT100 감지부 깊이
+    product_weight_g: float | None = Field(default=None, ge=0, le=10000)  # 실측 투입 중량
+    taster: str | None = Field(default=None, max_length=20)              # 맛본 사람 이니셜
+
+
 class StartCaptureRequest(BaseModel):
     name: str = Field(default="실험", min_length=1, max_length=120)
     note: str | None = Field(default=None, max_length=2000)
@@ -258,6 +277,8 @@ class StartCaptureRequest(BaseModel):
     config: dict[str, Any] | None = None
     ingredients: str | None = Field(default=None, max_length=2000)
     conditions: str | None = Field(default=None, max_length=2000)
+    #: 구조화된 조건(선택). 세션에 그대로 저장되고 내보내기에 실린다.
+    params: SessionParams | None = None
 
     @field_validator("config")
     @classmethod
@@ -338,6 +359,13 @@ class MarkKind(str, Enum):
     HEAT = "heat"              # 가열 변경
     STIR = "stir"              # 교반
     NOTE = "note"              # 자유 메모
+    # ── 조리 정답(데이터셋 라벨, docs/cooking-protocol.md §4) ──
+    BOIL_START = "boil_start"  # 끓음 시작(첫 기포)
+    TASTE = "taste"            # 맛보기 — value 필수: undercooked | done | overcooked
+    DONE_START = "done_start"  # 완료 시작(처음 먹기 좋다고 판단)
+    DONE_END = "done_end"      # 완료 끝(더 두면 품질 저하)
+    OVERCOOKED = "overcooked"  # 과조리
+    LID = "lid"                # 뚜껑 — value 필수: on | off
 
 
 MARK_LABELS = {
@@ -345,6 +373,18 @@ MARK_LABELS = {
     MarkKind.HEAT: "가열 변경",
     MarkKind.STIR: "교반",
     MarkKind.NOTE: "메모",
+    MarkKind.BOIL_START: "끓음 시작",
+    MarkKind.TASTE: "맛보기",
+    MarkKind.DONE_START: "완료 시작",
+    MarkKind.DONE_END: "완료 끝",
+    MarkKind.OVERCOOKED: "과조리",
+    MarkKind.LID: "뚜껑",
+}
+
+#: 값이 필요한 사건 종류와 허용값(표시 이름). taste 값은 `shared/schema.json` `doneness`와 같은 문자열이다.
+MARK_VALUES: dict[MarkKind, dict[str, str]] = {
+    MarkKind.TASTE: {"undercooked": "미완", "done": "완료", "overcooked": "과조리"},
+    MarkKind.LID: {"on": "덮음", "off": "엶"},
 }
 
 
@@ -356,9 +396,21 @@ class MarkRequest(BaseModel):
     """
 
     kind: MarkKind
+    #: 판정·상태 값. `taste`·`lid`는 필수, 그 밖의 종류는 받지 않는다(`MARK_VALUES`).
+    value: str | None = Field(default=None, max_length=40)
     text: str | None = Field(default=None, max_length=1000)
     occurred_at: str | None = None  # UTC ISO8601. 비우면 입력 시각과 같다고 본다
     session_id: str | None = None   # 비우면 현재 활성 세션에 붙인다
+
+    @model_validator(mode="after")
+    def _check_value(self) -> "MarkRequest":
+        allowed = MARK_VALUES.get(self.kind)
+        if allowed is None:
+            if self.value is not None:
+                raise ValueError(f"{self.kind.value} 사건은 value를 받지 않음")
+        elif self.value not in allowed:
+            raise ValueError(f"{self.kind.value} 사건의 value는 {' | '.join(allowed)} 중 하나여야 함")
+        return self
 
 
 class HostMetricInfo(BaseModel):

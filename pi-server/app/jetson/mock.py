@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import time
+from datetime import timedelta
 from typing import Any
 
 from ..config import Settings
@@ -31,7 +32,7 @@ from ..models import (
     StorageInfo,
     StorageResult,
 )
-from ..util import utcnow_iso
+from ..util import iso, utcnow, utcnow_iso
 from .base import JetsonUnreachable, PreviewArray, PreviewFrame
 
 # 현재 운영 구성 기준(notes/decisions.md D-030·D-031·D-039 — Gemini 2 제외).
@@ -91,6 +92,8 @@ class MockJetsonClient:
         self.pt100_invalid_reason: str | None = None
         #: 가장 최근에 닫힌 세션 스냅샷(실물의 `last_session`)
         self._last_session: dict[str, Any] | None = None
+        #: 모의 Jetson 시계가 Pi보다 앞선 정도(초). 시계 오차 측정 시험용.
+        self.clock_skew_sec = 0.0
         #: D-037 라이브 보기 지원 여부. False면 옛 Jetson처럼 `record`를 무시하고 녹화한다(시험용).
         self.live_view_supported = True
 
@@ -246,7 +249,7 @@ class MockJetsonClient:
         return JetsonReport(
             service="jetson-collector(mock)",
             version="0.0.0-mock",
-            device_time=utcnow_iso(),
+            device_time=iso(utcnow() + timedelta(seconds=self.clock_skew_sec)),
             uptime_sec=round(uptime, 1),
             accepting_new_capture=self._accepting,
             capture=self._capture.model_copy(deep=True),

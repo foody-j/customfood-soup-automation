@@ -34,14 +34,15 @@ from .models import (
     PowerState,
 )
 from .power import PowerController
-from .util import age_sec, iso, utcnow
+from .util import age_sec, clock_sample, iso, monotonic, utcnow
 
 log = logging.getLogger(__name__)
 
 #: 호스트가 올라온 뒤 이 시간 안에 서비스가 안 뜨면 "부팅 중"이 아니라 "서비스 다운"
 BOOT_GRACE_SEC = 90.0
 
-ReportHook = Callable[[JetsonReport], Awaitable[None]]
+#: 정상 응답마다 (보고, 시계 오차 측정 또는 None)으로 호출된다.
+ReportHook = Callable[[JetsonReport, "dict | None"], Awaitable[None]]
 
 
 class JetsonMonitor:
@@ -68,6 +69,8 @@ class JetsonMonitor:
         self.last_error: str | None = None
         self.last_report: JetsonReport | None = None
         self.last_report_at = None
+        #: 가장 최근 프로브의 Pi↔Jetson 시계 오차 측정
+        self.last_clock: dict | None = None
 
         self._task: asyncio.Task | None = None
         self._stop = asyncio.Event()
@@ -110,8 +113,14 @@ class JetsonMonitor:
         report: JetsonReport | None = None
         error: str | None = None
 
+        clock: dict | None = None
         try:
+            t_req, mono_req = utcnow(), monotonic()
             report = await self._jetson.fetch_status()
+            clock = clock_sample(t_req, mono_req, monotonic(), report.device_time)
+            if clock is not None:
+                clock["source"] = "monitor"
+                self.last_clock = clock
             state = LinkState.ONLINE
         except JetsonUnreachable as exc:
             error = str(exc)
@@ -169,7 +178,7 @@ class JetsonMonitor:
 
         if report is not None and self._on_report is not None:
             try:
-                await self._on_report(report)
+                await self._on_report(report, clock)
             except Exception:
                 log.exception("세션 재동기화 실패")
 
