@@ -94,6 +94,10 @@ def build_timeline(pi_export: dict[str, Any] | None, offset_s: float | None = No
     if src == "none":
         flags.append("시계 오차 측정 없음 — offset 0으로 가정")
 
+    bad = [m for m in marks if m["at"] and parse_utc(m["at"]) is None]
+    if bad:
+        flags.append(f"시각 형식 불량 사건 {len(bad)}건 제외: " + ", ".join(f"{m['kind']}={m['at']}" for m in bad[:3]))
+
     def first(kind: str) -> datetime | None:
         hits = sorted(t for t in (parse_utc(m["at"]) for m in marks if m["kind"] == kind) if t)
         if len(hits) > 1:
@@ -110,5 +114,5 @@ def build_timeline(pi_export: dict[str, Any] | None, offset_s: float | None = No
     for a, b, name in ((ds, de, "done_end"), (ds, oc, "overcooked"), (de, oc, "overcooked")):
         if a and b and b < a:
             flags.append(f"{name}가 앞 사건보다 이름 — 사건 순서 확인 필요")
-    tastes = [(parse_utc(m["at"]) + shift, m["value"]) for m in marks if m["kind"] == "taste" and m["at"]]
+    tastes = [(parse_utc(m["at"]) + shift, m["value"]) for m in marks if m["kind"] == "taste" and parse_utc(m["at"])]
     return LabelTimeline(ds, de, oc, off, src, flags, tastes)

@@ -110,3 +110,11 @@ def test_build_dataset_end_to_end(tmp_path, data_root):
     assert len(list((out / "sessions").glob("*.parquet"))) == 2
     with pytest.raises(FileExistsError):
         build_dataset(data_root, "v0")
+
+
+def test_bad_mark_time_is_flagged_not_crash():
+    exp = pi_export([("done_start", 60, None)])
+    exp["events"].append({"origin": "manual", "code": "mark.overcooked", "ts": "garbage", "occurred_at": "2026-10-20 10:00",
+                          "detail": {}})
+    tl = build_timeline(exp)
+    assert tl.overcooked is None and any("형식 불량" in f for f in tl.flags)

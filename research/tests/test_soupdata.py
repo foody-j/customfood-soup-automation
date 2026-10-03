@@ -106,3 +106,22 @@ def test_qc_counts_streams(session_dir):
     row = catalog_row(q, None)
     assert row["mark_done_start"] == 0 and row["verified"] is None
     assert "정답 사건 누락" in qc_markdown(q)
+
+
+def test_pi_backup_checks_integrity(tmp_path, data_root, monkeypatch):
+    import sqlite3
+    import urllib.request
+
+    db = tmp_path / "pi.sqlite3"
+    con = sqlite3.connect(db)
+    con.executescript("CREATE TABLE sessions(id); CREATE TABLE events(id); INSERT INTO sessions VALUES (1);")
+    con.commit(); con.close()
+    monkeypatch.setattr(urllib.request, "urlopen", lambda url, timeout=0: open(db, "rb"))
+    for _ in range(3):
+        assert soupctl.main(["pi-backup", "http://pi:8100", "--keep", "2"]) == 0
+    assert len(list((data_root / "pi-db").glob("pi-server-*.sqlite3"))) <= 2
+    bad = tmp_path / "bad.sqlite3"
+    bad.write_bytes(b"not a database" * 100)
+    monkeypatch.setattr(urllib.request, "urlopen", lambda url, timeout=0: open(bad, "rb"))
+    assert soupctl.main(["pi-backup", "http://pi:8100"]) == 1
+    assert list((data_root / "pi-db").glob(".pi-server-*.part"))  # 실패 사본은 확인용으로 남김

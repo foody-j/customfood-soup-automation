@@ -16,9 +16,14 @@ DONENESS_MARKS = ("boil_start", "taste", "done_start", "done_end", "overcooked",
 
 
 def parse_utc(s: str | None) -> datetime | None:
+    """UTC ISO8601 → aware datetime. 시간대 없는 값·해석 불가 값은 None(추정하지 않음 — 호출자가 누락으로 다룬다)."""
     if not s:
         return None
-    return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    try:
+        dt = datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return dt if dt.tzinfo is not None else None
 
 
 def stream_qc(sess: Session, sensor_id: str, stream_id: str) -> dict[str, Any]:

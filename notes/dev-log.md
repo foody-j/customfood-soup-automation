@@ -2,6 +2,16 @@
 
 > 의미 있는 작업을 할 때마다 **최신 항목을 위에** 추가한다. 형식: `## YYYY-MM-DD — 제목`
 
+## 2026-10-03 — Pi 정답 사건·Jetson Gemini 제외 병합, 데이터 저장·로그 점검
+
+- 병합 `cfd7459`: `pi/doneness-marks`(정답 사건 6종·조건 키-값·데이터셋 프리셋·종료 전 경고·Pi↔Jetson 시계 오차, pytest 71)와
+  `jetson/drop-gemini`(Gemini 기본 끔, 테스트 68). Pi 내보내기를 Fedora 라벨 코드로 읽어 형식·부호 일치 확인. `jetson/cook-ready`는 중간 기록이라 보류
+  (시계 오차 Pi−Jetson 약 1 ms, 체크섬 340~380 MB/s). 검토 기록 `notes/fedora/review-20261003.md`.
+- 저장·로그 점검: 수집 원본은 실물 검증됨. 구멍 — ① Pi DB(정답 사건의 유일한 원본) 백업 없음 → `soupctl.py pi-backup` 추가·첫 백업 OK,
+  ② Jetson 서비스 로그가 재부팅 시 사라짐 → Jetson 지시서, ③ 원본 사본 1개 → 백업 디스크 결정 필요.
+- 후속 지시서: Pi `marks-hardening`(사후 입력 시각 검증·프리셋 잔류·정정 메모 혼입·세션 없는 정답 사건), Jetson `journal-persist`.
+  Fedora 라벨 코드는 시각 형식 불량 사건을 경고로 제외(멈추지 않음). research 테스트 19개.
+
 ## 2026-10-02 — Fedora 서버 세팅 1차, 라벨·데이터셋 도구
 
 - 조리 시작이 10/20로 늦어 그 전까지 시스템 세팅과 도구를 먼저 끝낸다(로드맵 반영). GPU 드라이버는 모니터 없음·Secure Boot로 보류,

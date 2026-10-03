@@ -7,6 +7,7 @@
     soupctl.py pi-meta <PI_URL> <session_id> ...  Pi 세션 내보내기(json) 저장 → pi/<id>.json
     soupctl.py qc     <session_id> [--out FILE]   QC 요약 Markdown
     soupctl.py catalog                            catalog.csv 갱신
+    soupctl.py pi-backup <PI_URL> [--keep N]      Pi SQLite(정답 사건·조건이 있는 유일한 원본) 일관 백업 → pi-db/, 무결성 검사
     soupctl.py labels <session_id>                Pi 정답 사건 → 라벨 구간·경고·맛보기 불일치
     soupctl.py build-dataset <version> [ids...]   datasets/<version>/ (세션별 parquet·splits·summary). 기존 버전 덮어쓰기 거부
 
@@ -129,6 +130,38 @@ def cmd_pi_meta(a) -> int:
     return 0
 
 
+def cmd_pi_backup(a) -> int:
+    """Pi `/api/backup`(SQLite 온라인 백업 사본)을 받아 무결성 검사 후 보관. 오래된 사본은 `--keep`개만 남긴다."""
+    import sqlite3
+    from datetime import datetime, timezone
+
+    out_dir = data_root() / "pi-db"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    tmp = out_dir / f".pi-server-{stamp}.part"
+    with urllib.request.urlopen(f"{a.pi_url.rstrip('/')}/api/backup", timeout=120) as resp, open(tmp, "wb") as f:
+        shutil.copyfileobj(resp, f)
+    con = sqlite3.connect(f"file:{tmp}?mode=ro", uri=True)
+    try:
+        ok = con.execute("PRAGMA integrity_check").fetchone()[0]
+        n_sess = con.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+        n_ev = con.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+    except sqlite3.DatabaseError as exc:
+        ok = f"SQLite 아님/손상: {exc}"
+    finally:
+        con.close()
+    if ok != "ok":
+        print(f"Pi 백업 무결성 실패: {ok} — {tmp} 보존", file=sys.stderr)
+        return 1
+    final = out_dir / f"pi-server-{stamp}.sqlite3"
+    tmp.rename(final)
+    olds = sorted(out_dir.glob("pi-server-*.sqlite3"))[:-a.keep] if a.keep > 0 else []
+    for p in olds:
+        p.unlink()
+    print(f"Pi 백업 OK: {final.name} ({final.stat().st_size / 1e6:.1f} MB, 세션 {n_sess} · 사건 {n_ev}) · 보관 {a.keep}개")
+    return 0
+
+
 def _load(sid: str) -> tuple[Session, dict | None, dict | None]:
     root = data_root()
     return (Session(root / "raw" / sid), read_json(root / "pi" / f"{sid}.json"),
@@ -201,6 +234,8 @@ def main(argv: list[str] | None = None) -> int:
     s.set_defaults(fn=cmd_pi_meta)
     s = sub.add_parser("qc"); s.add_argument("session_id"); s.add_argument("--out"); s.set_defaults(fn=cmd_qc)
     s = sub.add_parser("catalog"); s.set_defaults(fn=cmd_catalog)
+    s = sub.add_parser("pi-backup"); s.add_argument("pi_url"); s.add_argument("--keep", type=int, default=60)
+    s.set_defaults(fn=cmd_pi_backup)
     s = sub.add_parser("labels"); s.add_argument("session_id"); s.set_defaults(fn=cmd_labels)
     s = sub.add_parser("build-dataset"); s.add_argument("version"); s.add_argument("session_ids", nargs="*")
     s.set_defaults(fn=cmd_build_dataset)

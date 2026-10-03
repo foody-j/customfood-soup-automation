@@ -43,6 +43,7 @@ $R research/tools/soupctl.py build-dataset v1          # 검증 OK 세션 전부
 동결된 버전은 덮어쓰지 않는다(같은 이름이면 거부). 설명서 틀은 `research/DATASET.md`, 라벨 규칙은 `soupdata/labels.py` 머리말.
 PT100 보정값은 `~/soup-data/calibration.json`: `{"pt100_0": {"a": 1.0, "b": 0.0, "source": "…"}}`.
 
+- Pi DB 백업: `$R research/tools/soupctl.py pi-backup http://100.92.124.114:8100` → `~/soup-data/pi-db/`(정답 사건의 유일한 원본이라 세션마다·매일).
 - Jetson 원본 삭제는 하지 않는다. `verify/<id>.json`이 OK인 세션만 Jetson 담당에게 정리 가능하다고 알린다.
 - 검증에서 메타 파일(`session.json`·`events.jsonl`·`stats.jsonl`) 불일치는 경고다(체크섬 뒤 Jetson이 갱신할 수 있음).
   데이터·인덱스 불일치는 실패다.
