@@ -99,6 +99,9 @@ class Settings:
     sensor_mode: str = SENSOR_MODE_MOCK
     #: GMSL2 카메라 노드(ISX031F, FG12-4CH). `auto`/`real`에서만 사용.
     v4l2_devices: tuple[str, ...] = ("/dev/video4",)
+    #: Orbbec Gemini 2(`cam_depth_0`)를 센서 구성에 넣을지. D-039로 장비 구성에서 빠져 기본 끔 —
+    #: 끄면 탐색(SDK ≈2 s)·보고·수집 모두 하지 않는다. 어댑터 코드와 과거 원본 읽기는 남긴다.
+    orbbec_enabled: bool = False
     #: 여러 Orbbec 장치가 연결된 경우 사용할 Gemini 2 시리얼. 비우면 첫 Gemini 2.
     orbbec_serial: str = ""
     #: 세션 설정에 fps가 없을 때 Gemini 2 세 스트림에 쓸 기본 fps. 0이면 SDK 기본(30).
@@ -200,6 +203,7 @@ class Settings:
             project_id=_env_str("COLLECTOR_PROJECT_ID", "customfood-soup"),
             sensor_mode=_env_str("COLLECTOR_SENSOR_MODE", SENSOR_MODE_MOCK),
             v4l2_devices=tuple(d.strip() for d in devices.split(",") if d.strip()),
+            orbbec_enabled=_env_bool("COLLECTOR_ORBBEC_ENABLED", False),
             orbbec_serial=_env_str("COLLECTOR_ORBBEC_SERIAL", ""),
             orbbec_fps=_env_int("COLLECTOR_ORBBEC_FPS", 10),
             probe_ttl_sec=_env_float("COLLECTOR_PROBE_TTL", 10.0),
