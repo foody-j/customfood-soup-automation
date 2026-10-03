@@ -125,3 +125,27 @@ def test_pi_backup_checks_integrity(tmp_path, data_root, monkeypatch):
     monkeypatch.setattr(urllib.request, "urlopen", lambda url, timeout=0: open(bad, "rb"))
     assert soupctl.main(["pi-backup", "http://pi:8100"]) == 1
     assert list((data_root / "pi-db").glob(".pi-server-*.part"))  # 실패 사본은 확인용으로 남김
+
+
+def test_nightly_pulls_new_sessions_and_skips_when_capturing(tmp_path, data_root, monkeypatch):
+    src = tmp_path / "jetson"
+    make_session(src, "sess-n1")
+    make_session(src, "sess-n2")
+    (src / "check-ignored").mkdir()
+    state = {"active": False}
+    monkeypatch.setattr(soupctl, "pi_capture_active", lambda url: state["active"])
+    monkeypatch.setattr(soupctl, "cmd_pi_backup", lambda a: 0)
+    monkeypatch.setattr(soupctl, "cmd_pi_meta", lambda a: 1)  # Pi 모름 → 경고만
+    assert soupctl.main(["nightly", "http://pi:8100", str(src), "--until", ""]) == 0
+    assert {p.name for p in (data_root / "raw").iterdir() if not p.name.startswith(".")} == {"sess-n1", "sess-n2"}
+    assert (data_root / "qc" / "sess-n1.md").is_file() and (data_root / "catalog.csv").is_file()
+    log = next((data_root / "logs").glob("nightly-*.log")).read_text()
+    assert "받음 2, 실패 0" in log
+    make_session(src, "sess-n3")
+    state["active"] = True
+    assert soupctl.main(["nightly", "http://pi:8100", str(src), "--until", ""]) == 0
+    assert not (data_root / "raw" / "sess-n3").exists()
+    assert "촬영 진행 중" in next((data_root / "logs").glob("nightly-*.log")).read_text()
+    state["active"] = None  # Pi 응답 없음 → 안전하게 반출 안 함
+    soupctl.main(["nightly", "http://pi:8100", str(src), "--until", ""])
+    assert not (data_root / "raw" / "sess-n3").exists()

@@ -8,6 +8,9 @@
     soupctl.py qc     <session_id> [--out FILE]   QC 요약 Markdown
     soupctl.py catalog                            catalog.csv 갱신
     soupctl.py pi-backup <PI_URL> [--keep N]      Pi SQLite(정답 사건·조건이 있는 유일한 원본) 일관 백업 → pi-db/, 무결성 검사
+    soupctl.py nightly <PI_URL> <SRC> [--until HH:MM] [--bwlimit KBPS]
+                                                  야간 일괄: Pi DB 백업 → 새 세션 반출·검증 → Pi 내보내기 → QC → 카탈로그.
+                                                  촬영 중이면 반출하지 않고, 반출 중 촬영이 시작되면 멈춘다(다음 밤에 이어 받음)
     soupctl.py labels <session_id>                Pi 정답 사건 → 라벨 구간·경고·맛보기 불일치
     soupctl.py build-dataset <version> [ids...]   datasets/<version>/ (세션별 parquet·splits·summary). 기존 버전 덮어쓰기 거부
 
@@ -50,53 +53,77 @@ def _rsync(args: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(["rsync", *args], capture_output=True, text=True)
 
 
-def cmd_list(a) -> int:
-    r = _rsync(["--list-only", _src(a.src, "")])
+def remote_sessions(src: str) -> list[str] | None:
+    r = _rsync(["--list-only", _src(src, "")])
     if r.returncode != 0:
         print(r.stderr, file=sys.stderr)
-        return r.returncode
-    names = sorted(ln.split()[-1] for ln in r.stdout.splitlines() if ln.startswith("d") and not ln.endswith(" ."))
+        return None
+    return sorted(ln.split()[-1] for ln in r.stdout.splitlines() if ln.startswith("d") and not ln.endswith(" ."))
+
+
+def cmd_list(a) -> int:
+    names = remote_sessions(a.src)
+    if names is None:
+        return 1
     have = {p.name for p in (data_root() / "raw").glob("*") if p.is_dir()}
     for n in names:
         print(("[받음] " if n in have else "       ") + n)
     return 0
 
 
-def cmd_pull(a) -> int:
+def pull_one(src: str, sid: str, *, allow_unverified: bool = False, should_abort=None,
+             bwlimit: int | None = None) -> str:
+    """세션 하나 반출. 반환: ok | exists | not_ready | fail | aborted.
+
+    `should_abort()`가 참이 되면(예: 새 촬영 시작) rsync를 멈춘다. `--partial`이라 다음 실행에서 이어 받는다.
+    """
     root = data_root()
+    final = root / "raw" / sid
+    if final.exists():
+        return "exists"
+    with tempfile.TemporaryDirectory() as td:
+        r = _rsync([_src(src, sid, "manifest.json"), td + "/"])
+        if r.returncode != 0:
+            print(f"{sid}: manifest를 가져오지 못함\n{r.stderr}", file=sys.stderr)
+            return "fail"
+        m = read_json(Path(td) / "manifest.json") or {}
+    if m.get("state") != "stopped" or (m.get("checksum_state") != "done" and not allow_unverified):
+        print(f"{sid}: 받지 않음 — state={m.get('state')} checksum_state={m.get('checksum_state')}", file=sys.stderr)
+        return "not_ready"
+    incoming = root / "raw" / ".incoming" / sid
+    incoming.mkdir(parents=True, exist_ok=True)
+    progress = ["--info=progress2"] if sys.stdout.isatty() else []
+    limit = [f"--bwlimit={bwlimit}"] if bwlimit else []
+    proc = subprocess.Popen(["rsync", "-a", "--partial", *progress, *limit, _src(src, sid) + "/", str(incoming) + "/"])
+    while proc.poll() is None:
+        try:
+            proc.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            if should_abort is not None and should_abort():
+                proc.terminate()
+                proc.wait()
+                print(f"{sid}: 중단(촬영 시작 등) — 다음 실행에서 이어 받는다", file=sys.stderr)
+                return "aborted"
+    if proc.returncode != 0:
+        print(f"{sid}: rsync 실패({proc.returncode}) — 다시 실행하면 이어 받는다", file=sys.stderr)
+        return "fail"
+    res = _save_verify(sid, incoming, require=not allow_unverified)
+    if not res["ok"]:
+        print(f"{sid}: 검증 실패 — {incoming}에 보존\n  " + "\n  ".join(res["problems"]), file=sys.stderr)
+        return "fail"
+    incoming.rename(final)
+    _save_verify(sid, final, require=not allow_unverified)  # 기록 경로를 확정 위치로(재해시 — 이동 뒤 상태 확인 겸)
+    print(f"{sid}: 받음·검증 OK (sha256 {res['checked']}건) → {final}")
+    return "ok"
+
+
+def cmd_pull(a) -> int:
     fails = 0
     for sid in a.session_ids:
-        final = root / "raw" / sid
-        if final.exists():
+        st = pull_one(a.src, sid, allow_unverified=a.allow_unverified)
+        if st == "exists":
             print(f"{sid}: 이미 있음 — 재검증은 verify")
-            continue
-        with tempfile.TemporaryDirectory() as td:
-            r = _rsync([_src(a.src, sid, "manifest.json"), td + "/"])
-            if r.returncode != 0:
-                print(f"{sid}: manifest를 가져오지 못함\n{r.stderr}", file=sys.stderr)
-                fails += 1
-                continue
-            m = read_json(Path(td) / "manifest.json") or {}
-        if m.get("state") != "stopped" or (m.get("checksum_state") != "done" and not a.allow_unverified):
-            print(f"{sid}: 받지 않음 — state={m.get('state')} checksum_state={m.get('checksum_state')}", file=sys.stderr)
-            fails += 1
-            continue
-        incoming = root / "raw" / ".incoming" / sid
-        incoming.mkdir(parents=True, exist_ok=True)
-        progress = ["--info=progress2"] if sys.stdout.isatty() else []
-        r = subprocess.run(["rsync", "-a", "--partial", *progress, _src(a.src, sid) + "/", str(incoming) + "/"])
-        if r.returncode != 0:
-            print(f"{sid}: rsync 실패({r.returncode}) — 다시 실행하면 이어 받는다", file=sys.stderr)
-            fails += 1
-            continue
-        res = _save_verify(sid, incoming, require=not a.allow_unverified)
-        if not res["ok"]:
-            print(f"{sid}: 검증 실패 — {incoming}에 보존\n  " + "\n  ".join(res["problems"]), file=sys.stderr)
-            fails += 1
-            continue
-        incoming.rename(final)
-        _save_verify(sid, final, require=not a.allow_unverified)  # 기록 경로를 확정 위치로(재해시 — 이동 뒤 상태 확인 겸)
-        print(f"{sid}: 받음·검증 OK (sha256 {res['checked']}건) → {final}")
+        fails += st in ("fail", "not_ready", "aborted")
     return 1 if fails else 0
 
 
@@ -160,6 +187,105 @@ def cmd_pi_backup(a) -> int:
         p.unlink()
     print(f"Pi 백업 OK: {final.name} ({final.stat().st_size / 1e6:.1f} MB, 세션 {n_sess} · 사건 {n_ev}) · 보관 {a.keep}개")
     return 0
+
+
+def pi_capture_active(pi_url: str) -> bool | None:
+    """Pi가 아는 진행 중 세션이 있으면 True, 없으면 False, Pi 응답이 없으면 None(모름 → 호출자가 안전하게 판단)."""
+    try:
+        with urllib.request.urlopen(f"{pi_url.rstrip('/')}/api/status", timeout=10) as resp:
+            return json.loads(resp.read().decode("utf-8")).get("active_session") is not None
+    except Exception:
+        return None
+
+
+def _past(until: str | None) -> bool:
+    if not until:
+        return False
+    from datetime import datetime
+
+    h, m = map(int, until.split(":"))
+    now = datetime.now()
+    return (now.hour, now.minute) >= (h, m) and now.hour < 18  # 밤을 넘겨 실행: 아침 마감 이후~저녁 전이면 마감
+
+
+def cmd_nightly(a) -> int:
+    """야간 일괄 작업. 결과는 화면과 `logs/nightly-YYYYMMDD.log`에 남긴다(로그 없으면 나중에 원인을 못 찾는다)."""
+    import contextlib
+    import io
+    from datetime import datetime
+
+    root = data_root()
+    (root / "logs").mkdir(parents=True, exist_ok=True)
+    log_path = root / "logs" / f"nightly-{datetime.now():%Y%m%d}.log"
+    lines: list[str] = []
+
+    def log(msg: str) -> None:
+        line = f"{datetime.now():%Y-%m-%d %H:%M:%S} {msg}"
+        print(line, flush=True)
+        lines.append(line)
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+
+    def run(fn, ns) -> int:
+        buf_out, buf_err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(buf_out), contextlib.redirect_stderr(buf_err):
+            try:
+                rc = fn(ns)
+            except Exception as exc:  # 한 단계가 실패해도 다음 단계는 돈다
+                print(f"예외: {exc!r}", file=sys.stderr)
+                rc = 1
+        for text in (buf_out.getvalue(), buf_err.getvalue()):
+            for ln in text.strip().splitlines():
+                log("  " + ln)
+        return rc
+
+    log(f"야간 작업 시작 — Pi {a.pi_url}, 원본 {a.src}, 마감 {a.until or '없음'}")
+    fails = 0
+    fails += run(cmd_pi_backup, argparse.Namespace(pi_url=a.pi_url, keep=a.keep)) != 0
+
+    active = pi_capture_active(a.pi_url)
+    names = remote_sessions(a.src) if active is False else None
+    if active is not False:
+        log("반출 건너뜀 — " + ("촬영 진행 중" if active else "Pi 상태 확인 불가(안전하게 중지)"))
+        names = []
+    elif names is None:
+        log("반출 건너뜀 — Jetson 세션 목록을 못 가져옴")
+        fails += 1
+        names = []
+    have = {p.name for p in (root / "raw").glob("*") if p.is_dir()}
+    todo = [n for n in names if n.startswith("sess-") and n not in have and n[5:13] >= (a.since or "")]
+    log(f"새 세션 {len(todo)}개: {', '.join(todo) or '-'}")
+    pulled = []
+    for sid in todo:
+        if _past(a.until):
+            log(f"마감 {a.until} 지남 — 남은 세션은 다음 밤에")
+            break
+        if pi_capture_active(a.pi_url) is not False:
+            log("촬영 시작(또는 Pi 확인 불가) — 반출 중지")
+            break
+        t0 = datetime.now()
+        buf_out, buf_err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(buf_out), contextlib.redirect_stderr(buf_err):
+            st = pull_one(a.src, sid, should_abort=lambda: pi_capture_active(a.pi_url) is not False or _past(a.until),
+                          bwlimit=a.bwlimit)
+        for text in (buf_out.getvalue(), buf_err.getvalue()):
+            for ln in text.strip().splitlines():
+                log("  " + ln)
+        log(f"{sid}: {st} ({(datetime.now() - t0).total_seconds():.0f} s)")
+        if st == "ok":
+            pulled.append(sid)
+        elif st in ("fail", "aborted"):
+            fails += st == "fail"
+            if st == "aborted":
+                break
+    for sid in pulled:
+        if run(cmd_pi_meta, argparse.Namespace(pi_url=a.pi_url, session_ids=[sid])) != 0:
+            log(f"  {sid}: Pi 내보내기 없음(Pi가 모르는 세션일 수 있음)")
+        (root / "qc").mkdir(exist_ok=True)
+        run(cmd_qc, argparse.Namespace(session_id=sid, out=str(root / "qc" / f"{sid}.md")))
+    run(cmd_catalog, argparse.Namespace())
+    log(f"야간 작업 끝 — 받음 {len(pulled)}, 실패 {fails}")
+    return 1 if fails else 0
 
 
 def _load(sid: str) -> tuple[Session, dict | None, dict | None]:
@@ -236,6 +362,12 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("catalog"); s.set_defaults(fn=cmd_catalog)
     s = sub.add_parser("pi-backup"); s.add_argument("pi_url"); s.add_argument("--keep", type=int, default=60)
     s.set_defaults(fn=cmd_pi_backup)
+    s = sub.add_parser("nightly"); s.add_argument("pi_url"); s.add_argument("src")
+    s.add_argument("--until", default="07:00", help="이 시각(로컬) 이후엔 새 반출을 시작하지 않고 진행 중인 것도 멈춘다")
+    s.add_argument("--bwlimit", type=int, default=None, help="rsync 대역 제한 KB/s")
+    s.add_argument("--keep", type=int, default=60, help="Pi DB 백업 보관 개수")
+    s.add_argument("--since", default=None, help="YYYYMMDD — 세션 ID 날짜가 이 날 이후인 것만(과거 시험 세션 제외)")
+    s.set_defaults(fn=cmd_nightly)
     s = sub.add_parser("labels"); s.add_argument("session_id"); s.set_defaults(fn=cmd_labels)
     s = sub.add_parser("build-dataset"); s.add_argument("version"); s.add_argument("session_ids", nargs="*")
     s.set_defaults(fn=cmd_build_dataset)

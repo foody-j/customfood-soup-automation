@@ -13,11 +13,17 @@
 | 보조 디스크 sdb1 (477 GB NTFS) | 대기 — 마운트에 사용자 인증 필요, 내용 미확인 |
 | Node/npm | 미설치(대시보드는 이번 범위 밖) |
 
-## 반출·접속 경로 (결정 2026-10-02)
-- **원본 반출은 외장 SSD로 물리적으로 한다**(사용자 결정). Jetson에서 SSD로 복사 → Fedora에 연결 →
-  `soupctl.py pull <SSD 마운트>/collector-data <id>` → sha256 전수 검증 후 `~/soup-data/raw/`로 확정.
-- 네트워크(`soup-pi` Tailscale `100.92.124.114` → `soup-jetson` Pi 점프)는 접속 확인·세션 목록·manifest 상태·Pi 내보내기 같은 소량 작업용.
-  실측: 9/28 세션 8.0 GB를 네트워크로 받는 데 약 30분(≈4.8 MB/s, Fedora 무선 + Pi 중계).
+## 반출·접속 경로 (결정 2026-10-03 — 10/02 SSD 결정을 대체)
+- **매일 밤 자동 반출:** Fedora 사용자 타이머 `~/.config/systemd/user/soup-nightly.{service,timer}` — 매일 01:00(±5분), 놓친 실행은
+  다음 부팅 때(`Persistent=true`). 실행 계정 linger 켬(로그인 없이 동작). 내용: `soupctl.py nightly` — Pi DB 백업 → `--since 20261003`
+  이후 새 `sess-*` 반출(종료·Jetson 체크섬 완료분만) → sha256 전수 검증 → Pi 내보내기 → QC(`~/soup-data/qc/`) → 카탈로그.
+  로그 `~/soup-data/logs/nightly-YYYYMMDD.log`, `journalctl --user -u soup-nightly`.
+- **안전장치:** Pi `/api/status`에 진행 중 세션이 있거나 Pi 응답이 없으면 반출하지 않는다. 반출 중 촬영이 시작되거나 07:00이 지나면
+  rsync를 멈추고(부분 파일 보존) 다음 밤에 이어 받는다. Nice 10·IO idle.
+- **경로:** Fedora ↔ Pi는 Tailscale **직접 연결**(같은 공유기, `direct 192.168.0.47`, 외부 중계 없음), Pi ↔ Jetson은 직결 이더넷(10.42.0.0/24).
+  실측 약 4.8 MB/s(병목 추정: 무선). 촬영 시간과 겹치지 않으므로 수집에 영향 없음.
+- **외장 SSD는 예비:** 네트워크 장애 시 `soupctl.py pull <SSD>/collector-data <id>`.
+- 관리: 끄기 `systemctl --user disable --now soup-nightly.timer`, 다음 실행 `systemctl --user list-timers`, 수동 실행 `systemctl --user start soup-nightly`.
 
 ## 사용자 작업
 1. Pi에서 `sudo tailscale up` (Pi가 Tailscale에 다시 보이게).

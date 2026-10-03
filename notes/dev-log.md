@@ -11,6 +11,8 @@
   ② Jetson 서비스 로그가 재부팅 시 사라짐 → Jetson 지시서, ③ 원본 사본 1개 → 백업 디스크 결정 필요.
 - 후속 지시서: Pi `marks-hardening`(사후 입력 시각 검증·프리셋 잔류·정정 메모 혼입·세션 없는 정답 사건), Jetson `journal-persist`.
   Fedora 라벨 코드는 시각 형식 불량 사건을 경고로 제외(멈추지 않음). research 테스트 19개.
+- 반출 방식 변경: **매일 밤 01:00 네트워크 자동 반출**(`soupctl.py nightly` + Fedora 사용자 타이머). 촬영 중 반출 안 함·촬영 시작 시 중단,
+  Pi DB 백업·QC·카탈로그까지 한 번에, 날짜별 로그. Fedora↔Pi Tailscale은 같은 공유기 직접 연결. 외장 SSD는 예비. 테스트 20개.
 
 ## 2026-10-02 — Fedora 서버 세팅 1차, 라벨·데이터셋 도구
 

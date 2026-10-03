@@ -26,7 +26,7 @@ catalog.csv              세션 목록·조건·정답 사건 수·검증 여부
 
 ```bash
 R=research/.venv/bin/python
-SRC=/run/media/$USER/<SSD>/collector-data          # 기본: 외장 SSD로 옮긴 원본. (소량·확인용 원격: soup-jetson:/home/ubuntu/collector-data)
+SRC=soup-jetson:/home/ubuntu/collector-data        # 기본: 네트워크(Pi 점프). 예비: /run/media/$USER/<SSD>/collector-data
 $R research/tools/soupctl.py list  $SRC
 $R research/tools/soupctl.py pull  $SRC <session_id>        # 종료·체크섬 완료 세션만, 검증 실패 시 확정 안 함
 $R research/tools/soupctl.py pi-meta http://<pi>:8100 <session_id>
@@ -34,6 +34,11 @@ $R research/tools/soupctl.py qc <session_id> --out notes/data/experiments/YYYYMM
 $R research/tools/soupctl.py catalog
 $R research/tools/soupctl.py labels <session_id>      # 라벨 구간·경고·맛보기 불일치 확인
 ```
+
+## 매일 밤 자동 처리
+
+Fedora 사용자 타이머 `soup-nightly`(01:00)가 `soupctl.py nightly`를 돌린다 — Pi DB 백업, 새 세션 반출·검증, Pi 내보내기, QC, 카탈로그.
+촬영 중이면 반출하지 않는다. 설정·관리 방법은 `notes/fedora/server-setup.md`.
 
 ## 데이터셋 버전 만들기
 
