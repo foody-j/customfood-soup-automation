@@ -183,3 +183,24 @@ def test_jetson_prune_refuses_while_capturing(tmp_path, data_root, monkeypatch):
         monkeypatch.setattr(soupctl, "pi_capture_active", lambda url, s=state: s)
         assert soupctl.main(["jetson-prune", "http://pi", str(src), "--keep", "0", "--yes"]) == 1
         assert (src / _mk_sid(1)).exists()
+
+
+def test_jetson_prune_only_when_space_is_low(tmp_path, data_root, monkeypatch):
+    src = tmp_path / "jetson"
+    for i in range(1, 6):
+        make_session(src, _mk_sid(i))
+        assert soupctl.main(["pull", str(src), _mk_sid(i)]) == 0
+    monkeypatch.setattr(soupctl, "pi_capture_active", lambda url: False)
+    one = soupctl._local_dir_stats(src / _mk_sid(1))[1]
+    # 여유 충분 → 아무것도 안 지움
+    monkeypatch.setattr(soupctl, "_remote_free_bytes", lambda s: 10**12)
+    assert soupctl.main(["jetson-prune", "http://pi", str(src), "--keep", "1", "--min-free-gb", "100", "--yes"]) == 0
+    assert len(list(src.iterdir())) == 5
+    # 기준까지 세션 2개분 부족 → 가장 오래된 2개만 지움
+    monkeypatch.setattr(soupctl, "_remote_free_bytes", lambda s: int(100e9) - int(1.5 * one))
+    assert soupctl.main(["jetson-prune", "http://pi", str(src), "--keep", "1", "--min-free-gb", "100", "--yes"]) == 0
+    assert {p.name for p in src.iterdir()} == {_mk_sid(3), _mk_sid(4), _mk_sid(5)}
+    # 공간 확인 실패 → 중단
+    monkeypatch.setattr(soupctl, "_remote_free_bytes", lambda s: None)
+    assert soupctl.main(["jetson-prune", "http://pi", str(src), "--keep", "1", "--min-free-gb", "100", "--yes"]) == 1
+    assert len(list(src.iterdir())) == 3

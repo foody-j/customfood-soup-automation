@@ -11,8 +11,9 @@
     soupctl.py nightly <PI_URL> <SRC> [--until HH:MM] [--bwlimit KBPS]
                                                   야간 일괄: Pi DB 백업 → 새 세션 반출·검증 → Pi 내보내기 → QC → 카탈로그.
                                                   촬영 중이면 반출하지 않고, 반출 중 촬영이 시작되면 멈춘다(다음 밤에 이어 받음)
-    soupctl.py jetson-prune <PI_URL> <SRC> [--keep N] [--yes]
-                                                  Fedora 검증 OK 세션의 Jetson 원본 삭제(최신 N개는 남김). --yes 없으면 미리보기만
+    soupctl.py jetson-prune <PI_URL> <SRC> [--keep N] [--min-free-gb G] [--yes]
+                                                  Fedora 검증 OK 세션의 Jetson 원본 삭제(최신 N개는 남김). --min-free-gb면
+                                                  여유가 G 밑일 때만 오래된 것부터 필요한 만큼. --yes 없으면 미리보기만
     soupctl.py labels <session_id>                Pi 정답 사건 → 라벨 구간·경고·맛보기 불일치
     soupctl.py build-dataset <version> [ids...]   datasets/<version>/ (세션별 parquet·splits·summary). 기존 버전 덮어쓰기 거부
 
@@ -288,7 +289,8 @@ def cmd_nightly(a) -> int:
     run(cmd_catalog, argparse.Namespace())
     if a.prune_keep is not None:
         log(f"Jetson 정리(검증 사본 있는 세션, 최신 {a.prune_keep}개 보존)")
-        fails += run(cmd_jetson_prune, argparse.Namespace(pi_url=a.pi_url, src=a.src, keep=a.prune_keep, yes=True)) != 0
+        fails += run(cmd_jetson_prune, argparse.Namespace(pi_url=a.pi_url, src=a.src, keep=a.prune_keep, yes=True,
+                                                          min_free_gb=a.prune_min_free_gb)) != 0
     log(f"야간 작업 끝 — 받음 {len(pulled)}, 실패 {fails}")
     return 1 if fails else 0
 
@@ -317,6 +319,19 @@ def _remote_dir_stats(src: str, sid: str) -> tuple[int, int] | None:
         return None
     sizes = [int(x) for x in r.stdout.split()]
     return len(sizes), sum(sizes)
+
+
+def _remote_free_bytes(src: str) -> int | None:
+    """Jetson 데이터 루트가 있는 파일 시스템의 남은 바이트. 실패 시 None."""
+    host, base = _split_src(src)
+    if host is None:
+        return shutil.disk_usage(base).free
+    r = subprocess.run(["ssh", "-o", "BatchMode=yes", host, "df", "-B1", "--output=avail", base],
+                       capture_output=True, text=True)
+    try:
+        return int(r.stdout.split()[-1]) if r.returncode == 0 else None
+    except (ValueError, IndexError):
+        return None
 
 
 def _local_dir_stats(p: Path) -> tuple[int, int]:
@@ -361,13 +376,28 @@ def cmd_jetson_prune(a) -> int:
     delete, kept = prune_plan(a.src, a.keep)
     for sid, why in kept:
         print(f"  남김 {sid} ({why})")
+    need = None  # 확보해야 할 바이트(여유 기준 모드). None이면 후보 전부
+    if a.min_free_gb is not None:
+        free = _remote_free_bytes(a.src)
+        if free is None:
+            print("중단 — Jetson 남은 공간을 확인하지 못함", file=sys.stderr)
+            return 1
+        target = int(a.min_free_gb * 1e9)
+        if free >= target:
+            print(f"Jetson 여유 {free / 1e9:.0f} GB ≥ 기준 {a.min_free_gb:g} GB — 지우지 않음(사본 2벌 유지)")
+            return 0
+        need = target - free
+        print(f"Jetson 여유 {free / 1e9:.0f} GB < 기준 {a.min_free_gb:g} GB — 오래된 것부터 {need / 1e9:.1f} GB 확보")
     if not delete:
-        print("지울 세션 없음")
-        return 0
+        print("지울 세션 없음" + (" — ⚠️ 기준 미달인데 Fedora 검증 사본이 있는 세션이 없다" if need else ""))
+        return 1 if need else 0
     host, base = _split_src(a.src)
     fails = 0
     (root / "logs").mkdir(parents=True, exist_ok=True)
-    for sid in delete:
+    freed = 0
+    for sid in delete:  # prune_plan이 시각순(오래된 것 먼저)으로 준다
+        if need is not None and freed >= need:
+            break
         local = root / "raw" / sid
         with tempfile.TemporaryDirectory() as td:
             r = _rsync([_src(a.src, sid, "manifest.json"), td + "/"])
@@ -383,6 +413,7 @@ def cmd_jetson_prune(a) -> int:
             continue
         if not a.yes:
             print(f"  지울 예정 {sid} ({ls[0]}파일, {ls[1] / 1e9:.2f} GB) — 실제 삭제는 --yes")
+            freed += ls[1]
             continue
         if host is None:
             shutil.rmtree(Path(base) / sid)
@@ -394,6 +425,7 @@ def cmd_jetson_prune(a) -> int:
             f.write(line + "\n")
         print("  " + line)
         fails += not ok
+        freed += ls[1] if ok else 0
     return 1 if fails else 0
 
 
@@ -477,10 +509,14 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--keep", type=int, default=60, help="Pi DB 백업 보관 개수")
     s.add_argument("--since", default=None, help="YYYYMMDD — 세션 ID 날짜가 이 날 이후인 것만(과거 시험 세션 제외)")
     s.add_argument("--prune-keep", type=int, default=None, help="주면 마지막에 jetson-prune --yes 실행(최신 N개 보존)")
+    s.add_argument("--prune-min-free-gb", type=float, default=100.0,
+                   help="야간 정리는 Jetson 여유가 이 값(GB) 밑일 때만, 오래된 것부터 기준을 넘길 만큼만")
     s.set_defaults(fn=cmd_nightly)
     s = sub.add_parser("jetson-prune"); s.add_argument("pi_url"); s.add_argument("src")
     s.add_argument("--keep", type=int, default=2, help="최신 N개는 검증 여부와 무관하게 남김")
     s.add_argument("--yes", action="store_true", help="실제 삭제(없으면 미리보기)")
+    s.add_argument("--min-free-gb", type=float, default=None,
+                   help="Jetson 여유가 이 값(GB) 이상이면 지우지 않고, 밑이면 오래된 것부터 기준을 넘길 만큼만 지운다")
     s.set_defaults(fn=cmd_jetson_prune)
     s = sub.add_parser("labels"); s.add_argument("session_id"); s.set_defaults(fn=cmd_labels)
     s = sub.add_parser("build-dataset"); s.add_argument("version"); s.add_argument("session_ids", nargs="*")
