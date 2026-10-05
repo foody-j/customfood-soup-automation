@@ -22,6 +22,8 @@
                                                   여러 세션 온도 곡선 비교(물 실험·같은 조건 반복): 표 + 겹친 그림 + 조건별 평균±표준편차
     soupctl.py calibrate [--ice-read R] [--boil-read R | --boil-session SID] [--boil-ref 100]
                                                   PT100 보정값(a·T+b) 계산 → calibration.json(이전 파일은 백업)
+    soupctl.py schedule [--seed N] [--soup 18] [--ref 5] [--water 6]
+                                                  실험 순서표(블록 무작위화 + 기준 반복 고르게) → schedule-<시드>.csv
     soupctl.py review <session_id> use|hold|drop [--reason TEXT]
                                                   세션 판정 기록(review.jsonl, 덧붙이기). 데이터셋은 hold·drop을 뺀다
     soupctl.py status [--src SRC]                 마지막 야간 작업·저장량·검증 실패·미판정·Pi 백업·(Jetson 여유) 한눈에
@@ -744,6 +746,27 @@ def cmd_calibrate(a) -> int:
     return 0
 
 
+def cmd_schedule(a) -> int:
+    from soupdata.design import make_schedule
+
+    sch = make_schedule(a.soup, a.ref, a.water, a.seed)
+    out = data_root() / f"schedule-{a.seed}.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["단계", "순서", "종류", "출력", "추가 물 mL", "뚜껑", "실제 세션 ID", "어긋남 메모"])
+        for stage in ("water", "soup"):
+            for r in sch[stage]:
+                w.writerow([stage, r["order"], r["kind"], r["heat"], "" if r["water_ml"] is None else r["water_ml"], r["lid"], "", ""])
+    print(f"시드 {a.seed} — 물 가열 {len(sch['water'])}회, 국 {len(sch['soup'])}회(기준 반복 {a.ref})")
+    print("| 단계 | 순서 | 종류 | 출력 | 추가 물 | 뚜껑 |\n|---|---|---|---|---|---|")
+    for stage, name in (("water", "물"), ("soup", "국")):
+        for r in sch[stage]:
+            print(f"| {name} | {r['order']} | {r['kind']} | {r['heat']} | {'' if r['water_ml'] is None else str(r['water_ml']) + ' mL'} | {r['lid']} |")
+    print(f"\n저장: {out} (실제 세션 ID·어긋남 칸은 실험하며 채운다)")
+    return 0
+
+
 def cmd_review(a) -> int:
     from soupdata.review import VERDICT_KO, add_review
 
@@ -937,6 +960,9 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("review"); s.add_argument("session_id"); s.add_argument("verdict", choices=["use", "hold", "drop"])
     s.add_argument("--reason"); s.set_defaults(fn=cmd_review)
     s = sub.add_parser("status"); s.add_argument("--src"); s.set_defaults(fn=cmd_status)
+    s = sub.add_parser("schedule"); s.add_argument("--seed", type=int, default=20261020)
+    s.add_argument("--soup", type=int, default=18); s.add_argument("--ref", type=int, default=5)
+    s.add_argument("--water", type=int, default=6); s.set_defaults(fn=cmd_schedule)
     s = sub.add_parser("heating"); s.add_argument("session_ids", nargs="+"); s.add_argument("--out")
     s.add_argument("--align", choices=["start", "boil"], default="start"); s.set_defaults(fn=cmd_heating)
     s = sub.add_parser("calibrate"); s.add_argument("--sensor", default="pt100_0")
