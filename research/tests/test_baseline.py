@@ -97,4 +97,5 @@ def test_learning_curve_and_cli(tmp_path, data_root):
     assert "trivial" in rep and "thermal" in rep and "학습 세션 수 곡선" in rep
     m = json.loads((out / "metrics.json").read_text())
     assert m["summary"]["thermal"]["folds"] == 5
+    assert m["provenance"]["dataset_fingerprint"] and "출처: 코드" in rep
     assert soupctl.main(["baseline", "없는버전"]) == 1

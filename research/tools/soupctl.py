@@ -605,11 +605,16 @@ def cmd_baseline(a) -> int:
     if a.train_sizes:
         sizes = [int(x) for x in a.train_sizes.split(",") if x.strip()]
         curve = {t: learning_curve(tables, t, sizes, **kw) for t in tracks}
-    report = report_markdown(a.version, sums, folds, summary.get("label_rules"), a.target, curve)
+    from soupdata.provenance import dataset_fingerprint, stamp, stamp_line
+
+    prov = stamp(dataset_version=a.version, dataset_fingerprint=dataset_fingerprint(vdir),
+                 dataset_built=(summary.get("provenance") or {}).get("created_at"), label_rules=summary.get("label_rules"),
+                 calibration=summary.get("calibration"))
+    report = report_markdown(a.version, sums, folds, summary.get("label_rules"), a.target, curve) + "\n" + stamp_line(prov) + "\n"
     out = data_root() / "results" / a.version / f"{datetime.now():%Y%m%dT%H%M%S}-{a.target}"
     out.mkdir(parents=True, exist_ok=True)
     per = {t: [{**asdict(r), "done_err_s": r.done_err_s, "over_err_s": r.over_err_s} for r in rs] for t, rs in folds.items()}
-    (out / "metrics.json").write_text(json.dumps({"version": a.version, "args": vars(a) | {"fn": None}, "summary": sums,
+    (out / "metrics.json").write_text(json.dumps({"version": a.version, "provenance": prov, "args": vars(a) | {"fn": None}, "summary": sums,
                                                   "folds": per, "learning_curve": curve}, ensure_ascii=False, indent=2,
                                                  default=str))
     (out / "report.md").write_text(report, encoding="utf-8")

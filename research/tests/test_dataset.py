@@ -124,6 +124,8 @@ def test_build_dataset_end_to_end(tmp_path, data_root):
     assert summary["label_counts_rows"] == {"none": 120}          # 가짜 PT100(25+i)은 끓는 구간 없음 → 객관 라벨 없음
     assert summary["label_rules"]["done_start"] == "boil" and "pt100_c" in summary["probe_columns"]
     assert set(summary["unreviewed_sessions"]) == {"sess-1", "sess-2"}
+    prov = summary["provenance"]
+    assert prov["dataset_fingerprint"] and prov["code"]["commit"] and prov["label_rules"]["done_start"] == "boil"
     assert len(list((out / "sessions").glob("*.parquet"))) == 2
     with pytest.raises(FileExistsError):
         build_dataset(data_root, "v0")

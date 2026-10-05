@@ -231,7 +231,12 @@ def build_dataset(data_root: Path, version: str, session_ids: list[str] | None =
         for col, acc in (("label", labels), ("label_sensory", labels_s)):
             for k, v in df[col].fillna("none").value_counts().items():
                 acc[k] = acc.get(k, 0) + int(v)
+    from .provenance import dataset_fingerprint, stamp
+
     summary = {"version": version, "built_from": str(raw), "calibration": calibration, "label_rules": rules.to_dict(),
+               "provenance": stamp(dataset_version=version, dataset_fingerprint=dataset_fingerprint(out),
+                                   label_rules=rules.to_dict(), calibration=calibration,
+                                   camera_features=camera_features, require_review=require_review),
                "probe_columns": list(PROBE_COLUMNS), "non_feature_columns": list(NON_FEATURE_COLUMNS),
                "splits": splits, "label_counts_rows": labels, "label_counts_rows_sensory": labels_s,
                "unreviewed_sessions": unreviewed, "sessions": infos}
