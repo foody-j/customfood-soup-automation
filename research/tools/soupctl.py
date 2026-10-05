@@ -16,6 +16,8 @@
                                                   Fedora 검증 OK 세션의 Jetson 원본 삭제(최신 N개는 남김). --min-free-gb면
                                                   여유가 G 밑일 때만 오래된 것부터 필요한 만큼. --yes 없으면 미리보기만
     soupctl.py labels <session_id>                객관 라벨(PT100 곡선, D-041)·관능 라벨(Pi 사건)·차이·가열 곡선 요약
+    soupctl.py baseline <version> [--tracks trivial,thermal,probe,all] [--target label] [--train-sizes 2,4,8]
+                                                  기준 모델 LOSO 평가 → results/<version>/<시각>/report.md·metrics.json
     soupctl.py review <session_id> use|hold|drop [--reason TEXT]
                                                   세션 판정 기록(review.jsonl, 덧붙이기). 데이터셋은 hold·drop을 뺀다
     soupctl.py status [--src SRC]                 마지막 야간 작업·저장량·검증 실패·미판정·Pi 백업·(Jetson 여유) 한눈에
@@ -527,6 +529,42 @@ def cmd_labels(a) -> int:
     return 0
 
 
+def cmd_baseline(a) -> int:
+    from dataclasses import asdict
+    from datetime import datetime
+
+    from soupdata.baseline import TRACKS, evaluate, learning_curve, load_dataset, report_markdown, summarize
+
+    vdir = data_root() / "datasets" / a.version
+    if not (vdir / "summary.json").exists():
+        print(f"데이터셋 없음: {vdir} — 먼저 build-dataset", file=sys.stderr)
+        return 1
+    tables, summary = load_dataset(vdir)
+    tracks = [t.strip() for t in a.tracks.split(",") if t.strip()]
+    bad = [t for t in tracks if t not in TRACKS]
+    if bad:
+        print(f"알 수 없는 트랙 {bad} — {TRACKS}", file=sys.stderr)
+        return 1
+    kw = {"target": a.target, "guard_s": a.guard_s, "train_step": a.train_step, "guard_train": a.guard_train}
+    folds = {t: evaluate(tables, t, **kw) for t in tracks}
+    sums = {t: summarize(folds[t]) for t in tracks}
+    curve = None
+    if a.train_sizes:
+        sizes = [int(x) for x in a.train_sizes.split(",") if x.strip()]
+        curve = {t: learning_curve(tables, t, sizes, **kw) for t in tracks}
+    report = report_markdown(a.version, sums, folds, summary.get("label_rules"), a.target, curve)
+    out = data_root() / "results" / a.version / f"{datetime.now():%Y%m%dT%H%M%S}-{a.target}"
+    out.mkdir(parents=True, exist_ok=True)
+    per = {t: [{**asdict(r), "done_err_s": r.done_err_s, "over_err_s": r.over_err_s} for r in rs] for t, rs in folds.items()}
+    (out / "metrics.json").write_text(json.dumps({"version": a.version, "args": vars(a) | {"fn": None}, "summary": sums,
+                                                  "folds": per, "learning_curve": curve}, ensure_ascii=False, indent=2,
+                                                 default=str))
+    (out / "report.md").write_text(report, encoding="utf-8")
+    print(report)
+    print(f"결과: {out}")
+    return 0 if any(s.get("folds") for s in sums.values()) else 1
+
+
 def cmd_review(a) -> int:
     from soupdata.review import VERDICT_KO, add_review
 
@@ -717,6 +755,14 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("review"); s.add_argument("session_id"); s.add_argument("verdict", choices=["use", "hold", "drop"])
     s.add_argument("--reason"); s.set_defaults(fn=cmd_review)
     s = sub.add_parser("status"); s.add_argument("--src"); s.set_defaults(fn=cmd_status)
+    s = sub.add_parser("baseline"); s.add_argument("version")
+    s.add_argument("--tracks", default="trivial,thermal,probe,all")
+    s.add_argument("--target", default="label", choices=["label", "label_sensory"])
+    s.add_argument("--guard-s", type=float, default=60.0, help="경계 ±초 — F1(경계 제외)·--guard-train에 사용")
+    s.add_argument("--train-step", type=int, default=5, help="학습 행을 N초마다 하나씩(이웃 프레임 상관 줄이기)")
+    s.add_argument("--guard-train", action="store_true", help="경계 ±guard 행을 학습에서 뺌")
+    s.add_argument("--train-sizes", help="학습 세션 수 곡선, 예: 2,4,8")
+    s.set_defaults(fn=cmd_baseline)
     s = sub.add_parser("weekly"); s.add_argument("--out"); s.set_defaults(fn=cmd_weekly)
     s = sub.add_parser("build-dataset"); s.add_argument("version"); s.add_argument("session_ids", nargs="*")
     s.add_argument("--rule", action="append", help="라벨 규칙 덮어쓰기 키=값(예: done_start=temp:75, overcooked=evap:0.1)")

@@ -76,6 +76,17 @@ PT100 보정값은 `~/soup-data/calibration.json`: `{"pt100_0": {"a": 1.0, "b": 
 - 검증에서 메타 파일(`session.json`·`events.jsonl`·`stats.jsonl`) 불일치는 경고다(체크섬 뒤 Jetson이 갱신할 수 있음).
   데이터·인덱스 불일치는 실패다.
 
+## 기준 모델 (문헌 조사 (A)안)
+
+```bash
+$R research/tools/soupctl.py baseline v1                        # trivial·thermal·probe·all 트랙 LOSO 평가
+$R research/tools/soupctl.py baseline v1 --train-sizes 4,8,12   # 학습 세션 수 곡선(데이터 더 필요한지)
+```
+- 트랙: **trivial**(경과 시간+조건 — 넘어야 할 기준선), **thermal**(탐침 없는 모델 — 연구 질문), probe·all(정답과 같은 출처라 참고용).
+- 지표: macro-F1(전체/경계 ±60초 제외), 정확도, 순서 오차, **완료 알림 시각 오차·조기 경보율·놓침률**, 과조리 경보 오차.
+  알림 규칙은 지수 평활 뒤 0.5 이상이 30초 이어지면 울림 — 이 확인 시간만큼(약 30~40초) 늦게 울리는 게 기본이다.
+- 결과: `~/soup-data/results/<버전>/<시각>-<정답>/report.md·metrics.json`. 카메라 특징은 `rgb_feat_*` 열이 생기면 자동 포함.
+
 ## 구조
 
 - `soupdata/jetson_storage.py` — Jetson `app/storage.py`를 독립 이름으로 불러 `unpack_record`를 재사용(형식 단일 출처).
@@ -85,6 +96,7 @@ PT100 보정값은 `~/soup-data/calibration.json`: `{"pt100_0": {"a": 1.0, "b": 
 - `soupdata/heating.py` — PT100 곡선: 끓기 시작·끓는 구간 온도(보정 점검)·기준 온도 유지·가열 속도·열량·조리값·증발 추정.
 - `soupdata/labels.py` — 객관 라벨 규칙(D-041)과 관능 라벨(Pi 사건, 시계 오차 보정·누락·중복 경고)·두 라벨의 차이.
 - `soupdata/review.py` — 세션 판정 기록(`review.jsonl`, 덧붙이기만).
+- `soupdata/baseline.py` — 수작업 특징(과거 창 30/120/300초) + HistGradientBoosting, 세션 단위 LOSO 평가·학습 곡선.
 - `soupdata/dataset.py` — 세션 → 1 Hz 표(과거 샘플만 사용), 세션 단위 분할, 데이터셋 버전(parquet·summary).
 - `tools/soupctl.py` — CLI.
 - `tests/` — 가짜 세션을 **Jetson 실제 기록 코드**(StreamWriter·SessionStore)로 만들어 검증한다.
