@@ -41,7 +41,7 @@
 - 30레시피·1,708세션. 목표 완료 이미지를 생성하고 현재 프레임과의 유사도(CIS)로 완료 판단. 5 TOPS NPU에서 유사도 0.3 s/장.
 - 재사용: **"현재 프레임 vs 기준 상태 거리"** 아이디어 → 본 과제에서는 생성 대신 *세션 첫 프레임/끓음 시작 프레임과의 임베딩 거리*를 피처로 쓰면 된다(조명 차이 상쇄). 기존 문서 §5의 "타깃 유사도 peak"의 출처.
 
-**[R4] (저자 미확인) (2026).** Temporal visual feature-guided cooking state detection for autonomous baking. *Journal of Food Measurement and Characterization*. https://link.springer.com/article/10.1007/s11694-026-04917-3 **[부분 — 저자·모델 크기 미확인]**
+**[R4] Yao, J., Yu, G., Wang, Z., Zhang, X., Qin, Z., Gu, X., Wu, Y., Xu, S., Tu, J., Peng, C. (2026).** Temporal visual feature-guided cooking state detection for autonomous baking. *Journal of Food Measurement and Characterization*. DOI: 10.1007/s11694-026-04917-3 **[부분 — 저자는 Crossref로 확인(10/05), 모델 크기 미확인]**
 - 같은 샘플의 **초기(raw) 이미지를 시간 기준**으로 삼아 현재 프레임·기준·시간 임베딩을 융합, 3단계(raw/partially/cooked) 95.7%.
 - 재사용: R3과 같은 결론 — **세션 내부 기준 대비 변화량**이 절대 외형보다 강건하다. 본 과제 (B)안의 "Δ임베딩" 피처 근거.
 
@@ -251,7 +251,7 @@ VRAM·시간은 **[추정]**(RTX 5070 Ti 16 GB, AMP 기준, 경험치).
 
 ## 6. 확인하지 못한 것 / 한계
 
-- R4 저자·모델 크기, R1·R2·R9·R13 본문 세부(페이월 403)는 검색 요약 기준. R11은 공식 페이지 문구 원문 대조 필요.
+- R4 모델 크기(저자는 10/05 Crossref로 확인), R1·R2·R9·R13 본문 세부(페이월 403)는 검색 요약 기준. 인용 파일은 `docs/references.bib`(Crossref·arXiv API 확인분만). R11은 공식 페이지 문구 원문 대조 필요.
 - FastViT-T8·EfficientViT-B1 top-1, MobileNetV3-Small 수치는 원문에서 직접 확인하지 않음(일반적으로 알려진 값 또는 미기재).
 - ViT-S/DINOv2의 Jetson Orin Nano TensorRT 지연, CPU 임베딩 처리량, 학습 VRAM은 모두 **[추정]** — 측정 전 확정 근거로 쓰지 말 것.
 - **국/탕(특히 레토르트 재가열) 도네스를 직접 다룬 논문은 이번에도 찾지 못했다.** 성능 수치는 인접 도메인(튀김·스테이크·베이킹·로봇 조리) 참고치이며, 본 과제의 결과 자체가 새 기여가 된다.

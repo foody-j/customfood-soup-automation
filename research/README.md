@@ -36,7 +36,7 @@ $R research/tools/soupctl.py pi-meta http://<pi>:8100 <session_id>
 $R research/tools/soupctl.py qc <session_id> --out notes/data/experiments/YYYYMMDD_<session_id>.md
 $R research/tools/soupctl.py catalog
 $R research/tools/soupctl.py labels <session_id>      # 객관 라벨(PT100 곡선)·관능 라벨(Pi 사건)·차이·가열 곡선
-$R research/tools/soupctl.py review <session_id> use   # 요약 이미지 보고 판정: use | hold --reason .. | drop --reason ..
+$R research/tools/soupctl.py review <session_id> use   # 요약 이미지 보고 판정: use | hold --reason "E3: .." | drop --reason "E2: .."
 $R research/tools/soupctl.py status --src soup-jetson:/home/ubuntu/collector-data   # 한눈에 보기
 $R research/tools/soupctl.py summary <session_id>     # 세션 요약 이미지 → ~/soup-data/summary/<id>.png
 ```
@@ -100,6 +100,20 @@ research/soup calibrate --ice-read 0.4 --boil-read 93.5      # 얼음물·끓는
 research/soup calibrate --boil-session <끓는 물 세션>          # 끓는 구간 평탄 온도로 1점(절편만) 보정
 ```
 
+## 논문 도구 (분석 계획서 `docs/analysis-plan.md`)
+
+```bash
+research/soup schedule --seed 20261020 --soup 18 --ref 5      # 실험 순서표(블록 무작위화 + 기준 반복) → ~/soup-data/schedule-<시드>.csv
+research/soup paper v1                                         # 표 5·그림 9(PNG 300 dpi·PDF) + stats.json·provenance.json → ~/soup-data/paper/v1/<시각>-en/
+research/soup paper v1 --lang ko --learning-curve 4,8,12       # 보고서용 한국어 그림, 학습 곡선 포함
+research/.venv/bin/python research/tools/make_bib.py --md docs/model-literature-2026-10.md \
+  --md notes/fedora/labeling-standard-recipe.md --titles docs/references-titles.txt --misc docs/references-misc.json --out docs/references.bib
+```
+- 통계(`soupdata/stats.py`): 세션 부트스트랩 95% CI, 짝지은 Wilcoxon(+Holm), Bland–Altman, 2차 가중 κ, 1차 가열 모델(τ), 조건 효과(Kruskal–Wallis·Spearman·OLS).
+- 출처 도장(`soupdata/provenance.py`): 데이터셋 summary·모델 결과·논문 묶음마다 코드 커밋(+수정 중 여부)·데이터셋 지문·라벨 규칙·보정값·패키지 버전.
+- 장비 사양 표(T2)는 `~/soup-data/paper_meta.json`으로 덮어쓸 수 있다(기본값은 저장소 문서 근거 + TBD).
+- 판정 이유 앞에 제외 코드(`E1`~`E6`, 분석 계획서 §5)를 붙이면 세션 흐름도가 사유별로 센다.
+
 ## 구조
 
 - `soupdata/jetson_storage.py` — Jetson `app/storage.py`를 독립 이름으로 불러 `unpack_record`를 재사용(형식 단일 출처).
@@ -111,6 +125,8 @@ research/soup calibrate --boil-session <끓는 물 세션>          # 끓는 구
 - `soupdata/review.py` — 세션 판정 기록(`review.jsonl`, 덧붙이기만).
 - `soupdata/baseline.py` — 수작업 특징(과거 창 30/120/300초) + HistGradientBoosting, 세션 단위 LOSO 평가·학습 곡선.
 - `soupdata/camera.py` — 프레임 선명도(초점·김 서림)·밝기·화면 정지 점검, 솥 영역 색(L*a*b*)·ΔE·움직임 특징.
+- `soupdata/design.py` — 실험 순서표. `soupdata/stats.py` — 논문 통계. `soupdata/provenance.py` — 출처 도장.
+- `soupdata/paper.py` — 논문용 표·그림 생성기. `tools/make_bib.py` — 참고문헌 BibTeX(공식 서지 API로만).
 - `soupdata/dataset.py` — 세션 → 1 Hz 표(과거 샘플만 사용), 세션 단위 분할, 데이터셋 버전(parquet·summary).
 - `tools/soupctl.py` — CLI.
 - `tests/` — 가짜 세션을 **Jetson 실제 기록 코드**(StreamWriter·SessionStore)로 만들어 검증한다.

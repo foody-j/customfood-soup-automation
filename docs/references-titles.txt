@@ -1,0 +1,8 @@
+# DOI·arXiv 번호가 문서에 없는 논문 — Crossref 제목 검색(제목 일치 0.9 이상일 때만 들어감)
+Construction of an intelligent recognition system for the cooking doneness of deep-fried golden pompano (Trachinotus ovatus) based on deep learning
+Prediction of cooking-induced food transformations: A survey and outlook toward machine learning
+Accurate predictions on small data with a tabular foundation model
+Design and Development of a Real-Time Camera-based Smart Cooking Assistant
+Variation in saltiness perception of soup with respect to soup serving temperature and consumer dietary habits
+Sensory characterization of chicken soup at different temperatures by using check-all-that-apply (CATA) analysis and temporal dominance of sensations (TDS)
+A Review of Hot Beverage Temperatures—Satisfying Consumer Preference and Safety
