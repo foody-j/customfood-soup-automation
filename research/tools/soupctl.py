@@ -22,6 +22,8 @@
                                                   여러 세션 온도 곡선 비교(물 실험·같은 조건 반복): 표 + 겹친 그림 + 조건별 평균±표준편차
     soupctl.py calibrate [--ice-read R] [--boil-read R | --boil-session SID] [--boil-ref 100]
                                                   PT100 보정값(a·T+b) 계산 → calibration.json(이전 파일은 백업)
+    soupctl.py paper <version> [--lang en|ko] [--tracks ...] [--session SID] [--learning-curve 4,8,12] [--no-importance]
+                                                  논문용 표 5개·그림 9개 + 통계·출처 도장 → paper/<version>/<시각>-<언어>/
     soupctl.py schedule [--seed N] [--soup 18] [--ref 5] [--water 6]
                                                   실험 순서표(블록 무작위화 + 기준 반복 고르게) → schedule-<시드>.csv
     soupctl.py review <session_id> use|hold|drop [--reason TEXT]
@@ -751,6 +753,22 @@ def cmd_calibrate(a) -> int:
     return 0
 
 
+def cmd_paper(a) -> int:
+    from soupdata.paper import build_paper
+
+    vdir = data_root() / "datasets" / a.version
+    if not (vdir / "summary.json").exists():
+        print(f"데이터셋 없음: {vdir} — 먼저 build-dataset", file=sys.stderr)
+        return 1
+    sizes = [int(x) for x in a.learning_curve.split(",")] if a.learning_curve else None
+    res = build_paper(data_root(), a.version, lang=a.lang, tracks=tuple(t.strip() for t in a.tracks.split(",")),
+                      session=a.session, learning_sizes=sizes, importance=not a.no_importance, target=a.target)
+    print(f"표 {sum(f.endswith('.md') for f in res['made']['tables'])}개 · 그림 {sum(f.endswith('.png') for f in res['made']['figures'])}개 → {res['out']}")
+    for n in res["notes"]:
+        print(f"  참고: {n}")
+    return 0
+
+
 def cmd_schedule(a) -> int:
     from soupdata.design import make_schedule
 
@@ -965,6 +983,10 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("review"); s.add_argument("session_id"); s.add_argument("verdict", choices=["use", "hold", "drop"])
     s.add_argument("--reason"); s.set_defaults(fn=cmd_review)
     s = sub.add_parser("status"); s.add_argument("--src"); s.set_defaults(fn=cmd_status)
+    s = sub.add_parser("paper"); s.add_argument("version"); s.add_argument("--lang", choices=["en", "ko"], default="en")
+    s.add_argument("--tracks", default="trivial,thermal,camera,noprobe,probe"); s.add_argument("--session")
+    s.add_argument("--learning-curve", help="학습 세션 수 곡선, 예: 4,8,12"); s.add_argument("--no-importance", action="store_true")
+    s.add_argument("--target", default="label", choices=["label", "label_sensory"]); s.set_defaults(fn=cmd_paper)
     s = sub.add_parser("schedule"); s.add_argument("--seed", type=int, default=20261020)
     s.add_argument("--soup", type=int, default=18); s.add_argument("--ref", type=int, default=5)
     s.add_argument("--water", type=int, default=6); s.set_defaults(fn=cmd_schedule)
