@@ -135,7 +135,7 @@ def test_nightly_pulls_new_sessions_and_skips_when_capturing(tmp_path, data_root
     state = {"active": False}
     monkeypatch.setattr(soupctl, "pi_capture_active", lambda url: state["active"])
     monkeypatch.setattr(soupctl, "cmd_pi_backup", lambda a: 0)
-    monkeypatch.setattr(soupctl, "cmd_pi_meta", lambda a: 1)  # Pi 모름 → 경고만
+    monkeypatch.setattr(soupctl, "refresh_pi_meta", lambda url, sids: ([], list(sids), []))  # Pi 모름 → 경고만
     assert soupctl.main(["nightly", "http://pi:8100", str(src), "--until", ""]) == 0
     assert {p.name for p in (data_root / "raw").iterdir() if not p.name.startswith(".")} == {"sess-n1", "sess-n2"}
     assert (data_root / "qc" / "sess-n1.md").is_file() and (data_root / "catalog.csv").is_file()
@@ -243,3 +243,19 @@ def test_review_status_weekly_cli(tmp_path, data_root, capsys):
     assert "판정: 사용 1 · 보류 0 · 제외 1" in text and "sess-20261020T010000Z-aa1" in text
     cat = (data_root / "catalog.csv").read_text()
     assert "review" in cat.splitlines()[0] and "카메라 김 서림" in cat
+
+
+def test_pi_refresh_saves_only_changes(tmp_path, data_root, monkeypatch):
+    bodies = {"s1": {"exported_at": "t1", "events": [1]}, "s2": None}
+    monkeypatch.setattr(soupctl, "fetch_pi_export", lambda url, sid: dict(bodies[sid]) if bodies[sid] else None)
+    assert soupctl.refresh_pi_meta("http://pi", ["s1", "s2"]) == (["s1"], ["s2"], [])
+    bodies["s1"]["exported_at"] = "t2"                     # 내보낸 시각만 다름 → 변화 없음
+    assert soupctl.refresh_pi_meta("http://pi", ["s1"]) == ([], [], [])
+    bodies["s1"]["events"] = [1, 2]                         # 사후 입력 추가 → 바뀜
+    assert soupctl.refresh_pi_meta("http://pi", ["s1"])[0] == ["s1"]
+
+    def boom(url, sid):
+        raise OSError("no route")
+    monkeypatch.setattr(soupctl, "fetch_pi_export", boom)
+    ch, un, fail = soupctl.refresh_pi_meta("http://pi", ["s1"])
+    assert ch == [] and fail and fail[0].startswith("s1")

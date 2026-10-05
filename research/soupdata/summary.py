@@ -93,6 +93,14 @@ def render_summary(sess: Session, out: Path, pi_export: dict[str, Any] | None = 
     heat, objective = hq.get("heating") or {}, hq.get("objective") or {}
     warn_flags = list(heat.get("flags") or []) + list(objective.get("flags") or [])
     cams = [r for r in refs if r.kind == IMAGE]
+    from .camera import camera_qc
+
+    cam_qc = {}
+    for r in cams:
+        try:
+            cam_qc[r.rel] = camera_qc(sess, r.sensor_id, r.stream_id, t0)
+        except Exception:  # 품질 지표 실패가 요약 이미지를 막지 않게
+            pass
     fig_h = 1.0 + 1.55 * len(cams) + 3.4 + 0.32 * max(len(refs), 1) + 0.6
     fig = plt.figure(figsize=(16, fig_h), dpi=110, facecolor=SURFACE)
     heights = [0.9] + [1.55] * len(cams) + [3.4, 0.32 * max(len(refs), 1) + 0.6]
@@ -125,7 +133,17 @@ def render_summary(sess: Session, out: Path, pi_export: dict[str, Any] | None = 
     for ci, r in enumerate(cams):
         ax = fig.add_subplot(gs[1 + ci]); ax.axis("off")
         th = _thumbs(sess, r.sensor_id, r.stream_id, t0, n_thumbs)
-        ax.text(-0.005, 0.5, r.sensor_id.replace("cam_", ""), transform=ax.transAxes, ha="right", va="center", fontsize=10, color=INK2)
+        ax.text(-0.005, 0.6, r.sensor_id.replace("cam_", ""), transform=ax.transAxes, ha="right", va="center", fontsize=10, color=INK2)
+        cq = cam_qc.get(r.rel)
+        if cq is not None:
+            if any("초점 흐림" in f for f in cq.flags):
+                tag = "⚠ 흐림"
+            elif any("김 서림" in f for f in cq.flags):
+                tag = f"⚠ 김 {cq.fog_first_min:.1f}분~" if cq.fog_first_min is not None else "⚠ 김 서림"
+            else:
+                tag = f"선명도 {cq.sharp_median:.0f}" if cq.sharp_median is not None else ""
+            ax.text(-0.005, 0.3, tag, transform=ax.transAxes, ha="right", va="center", fontsize=9,
+                    color=INK if tag.startswith("⚠") else MUTED, weight="bold" if tag.startswith("⚠") else "normal")
         w = 1.0 / max(len(th), 1)
         for k, (m, im) in enumerate(th):
             sub = ax.inset_axes([k * w + 0.002, 0.14, w - 0.004, 0.86]); sub.axis("off")

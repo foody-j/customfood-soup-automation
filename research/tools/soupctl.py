@@ -157,16 +157,53 @@ def cmd_verify(a) -> int:
     return 1 if bad else 0
 
 
-def cmd_pi_meta(a) -> int:
+def fetch_pi_export(pi_url: str, sid: str) -> dict | None:
+    """Pi 세션 내보내기(json). Pi가 모르는 세션(404)이면 None, 그 밖의 실패는 예외."""
+    import urllib.error
+
+    url = f"{pi_url.rstrip('/')}/api/sessions/{sid}/export?format=json"
+    try:
+        with urllib.request.urlopen(url, timeout=20) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
+
+
+def _strip_volatile(d: dict | None) -> dict | None:
+    return None if d is None else {k: v for k, v in d.items() if k != "exported_at"}
+
+
+def refresh_pi_meta(pi_url: str, sids: list[str]) -> tuple[list[str], list[str], list[str]]:
+    """세션들의 Pi 내보내기를 다시 받아 **내용이 바뀐 것만** 저장한다(사후 입력·조건 수정 반영).
+    반환: (바뀜, Pi가 모름, 실패)."""
     out_dir = data_root() / "pi"
     out_dir.mkdir(parents=True, exist_ok=True)
+    changed, unknown, failed = [], [], []
+    for sid in sids:
+        try:
+            body = fetch_pi_export(pi_url, sid)
+        except Exception as exc:  # Pi 무응답 등 — 다음 밤에 다시
+            failed.append(f"{sid}({type(exc).__name__})")
+            continue
+        if body is None:
+            unknown.append(sid)
+            continue
+        path = out_dir / f"{sid}.json"
+        if _strip_volatile(read_json(path)) != _strip_volatile(body):
+            path.write_text(json.dumps(body, ensure_ascii=False, indent=2))
+            changed.append(sid)
+    return changed, unknown, failed
+
+
+def cmd_pi_meta(a) -> int:
+    changed, unknown, failed = refresh_pi_meta(a.pi_url, a.session_ids)
     for sid in a.session_ids:
-        url = f"{a.pi_url.rstrip('/')}/api/sessions/{sid}/export?format=json"
-        with urllib.request.urlopen(url, timeout=20) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-        (out_dir / f"{sid}.json").write_text(json.dumps(body, ensure_ascii=False, indent=2))
-        print(f"{sid}: Pi 내보내기 저장 (사건 {body.get('counts', {}).get('events')}건)")
-    return 0
+        state = "바뀜·저장" if sid in changed else ("Pi에 없음" if sid in unknown else
+                                                   ("실패" if any(f.startswith(sid) for f in failed) else "변화 없음"))
+        print(f"{sid}: Pi 내보내기 {state}")
+    return 1 if failed else 0
 
 
 def cmd_pi_backup(a) -> int:
@@ -224,7 +261,7 @@ def cmd_nightly(a) -> int:
     """야간 일괄 작업. 결과는 화면과 `logs/nightly-YYYYMMDD.log`에 남긴다(로그 없으면 나중에 원인을 못 찾는다)."""
     import contextlib
     import io
-    from datetime import datetime
+    from datetime import datetime, timedelta
 
     root = data_root()
     (root / "logs").mkdir(parents=True, exist_ok=True)
@@ -290,10 +327,15 @@ def cmd_nightly(a) -> int:
             fails += st == "fail"
             if st == "aborted":
                 break
-    for sid in pulled:
-        if run(cmd_pi_meta, argparse.Namespace(pi_url=a.pi_url, session_ids=[sid])) != 0:
-            log(f"  {sid}: Pi 내보내기 없음(Pi가 모르는 세션일 수 있음)")
-        (root / "qc").mkdir(exist_ok=True)
+    # Pi 기록 다시 받기: 다음 날 사후 입력·조건 수정이 Fedora에 반영되게 최근 N일 + Pi 기록이 없는 세션
+    cut = (datetime.now() - timedelta(days=a.pi_refresh_days)).strftime("%Y%m%d")
+    have_now = sorted(p.name for p in (root / "raw").glob("sess-*") if p.is_dir())
+    refresh = [s for s in have_now if s[5:13] >= max(cut, a.since or "") or not (root / "pi" / f"{s}.json").exists()]
+    changed, unknown, failed = refresh_pi_meta(a.pi_url, refresh) if refresh else ([], [], [])
+    log(f"Pi 기록 확인 {len(refresh)}개 · 바뀜 {len(changed)}" + (f" ({', '.join(changed)})" if changed else "")
+        + (f" · Pi에 없음 {len(unknown)}" if unknown else "") + (f" · 실패 {', '.join(failed)}" if failed else ""))
+    (root / "qc").mkdir(exist_ok=True)
+    for sid in sorted(set(pulled) | set(changed)):  # 새로 받았거나 Pi 기록이 바뀐 세션만 QC·요약 다시
         run(cmd_qc, argparse.Namespace(session_id=sid, out=str(root / "qc" / f"{sid}.md")))
         run(cmd_summary, argparse.Namespace(session_id=sid, out=None))
     run(cmd_catalog, argparse.Namespace())
@@ -741,6 +783,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--keep", type=int, default=60, help="Pi DB 백업 보관 개수")
     s.add_argument("--since", default=None, help="YYYYMMDD — 세션 ID 날짜가 이 날 이후인 것만(과거 시험 세션 제외)")
     s.add_argument("--prune-keep", type=int, default=None, help="주면 마지막에 jetson-prune --yes 실행(최신 N개 보존)")
+    s.add_argument("--pi-refresh-days", type=int, default=7, help="최근 N일 세션의 Pi 기록을 매일 다시 받음(사후 입력 반영)")
     s.add_argument("--prune-min-free-gb", type=float, default=100.0,
                    help="야간 정리는 Jetson 여유가 이 값(GB) 밑일 때만, 오래된 것부터 기준을 넘길 만큼만")
     s.set_defaults(fn=cmd_nightly)

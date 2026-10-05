@@ -11,6 +11,10 @@ from typing import Any
 
 from .session import ARRAY, IMAGE, SCALAR, Session
 
+#: D-039 이후 데이터셋 기본 4센서 스트림 — 없으면 자동 경고
+EXPECTED_STREAMS = ("cam_rgb_0/rgb", "cam_rgb_1/rgb", "thermal_0/temp_array", "pt100_0/temp")
+CLOCK_OFFSET_WARN_S = 0.5
+
 #: Pi 정답 사건(`mark.<kind>`) — Pi `doneness-marks` 지시서 기준. 없는 사건은 0으로 센다.
 DONENESS_MARKS = ("boil_start", "taste", "done_start", "done_end", "overcooked", "lid")
 
@@ -95,7 +99,7 @@ def heating_qc(sess: Session, t0, pi_export: dict[str, Any] | None, calibration:
 
 
 def session_qc(sess: Session, pi_export: dict[str, Any] | None = None, calibration: dict[str, Any] | None = None,
-               rules=None) -> dict[str, Any]:
+               rules=None, camera_step_s: float | None = 10.0) -> dict[str, Any]:
     meta, manifest = sess.meta, sess.manifest or {}
     streams = []
     ranges: dict[str, Any] = {}
@@ -111,6 +115,15 @@ def session_qc(sess: Session, pi_export: dict[str, Any] | None = None, calibrati
     t0 = parse_utc(phases.get("running"))
     t1 = parse_utc(phases.get("stop_requested") or phases.get("stopping"))
     marks = pi_marks(pi_export)
+    cams = []
+    if camera_step_s and t0 is not None:
+        from .camera import camera_qc
+
+        cams = [camera_qc(sess, r.sensor_id, r.stream_id, t0, camera_step_s).to_dict()
+                for r in sess.streams() if r.kind == IMAGE]
+    from .labels import clock_offset
+
+    off, off_src = clock_offset(pi_export)
     return {
         "session_id": sess.session_id,
         "name": meta.get("name"),
@@ -124,8 +137,48 @@ def session_qc(sess: Session, pi_export: dict[str, Any] | None = None, calibrati
         "mark_counts": {k: sum(1 for m in marks if m["kind"] == k) for k in DONENESS_MARKS},
         "pi_params": ((pi_export or {}).get("session") or {}).get("params"),
         "pi_conditions": ((pi_export or {}).get("session") or {}).get("conditions"),
+        "pi_present": pi_export is not None,
+        "clock_offset_s": off if off_src != "none" else None,
+        "camera": cams,
         **heating_qc(sess, t0, pi_export, calibration, rules),
     }
+
+
+def auto_flags(q: dict[str, Any], verify: dict[str, Any] | None = None) -> list[str]:
+    """세션 하나의 자동 경고 — 사람이 요약 이미지를 보기 전에 문제를 먼저 알린다. 판정(사용/제외)은 사람이 한다."""
+    flags: list[str] = []
+    if verify is not None and not verify.get("ok"):
+        flags.append("무결성 문제: " + "; ".join(verify.get("problems", [])[:3]))
+    present = {s["stream"] for s in q["streams"]}
+    missing = [s for s in EXPECTED_STREAMS if s not in present]
+    if missing:
+        flags.append("기본 센서 스트림 없음: " + ", ".join(missing))
+    for st in q["streams"]:
+        if st["stored"] == 0:
+            flags.append(f"{st['stream']}: 저장된 샘플 0")
+            continue
+        if st["received"] and st["not_stored"] / st["received"] > 0.01:
+            why = ", ".join(f"{k} {v}" for k, v in st["not_stored_reasons"].items())
+            flags.append(f"{st['stream']}: 미저장 {st['not_stored'] / st['received']:.1%} ({why})")
+        if st["fps"] and st["max_gap_s"] and st["max_gap_s"] > max(5.0 / st["fps"], 3.0):
+            flags.append(f"{st['stream']}: 최대 수신 간격 {st['max_gap_s']:.1f}초(평소 {1 / st['fps']:.1f}초)")
+    for c in q.get("camera") or []:
+        flags += c.get("flags") or []
+    flags += list((q.get("heating") or {}).get("flags") or []) + list((q.get("objective") or {}).get("flags") or [])
+    if not q.get("pi_present"):
+        flags.append("Pi 내보내기 없음 — 조건·관능 사건 없음(다음 야간 작업에서 다시 받음)")
+    else:
+        if not q.get("pi_params"):
+            flags.append("Pi 조건 키-값(params) 없음 — 출력·물양·뚜껑·질량 기록 필요")
+        miss = [k for k in ("done_start", "overcooked") if q["mark_counts"].get(k, 0) == 0]
+        if miss:
+            flags.append("Pi 정답 사건 없음: " + ", ".join(miss))
+        off = q.get("clock_offset_s")
+        if off is None:
+            flags.append("Pi↔Jetson 시계 오차 측정 없음")
+        elif abs(off) > CLOCK_OFFSET_WARN_S:
+            flags.append(f"Pi↔Jetson 시계 오차 {off:+.2f}초 — {CLOCK_OFFSET_WARN_S:g}초 초과")
+    return flags
 
 
 def _min(s, t0_iso=None) -> str:
@@ -180,9 +233,14 @@ def qc_markdown(q: dict[str, Any], verify: dict[str, Any] | None = None) -> str:
                       for m in q["marks"]) or "- (Pi 정답 사건 없음 또는 Pi 내보내기 미수집)"
     missing = [k for k in ("done_start", "overcooked") if q["mark_counts"].get(k, 0) == 0]
     v = verify or {}
+    af = auto_flags(q, verify)
+    auto = "\n".join(f"- ⚠️ {f}" for f in af) or "- 없음"
     return f"""# 세션 QC — {q['session_id']}
 
 자동 생성(`research/tools/soupctl.py qc`). 해석·특이사항은 아래 "관찰"에 사람이 적는다.
+
+## 자동 경고 ({len(af)})
+{auto}
 
 - 이름: {q['name'] or '—'} · 상태: {q['state']} · 길이: {q['duration_s']} s
 - 저장 {s.get('frames_written', '—')} · 버림 {s.get('frames_dropped', '—')} · 무효 {s.get('frames_invalid', '—')} · {_gb(s.get('bytes_written'))}
@@ -218,6 +276,7 @@ def _gb(n) -> str:
 
 def catalog_row(q: dict[str, Any], verify: dict[str, Any] | None, review: dict[str, Any] | None = None) -> dict[str, Any]:
     s = q["summary"]
+    af = auto_flags(q, verify)
     row = {
         "session_id": q["session_id"], "name": q["name"], "state": q["state"], "duration_s": q["duration_s"],
         "frames_written": s.get("frames_written"), "frames_dropped": s.get("frames_dropped"),
@@ -240,6 +299,10 @@ def catalog_row(q: dict[str, Any], verify: dict[str, Any] | None, review: dict[s
         "evap_frac_est": r1(h.get("evap_frac"), 3),
         "objective_usable": o.get("usable"),
         "heating_flags": len(h.get("flags") or []) + len(o.get("flags") or []),
+        "auto_flag_count": len(af),
+        "auto_flags": " | ".join(af)[:500],
+        "camera_sharp_median": ";".join(f"{c['stream']}={c['sharp_median']:.0f}" for c in (q.get("camera") or [])
+                                        if c.get("sharp_median") is not None),
     })
     for k in DONENESS_MARKS:
         row[f"mark_{k}"] = q["mark_counts"][k]
