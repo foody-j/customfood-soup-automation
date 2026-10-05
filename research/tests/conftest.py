@@ -30,10 +30,14 @@ def _mods():
 
 
 def make_session(root: Path, sid: str = "sess-test-0001", *, frames: int = 5, state: str = "stopped",
-                 checksums: bool = True, start: datetime | None = None, step_s: float = 1.0) -> Path:
-    """`start`를 주면 샘플 i의 수신 시각을 start + i·step_s로 찍는다(긴 세션 흉내). 안 주면 실제 현재 시각."""
+                 checksums: bool = True, start: datetime | None = None, step_s: float = 1.0, pt100=None) -> Path:
+    """`start`를 주면 샘플 i의 수신 시각을 start + i·step_s로 찍는다(긴 세션 흉내). 안 주면 실제 현재 시각.
+    `pt100(i)`를 주면 i번째 PT100 온도(℃), 안 주면 25+i(끓는 구간 없음)."""
     st, base, clock, config = _mods()
-    settings = config.Settings()
+    import dataclasses
+
+    # 실제 기록기는 대기열이 넘치면 샘플을 버린다(근거 있는 누락). 테스트는 한꺼번에 넣으므로 대기열을 넉넉히 둔다.
+    settings = dataclasses.replace(config.Settings(), writer_queue_max=100_000)
     store = st.SessionStore(root, sid)
     store.create({"session_id": sid, "name": "테스트", "state": "running", "clock": clock.clock_relation()})
     def stamp(i: float):
@@ -60,7 +64,8 @@ def make_session(root: Path, sid: str = "sess-test-0001", *, frames: int = 5, st
             elif spec.data_kind == base.DATA_ARRAY:
                 smp = base.Sample("temp_array", i, host, None, np.full((24, 32), 20.0 + i, np.float32))
             else:
-                smp = base.Sample("temp", i, host, None, {"temp_c": 25.0 + i, "resistance_ohm": 110.0, "rtd_raw": 1})
+                temp = float(pt100(i)) if pt100 else 25.0 + i
+                smp = base.Sample("temp", i, host, None, {"temp_c": temp, "resistance_ohm": 110.0, "rtd_raw": 1})
             w.submit(smp)
     # 무효 샘플 1개(PT100 읽기 실패) — 미저장으로 세어야 한다
     writers[2][2].submit(base.Sample("temp", frames, stamp(frames), None, None, valid=False,

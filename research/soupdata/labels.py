@@ -116,3 +116,149 @@ def build_timeline(pi_export: dict[str, Any] | None, offset_s: float | None = No
             flags.append(f"{name}가 앞 사건보다 이름 — 사건 순서 확인 필요")
     tastes = [(parse_utc(m["at"]) + shift, m["value"]) for m in marks if m["kind"] == "taste" and parse_utc(m["at"])]
     return LabelTimeline(ds, de, oc, off, src, flags, tastes)
+
+
+# ── D-041: 객관 라벨(PT100 곡선 기준) ────────────────────────────────────────────
+# 정답의 기준점은 표준 레시피(레토르트는 포장지 조리법)이고 PT100 곡선으로 판정한다. 위의 Pi 사건 라벨(build_timeline)은
+# "관능 라벨"로 남겨 검증(시간차·맛보기 일치)에 쓴다.
+
+@dataclass
+class LabelRules:
+    """객관 라벨 규칙. 문자열 규칙:
+
+    done_start: ``boil``(끓기 시작, 기본 — 포장지 "끓을 때까지" 가정) | ``temp:75``(75 ℃를 hold_s 유지한 시각) |
+                ``c100:<분>``(조리값 누적이 목표에 닿은 시각 — 생재료 국의 표준 레시피 환산)
+    overcooked: ``mark``(Pi '과조리' 사건, 기본) | ``boil+<분>``(끓기 시작 후 N분) | ``evap:<비율>``(증발 추정 비율) |
+                ``c100:<분>`` | ``none``
+    """
+
+    done_start: str = "boil"
+    overcooked: str = "mark"
+    ref_c: float = 75.0
+    hold_s: float = 60.0
+    min_boil_c: float = 85.0
+    z: float = 33.0
+    guard_s: float = 60.0  # 경계 ±guard_s는 `boundary_dist_s`로 표시(학습 제외 여부는 모델 쪽에서)
+
+    def __post_init__(self) -> None:
+        if self.done_start.startswith("temp:"):  # 기준 온도는 규칙 숫자를 따른다(temp:70이면 70 ℃)
+            self.ref_c = float(_rule_value(self.done_start, "temp:"))
+
+    def to_dict(self) -> dict[str, Any]:
+        return dict(self.__dict__)
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any] | None) -> "LabelRules":
+        base = cls()
+        for k, v in (d or {}).items():
+            if hasattr(base, k):
+                setattr(base, k, type(getattr(base, k))(v))
+        base.__post_init__()
+        return base
+
+
+@dataclass
+class ObjectiveTimeline:
+    done_start: datetime | None
+    overcooked: datetime | None
+    done_source: str
+    over_source: str
+    flags: list[str] = field(default_factory=list)
+
+    @property
+    def usable(self) -> bool:
+        return self.done_start is not None
+
+    def label_at(self, t: datetime) -> str | None:
+        if self.done_start is None:
+            return None
+        if t < self.done_start:
+            return UNDERCOOKED
+        if self.overcooked is not None and t >= self.overcooked:
+            return OVERCOOKED
+        return DONE
+
+    def boundary_dist_s(self, t: datetime) -> float | None:
+        ds = [abs((t - b).total_seconds()) for b in (self.done_start, self.overcooked) if b is not None]
+        return min(ds) if ds else None
+
+    def to_dict(self) -> dict[str, Any]:
+        iso = lambda d: d.isoformat() if d else None  # noqa: E731
+        return {"done_start": iso(self.done_start), "overcooked": iso(self.overcooked), "done_source": self.done_source,
+                "over_source": self.over_source, "usable": self.usable, "flags": self.flags}
+
+
+def _rule_value(rule: str, prefix: str) -> float | None:
+    if not rule.startswith(prefix):
+        return None
+    try:
+        return float(rule[len(prefix):])
+    except ValueError:
+        raise ValueError(f"규칙 숫자 해석 불가: {rule!r}") from None
+
+
+def build_objective(curve, rules: LabelRules, sensory: LabelTimeline | None = None) -> ObjectiveTimeline:
+    """PT100 곡선(`heating.HeatingCurve`)과 규칙으로 객관 라벨 시각을 정한다. PT100은 Jetson 시계라 시계 보정이 필요 없다."""
+    from datetime import timedelta as _td
+
+    flags: list[str] = []
+    at = (lambda s: curve.t0 + _td(seconds=s) if s is not None else None)  # noqa: E731
+    r = rules.done_start
+    if r == "boil":
+        ds = at(curve.boil.onset_s)
+        if ds is None:
+            flags.append("끓기 시작을 못 찾음 — 객관 라벨 없음: " + "; ".join(curve.boil.flags))
+    elif r.startswith("temp:"):
+        thr = _rule_value(r, "temp:")
+        if thr != curve.ref_c:
+            raise ValueError(f"temp 규칙({thr:g})과 곡선 기준 온도({curve.ref_c:g})가 다르다 — 곡선을 rules.ref_c로 만든다")
+        ds = at(curve.ref_reached)
+        if ds is None:
+            flags.append(f"{thr:g} ℃ {rules.hold_s:g}초 유지 없음 — 객관 라벨 없음")
+    elif r.startswith("c100:"):
+        ds = at(curve.time_c100_reaches(_rule_value(r, "c100:")))
+        if ds is None:
+            flags.append(f"조리값이 {r} 목표에 못 닿음 — 객관 라벨 없음")
+    else:
+        raise ValueError(f"알 수 없는 done_start 규칙: {r!r}")
+    if not curve.calibrated and r.startswith(("temp:", "c100:")):
+        flags.append("PT100 보정 전 원값으로 판정 — 보정 후 다시 계산할 것")
+
+    o = rules.overcooked
+    if o == "mark":
+        oc = sensory.overcooked if sensory else None
+        if oc is None and ds is not None:
+            flags.append("Pi '과조리' 사건 없음 — 과조리 구간 없음")
+    elif o == "none":
+        oc = None
+    elif o.startswith("boil+"):
+        oc = at(curve.boil.onset_s + 60 * _rule_value(o, "boil+")) if curve.boil.onset_s is not None else None
+    elif o.startswith("evap:"):
+        oc = at(curve.time_evap_reaches(_rule_value(o, "evap:")))
+        if oc is None:
+            flags.append("증발 추정 불가(뚜껑·질량·열량) — 과조리 구간 없음")
+    elif o.startswith("c100:"):
+        oc = at(curve.time_c100_reaches(_rule_value(o, "c100:")))
+    else:
+        raise ValueError(f"알 수 없는 overcooked 규칙: {o!r}")
+    if ds is not None and oc is not None and oc <= ds:
+        flags.append("과조리 시각이 완료 시작보다 이르거나 같음 — 과조리 무시")
+        oc = None
+    return ObjectiveTimeline(ds, oc, r, o, flags)
+
+
+def agreement(obj: ObjectiveTimeline, sensory: LabelTimeline) -> dict[str, Any]:
+    """객관 라벨 vs 관능(Pi 사건) — 경계 시각 차이(초, 관능−객관)와 맛보기 판정 일치."""
+    def diff(a, b):
+        return round((b - a).total_seconds(), 1) if a is not None and b is not None else None
+
+    tastes = [(t, v) for t, v in sensory.tastes if v in DONENESS]
+    hits = [(v, obj.label_at(t)) for t, v in tastes if obj.label_at(t) is not None]
+    return {
+        "done_start_diff_s": diff(obj.done_start, sensory.done_start),
+        "overcooked_diff_s": diff(obj.overcooked, sensory.overcooked),
+        "tastes": len(tastes),
+        "tastes_compared": len(hits),
+        "tastes_agree": sum(1 for v, lab in hits if v == lab),
+        "taste_pairs": [{"taste": v, "objective": lab} for v, lab in hits],
+    }

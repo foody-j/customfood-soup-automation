@@ -76,7 +76,26 @@ def pi_marks(pi_export: dict[str, Any] | None) -> list[dict[str, Any]]:
     return out
 
 
-def session_qc(sess: Session, pi_export: dict[str, Any] | None = None) -> dict[str, Any]:
+def heating_qc(sess: Session, t0, pi_export: dict[str, Any] | None, calibration: dict[str, Any] | None,
+               rules=None) -> dict[str, Any]:
+    """PT100 곡선 분석 + 객관 라벨(D-041) + 관능(Pi 사건)과의 차이. PT100이 없으면 빈 dict."""
+    from .dataset import session_curve
+    from .labels import LabelRules, agreement, build_objective, build_timeline
+
+    rules = rules or LabelRules()
+    if t0 is None:
+        return {}
+    curve = session_curve(sess, t0, pi_export, calibration, rules)
+    if curve is None:
+        return {}
+    sensory = build_timeline(pi_export)
+    obj = build_objective(curve, rules, sensory)
+    return {"heating": curve.summary().to_dict(), "objective": obj.to_dict(), "agreement": agreement(obj, sensory),
+            "rules": rules.to_dict(), "t0": t0.isoformat()}
+
+
+def session_qc(sess: Session, pi_export: dict[str, Any] | None = None, calibration: dict[str, Any] | None = None,
+               rules=None) -> dict[str, Any]:
     meta, manifest = sess.meta, sess.manifest or {}
     streams = []
     ranges: dict[str, Any] = {}
@@ -105,7 +124,42 @@ def session_qc(sess: Session, pi_export: dict[str, Any] | None = None) -> dict[s
         "mark_counts": {k: sum(1 for m in marks if m["kind"] == k) for k in DONENESS_MARKS},
         "pi_params": ((pi_export or {}).get("session") or {}).get("params"),
         "pi_conditions": ((pi_export or {}).get("session") or {}).get("conditions"),
+        **heating_qc(sess, t0, pi_export, calibration, rules),
     }
+
+
+def _min(s, t0_iso=None) -> str:
+    return "—" if s is None else f"{s / 60:.1f}분"
+
+
+def _iso_min(iso: str | None, t0_iso: str | None) -> str:
+    if not iso or not t0_iso:
+        return "—"
+    return f"{(datetime.fromisoformat(iso) - datetime.fromisoformat(t0_iso)).total_seconds() / 60:.1f}분"
+
+
+def heating_markdown(q: dict[str, Any]) -> str:
+    h, o, ag = q.get("heating"), q.get("objective") or {}, q.get("agreement") or {}
+    if not h:
+        return "## 가열 곡선 (PT100, 자동)\n- PT100 기록 없음\n"
+    b = h["boil"]
+    fmt = lambda v, f="{:.2f}", unit="": "—" if v is None else f.format(v) + unit  # noqa: E731
+    lines = [
+        "## 가열 곡선 (PT100, 자동)",
+        f"- 끓기 시작: {_min(b['onset_s'])}" + (f" · 끓는 구간 {b['plateau_c']:.1f} ℃ · 끝 {_min(b['end_s'])}" if b["onset_s"] is not None else ""),
+        f"- {h['ref_c']:g} ℃ 1분 유지 충족: {_min(h['t_ref_reached_s'])} (참고선)",
+        f"- 가열 속도(40→80 ℃): {fmt(h['rate_c_per_min'], '{:.1f}', ' ℃/분')} · 추정 열량 {fmt(h['p_net_kw'], '{:.2f}', ' kW')}"
+        f" (투입 {fmt(h['mass_kg'], '{:.2f}', ' kg')})",
+        f"- 끓은 시간: {_min(h['boil_duration_s'])} · 증발 추정(상한): {fmt(h['evap_frac'] * 100 if h['evap_frac'] is not None else None, '{:.0f}', '%')}",
+        f"- 조리값 C₁₀₀(끝): {fmt(h['c100_end'], '{:.1f}', '분')} · PT100 보정 {'적용' if h['calibrated'] else '없음'}",
+        f"- 객관 라벨({o.get('done_source')}/{o.get('over_source')}): 완료 시작 {_iso_min(o.get('done_start'), q.get('t0'))}"
+        f" · 과조리 {_iso_min(o.get('overcooked'), q.get('t0'))}",
+        f"- 관능과 차이(관능−객관): 완료 {fmt(ag.get('done_start_diff_s'), '{:+.0f}', '초')} · 과조리 "
+        f"{fmt(ag.get('overcooked_diff_s'), '{:+.0f}', '초')} · 맛보기 일치 {ag.get('tastes_agree', 0)}/{ag.get('tastes_compared', 0)}",
+    ]
+    for f in list(h.get("flags") or []) + list(o.get("flags") or []):
+        lines.append(f"- ⚠️ {f}")
+    return "\n".join(lines) + "\n"
 
 
 def _count(items) -> dict[str, int]:
@@ -140,6 +194,7 @@ def qc_markdown(q: dict[str, Any], verify: dict[str, Any] | None = None) -> str:
 |---|---|---|---|---|---|
 {rows}
 
+{heating_markdown(q)}
 ## 값 범위
 스칼라는 전체 최소~최대, 배열(열화상)은 10프레임마다 뽑은 프레임 최댓값의 최소~최대.
 {ranges}
@@ -161,7 +216,7 @@ def _gb(n) -> str:
     return "—" if n is None else f"{n / 1e9:.2f} GB"
 
 
-def catalog_row(q: dict[str, Any], verify: dict[str, Any] | None) -> dict[str, Any]:
+def catalog_row(q: dict[str, Any], verify: dict[str, Any] | None, review: dict[str, Any] | None = None) -> dict[str, Any]:
     s = q["summary"]
     row = {
         "session_id": q["session_id"], "name": q["name"], "state": q["state"], "duration_s": q["duration_s"],
@@ -171,6 +226,21 @@ def catalog_row(q: dict[str, Any], verify: dict[str, Any] | None) -> dict[str, A
         "streams": len(q["streams"]),
         "conditions": q["pi_conditions"],
     }
+    row["review"] = (review or {}).get("verdict")
+    row["review_reason"] = (review or {}).get("reason")
+    h, o = q.get("heating") or {}, q.get("objective") or {}
+    b = h.get("boil") or {}
+    r1 = lambda v, n=1: None if v is None else round(v, n)  # noqa: E731
+    row.update({
+        "boil_onset_min": r1(b.get("onset_s") / 60 if b.get("onset_s") is not None else None),
+        "boil_plateau_c": r1(b.get("plateau_c")),
+        "ref_reached_min": r1(h.get("t_ref_reached_s") / 60 if h.get("t_ref_reached_s") is not None else None),
+        "heat_rate_c_per_min": r1(h.get("rate_c_per_min")),
+        "c100_end": r1(h.get("c100_end")),
+        "evap_frac_est": r1(h.get("evap_frac"), 3),
+        "objective_usable": o.get("usable"),
+        "heating_flags": len(h.get("flags") or []) + len(o.get("flags") or []),
+    })
     for k in DONENESS_MARKS:
         row[f"mark_{k}"] = q["mark_counts"][k]
     for k, v in (q["pi_params"] or {}).items():

@@ -221,3 +221,25 @@ def test_summary_png_renders_with_marks(tmp_path, data_root):
     out = tmp_path / "s.png"
     assert soupctl.main(["summary", "sess-sum", "--out", str(out)]) == 0
     assert out.stat().st_size > 10_000
+
+
+def test_review_status_weekly_cli(tmp_path, data_root, capsys):
+    src = tmp_path / "jetson"
+    make_session(src, "sess-20261020T010000Z-aa1")
+    make_session(src, "sess-20261020T020000Z-aa2")
+    for sid in ("sess-20261020T010000Z-aa1", "sess-20261020T020000Z-aa2"):
+        assert soupctl.main(["pull", str(src), sid]) == 0
+    assert soupctl.main(["review", "sess-20261020T010000Z-aa1", "use"]) == 0
+    assert soupctl.main(["review", "sess-20261020T020000Z-aa2", "drop"]) == 1          # 이유 없음 → 거절
+    assert soupctl.main(["review", "sess-20261020T020000Z-aa2", "drop", "--reason", "카메라 김 서림"]) == 0
+    assert soupctl.main(["review", "sess-없음", "use"]) == 1
+    capsys.readouterr()
+    assert soupctl.main(["status", "--src", str(src)]) == 0
+    out = capsys.readouterr().out
+    assert "사용 1 · 보류 0 · 제외 1 · 미판정 0" in out and "Jetson 여유" in out and "Pi DB 백업: 0개" in out
+    md = tmp_path / "w.md"
+    assert soupctl.main(["weekly", "--out", str(md)]) == 0
+    text = md.read_text()
+    assert "판정: 사용 1 · 보류 0 · 제외 1" in text and "sess-20261020T010000Z-aa1" in text
+    cat = (data_root / "catalog.csv").read_text()
+    assert "review" in cat.splitlines()[0] and "카메라 김 서림" in cat

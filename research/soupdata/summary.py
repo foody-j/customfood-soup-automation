@@ -69,7 +69,8 @@ def _thumbs(sess: Session, sensor_id: str, stream_id: str, t0: datetime, n: int)
 
 
 def render_summary(sess: Session, out: Path, pi_export: dict[str, Any] | None = None,
-                   verify: dict[str, Any] | None = None, n_thumbs: int = 10) -> Path:
+                   verify: dict[str, Any] | None = None, n_thumbs: int = 10, calibration: dict[str, Any] | None = None,
+                   rules=None) -> Path:
     import matplotlib
 
     matplotlib.use("Agg")
@@ -86,6 +87,11 @@ def render_summary(sess: Session, out: Path, pi_export: dict[str, Any] | None = 
         t0 = min(firsts) if firsts else datetime.now().astimezone()
     dur_min = _minutes(t1, t0) if t1 else None
 
+    from .qc import heating_qc
+
+    hq = heating_qc(sess, t0, pi_export, calibration, rules) if t0 else {}
+    heat, objective = hq.get("heating") or {}, hq.get("objective") or {}
+    warn_flags = list(heat.get("flags") or []) + list(objective.get("flags") or [])
     cams = [r for r in refs if r.kind == IMAGE]
     fig_h = 1.0 + 1.55 * len(cams) + 3.4 + 0.32 * max(len(refs), 1) + 0.6
     fig = plt.figure(figsize=(16, fig_h), dpi=110, facecolor=SURFACE)
@@ -105,6 +111,15 @@ def render_summary(sess: Session, out: Path, pi_export: dict[str, Any] | None = 
     ax.text(0, 0.5, line2, fontsize=10.5, color=INK2, va="top")
     cond = "  ·  ".join(f"{k}={v}" for k, v in params.items() if v is not None) or (sess_pi.get("conditions") or "조건 기록 없음")
     ax.text(0, 0.12, f"조건: {cond}", fontsize=10.5, color=INK2, va="top")
+    boil = (heat.get("boil") or {})
+    if heat:
+        b_txt = (f"끓기 시작 {boil['onset_s'] / 60:.1f}분 · 끓는 구간 {boil['plateau_c']:.1f} ℃"
+                 if boil.get("onset_s") is not None else "끓는 구간 없음")
+        ax.text(0.55, 0.5, b_txt + (f"  ·  조리값 C100 {heat['c100_end']:.1f}분" if heat.get("c100_end") is not None else ""),
+                fontsize=10.5, color=INK2, va="top")
+        crit = [f for f in warn_flags if "보정" in f and "끓는 구간" in f] or [f for f in warn_flags if "못 찾음" in f]
+        if crit:
+            ax.text(0.55, 0.12, "⚠ " + crit[0][:70], fontsize=10.5, color=INK, va="top", weight="bold")
 
     # ── 카메라 썸네일 ──
     for ci, r in enumerate(cams):
@@ -151,7 +166,17 @@ def render_summary(sess: Session, out: Path, pi_export: dict[str, Any] | None = 
     if series:
         axT.legend(loc="upper left", frameon=False, fontsize=9.5, labelcolor=INK2, ncol=len(series))
     marks = [m for m in pi_marks(pi_export) if m["at"]]
+    if heat:
+        ref_c = heat.get("ref_c", 75.0)
+        axT.axhline(ref_c, color=MUTED, lw=0.9, ls=(0, (2, 3)), zorder=0)
+        axT.text(0.002, ref_c, f" {ref_c:g} ℃ 참고", transform=axT.get_yaxis_transform(), va="bottom", fontsize=8.5, color=INK2)
+        if boil.get("onset_s") is not None:
+            xb = boil["onset_s"] / 60.0
+            axT.axvline(xb, color=INK2, lw=1.4, ls=(0, (5, 3)), zorder=0)
     ymax = axT.get_ylim()[1]
+    if heat and boil.get("onset_s") is not None:  # 선 왼쪽 아래에 가로로 — 위쪽은 곡선·사건 이름과 겹친다
+        axT.annotate("끓음(자동) ", (boil["onset_s"] / 60.0, 0.03), xycoords=("data", "axes fraction"), ha="right",
+                     va="bottom", fontsize=8.5, color=INK2)
     for k, m in enumerate(marks):
         t = parse_utc(m["at"])
         if t is None:
@@ -161,8 +186,8 @@ def render_summary(sess: Session, out: Path, pi_export: dict[str, Any] | None = 
         axT.axvline(x, color=INK if strong else MUTED, lw=1.2 if strong else 0.8, ls="-" if strong else ":", zorder=0)
         label = MARK_LABELS.get(m["kind"], m["kind"]) + (f":{VALUE_LABELS.get(m['value'], m['value'])}" if m["value"] else "")
         axT.text(x, ymax, label, rotation=90, va="top", ha="right", fontsize=8.5, color=INK if strong else INK2)
-    if not marks:
-        axT.text(0.99, 0.04, "Pi 사건 없음(정답 라벨 불가)", transform=axT.transAxes, ha="right", fontsize=9.5, color=INK2)
+    if not marks:  # 세션 단위 상태라 그래프 안이 아니라 머리글에 둔다(곡선·선 이름과 겹치지 않게)
+        fig.axes[0].text(0.55, 0.95, "Pi 사건 없음 — 관능 라벨·맛보기 검증 불가", fontsize=10.5, color=INK2, va="top")
 
     # ── 수신 상태 ──
     axR = fig.add_subplot(gs[2 + len(cams)], sharex=axT, facecolor=SURFACE)

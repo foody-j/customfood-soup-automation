@@ -15,8 +15,14 @@
     soupctl.py jetson-prune <PI_URL> <SRC> [--keep N] [--min-free-gb G] [--yes]
                                                   Fedora 검증 OK 세션의 Jetson 원본 삭제(최신 N개는 남김). --min-free-gb면
                                                   여유가 G 밑일 때만 오래된 것부터 필요한 만큼. --yes 없으면 미리보기만
-    soupctl.py labels <session_id>                Pi 정답 사건 → 라벨 구간·경고·맛보기 불일치
-    soupctl.py build-dataset <version> [ids...]   datasets/<version>/ (세션별 parquet·splits·summary). 기존 버전 덮어쓰기 거부
+    soupctl.py labels <session_id>                객관 라벨(PT100 곡선, D-041)·관능 라벨(Pi 사건)·차이·가열 곡선 요약
+    soupctl.py review <session_id> use|hold|drop [--reason TEXT]
+                                                  세션 판정 기록(review.jsonl, 덧붙이기). 데이터셋은 hold·drop을 뺀다
+    soupctl.py status [--src SRC]                 마지막 야간 작업·저장량·검증 실패·미판정·Pi 백업·(Jetson 여유) 한눈에
+    soupctl.py weekly [--out MD]                  주간 점검 보고서(조건별 세션 수·판정·라벨 가능·용량) → weekly/
+    soupctl.py build-dataset <version> [ids...] [--rule k=v ...] [--require-review]
+                                                  datasets/<version>/ (세션별 parquet·splits·summary). 기존 버전 덮어쓰기 거부.
+                                                  라벨 규칙은 label_rules.json + --rule(예: done_start=temp:75)
 
 SRC: rsync 원본 위치. 원격 `user@host:/home/ubuntu/collector-data` 또는 로컬(외장 SSD) 경로.
 데이터 루트: `$SOUP_DATA_ROOT`(기본 `~/soup-data`) — raw/<id>, pi/<id>.json, verify/<id>.json, catalog.csv.
@@ -289,6 +295,14 @@ def cmd_nightly(a) -> int:
         run(cmd_qc, argparse.Namespace(session_id=sid, out=str(root / "qc" / f"{sid}.md")))
         run(cmd_summary, argparse.Namespace(session_id=sid, out=None))
     run(cmd_catalog, argparse.Namespace())
+    jf = _remote_free_bytes(a.src)
+    if jf is None:
+        log("Jetson 여유: 확인 못 함")
+    else:
+        log(f"Jetson 여유 {jf / 1e9:.0f} GB" + (f" ⚠️ {JETSON_FREE_WARN_GB} GB 미만 — Jetson 정리(jetson-prune) 켤 시점"
+                                               if jf / 1e9 < JETSON_FREE_WARN_GB else ""))
+    if datetime.now().weekday() == 4:  # 금요일 밤 → 주간 점검 보고서
+        run(cmd_weekly, argparse.Namespace(out=None))
     if a.prune_keep is not None:
         log(f"Jetson 정리(검증 사본 있는 세션, 최신 {a.prune_keep}개 보존)")
         fails += run(cmd_jetson_prune, argparse.Namespace(pi_url=a.pi_url, src=a.src, keep=a.prune_keep, yes=True,
@@ -437,9 +451,28 @@ def _load(sid: str) -> tuple[Session, dict | None, dict | None]:
             read_json(root / "verify" / f"{sid}.json"))
 
 
+def _ctx(rule_overrides: dict | None = None):
+    """(보정값, 라벨 규칙) — `calibration.json`, `label_rules.json`(+ 덮어쓰기)."""
+    from soupdata.dataset import load_rules
+
+    root = data_root()
+    return read_json(root / "calibration.json"), load_rules(root, rule_overrides)
+
+
+def _parse_rules(items: list[str] | None) -> dict:
+    out = {}
+    for it in items or []:
+        if "=" not in it:
+            raise SystemExit(f"--rule은 키=값 형식: {it!r}")
+        k, v = it.split("=", 1)
+        out[k.strip()] = v.strip()
+    return out
+
+
 def cmd_qc(a) -> int:
     sess, pi, ver = _load(a.session_id)
-    md = qc_markdown(session_qc(sess, pi), ver)
+    cal, rules = _ctx()
+    md = qc_markdown(session_qc(sess, pi, cal, rules), ver)
     if a.out:
         Path(a.out).write_text(md)
         print(f"저장: {a.out}")
@@ -452,17 +485,22 @@ def cmd_summary(a) -> int:
     from soupdata.summary import render_summary
 
     sess, pi, ver = _load(a.session_id)
+    cal, rules = _ctx()
     out = Path(a.out) if a.out else data_root() / "summary" / f"{a.session_id}.png"
-    print(f"요약 이미지: {render_summary(sess, out, pi, ver)}")
+    print(f"요약 이미지: {render_summary(sess, out, pi, ver, calibration=cal, rules=rules)}")
     return 0
 
 
 def cmd_catalog(a) -> int:
+    from soupdata.review import latest_reviews
+
     root = data_root()
+    cal, rules = _ctx()
+    reviews = latest_reviews(root)
     rows = []
     for d in sorted(p for p in (root / "raw").glob("*") if p.is_dir() and not p.name.startswith(".")):
         sess, pi, ver = _load(d.name)
-        rows.append(catalog_row(session_qc(sess, pi), ver))
+        rows.append(catalog_row(session_qc(sess, pi, cal, rules), ver, reviews.get(d.name)))
     cols: list[str] = []
     for r in rows:
         cols += [k for k in r if k not in cols]
@@ -477,23 +515,167 @@ def cmd_catalog(a) -> int:
 
 def cmd_labels(a) -> int:
     from soupdata.labels import build_timeline
+    from soupdata.qc import heating_qc, parse_utc
 
-    _, pi, _ = _load(a.session_id)
+    sess, pi, _ = _load(a.session_id)
     if pi is None:
-        print(f"{a.session_id}: Pi 내보내기 없음 — 먼저 pi-meta", file=sys.stderr)
+        print(f"{a.session_id}: Pi 내보내기 없음 — 관능 라벨·조건 없이 객관 라벨만", file=sys.stderr)
+    cal, rules = _ctx(_parse_rules(a.rule))
+    t0 = parse_utc((sess.meta.get("phases") or {}).get("running"))
+    out = {"sensory": build_timeline(pi).to_dict(), **heating_qc(sess, t0, pi, cal, rules)}
+    print(json.dumps(out, ensure_ascii=False, indent=2, default=str))
+    return 0
+
+
+def cmd_review(a) -> int:
+    from soupdata.review import VERDICT_KO, add_review
+
+    root = data_root()
+    if not (root / "raw" / a.session_id).is_dir():
+        print(f"{a.session_id}: Fedora에 없는 세션", file=sys.stderr)
         return 1
-    print(json.dumps(build_timeline(pi).to_dict(), ensure_ascii=False, indent=2))
+    try:
+        rec = add_review(root, a.session_id, a.verdict, a.reason)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    print(f"{a.session_id}: {VERDICT_KO[rec['verdict']]}" + (f" — {rec['reason']}" if rec["reason"] else ""))
+    return 0
+
+
+def _dir_bytes(p: Path) -> int:
+    total = 0
+    for dirpath, _, files in os.walk(p):
+        for fn in files:
+            try:
+                total += os.path.getsize(os.path.join(dirpath, fn))
+            except OSError:
+                pass
+    return total
+
+
+JETSON_FREE_WARN_GB = 150
+
+
+def _last_nightly(root: Path) -> tuple[str | None, str | None]:
+    logs = sorted((root / "logs").glob("nightly-*.log"))
+    if not logs:
+        return None, None
+    lines = [ln for ln in logs[-1].read_text(encoding="utf-8").splitlines() if ln.strip()]
+    end = next((ln for ln in reversed(lines) if "야간 작업 끝" in ln), None)
+    return logs[-1].name, end or (lines[-1] if lines else None)
+
+
+def cmd_status(a) -> int:
+    from datetime import datetime
+
+    from soupdata.review import latest_reviews
+
+    root = data_root()
+    warn = 0
+    name, end = _last_nightly(root)
+    print(f"■ 마지막 야간 작업: {name or '없음'}" + (f"\n  {end}" if end else ""))
+    if name:
+        day = datetime.strptime(name[8:16], "%Y%m%d")
+        if (datetime.now() - day).days >= 2:
+            print("  ⚠️ 이틀 넘게 야간 작업 기록이 없음 — `systemctl --user status soup-nightly.timer` 확인")
+            warn += 1
+    sessions = sorted(p.name for p in (root / "raw").glob("*") if p.is_dir() and not p.name.startswith("."))
+    size = sum(_dir_bytes(root / "raw" / s) for s in sessions)
+    free = shutil.disk_usage(root).free if root.exists() else 0
+    print(f"■ Fedora 원본: 세션 {len(sessions)}개 · {size / 1e9:.1f} GB · 디스크 여유 {free / 1e9:.0f} GB")
+    bad = [s for s in sessions if not (read_json(root / "verify" / f"{s}.json") or {}).get("ok")]
+    incoming = sorted(p.name for p in (root / "raw" / ".incoming").glob("*")) if (root / "raw" / ".incoming").exists() else []
+    if bad or incoming:
+        print(f"  ⚠️ 검증 안 됨 {bad or '-'} · 받다 만/검증 실패 사본 {incoming or '-'}")
+        warn += 1
+    reviews = latest_reviews(root)
+    unrev = [s for s in sessions if s not in reviews]
+    counts = {v: sum(1 for r in reviews.values() if r["verdict"] == v) for v in ("use", "hold", "drop")}
+    print(f"■ 판정: 사용 {counts['use']} · 보류 {counts['hold']} · 제외 {counts['drop']} · 미판정 {len(unrev)}"
+          + (f" ({', '.join(unrev[:5])}{' …' if len(unrev) > 5 else ''})" if unrev else ""))
+    backups = sorted((root / "pi-db").glob("pi-server-*.sqlite3"))
+    print(f"■ Pi DB 백업: {len(backups)}개" + (f" · 최근 {backups[-1].name}" if backups else " ⚠️ 없음"))
+    warn += not backups
+    if a.src:
+        jf = _remote_free_bytes(a.src)
+        if jf is None:
+            print("■ Jetson 여유: 확인 못 함(접속 실패)")
+            warn += 1
+        else:
+            note = f" ⚠️ {JETSON_FREE_WARN_GB} GB 미만 — Jetson 정리(jetson-prune) 켤 시점" if jf / 1e9 < JETSON_FREE_WARN_GB else ""
+            print(f"■ Jetson 여유: {jf / 1e9:.0f} GB{note}")
+            warn += bool(note)
+    print("정상" if not warn else f"확인 필요 {warn}건")
+    return 0
+
+
+def cmd_weekly(a) -> int:
+    """주간 점검 보고서 — 카탈로그(밤마다 갱신)를 다시 만들어 조건별·판정별로 센다."""
+    import re
+    from datetime import datetime, timedelta
+
+    root = data_root()
+    cmd_catalog(argparse.Namespace())
+    rows = list(csv.DictReader(open(root / "catalog.csv", encoding="utf-8"))) if (root / "catalog.csv").exists() else []
+    today = datetime.now()
+    since = (today - timedelta(days=7)).strftime("%Y%m%d")
+    week = [r for r in rows if r["session_id"][5:13] >= since]
+
+    def cond(r):
+        return f"출력 {r.get('param_heat_level') or '?'} · 물 {r.get('param_water_added_ml') or '?'} mL · 뚜껑 {r.get('param_lid_initial') or '?'}"
+
+    by_cond: dict[str, int] = {}
+    for r in rows:
+        if r.get("review") != "drop":
+            by_cond[cond(r)] = by_cond.get(cond(r), 0) + 1
+    free_trend = []
+    for log in sorted((root / "logs").glob("nightly-*.log"))[-7:]:
+        m = re.search(r"Jetson 여유 (\d+) GB", log.read_text(encoding="utf-8"))
+        if m:
+            free_trend.append(f"{log.name[8:16]} {m.group(1)} GB")
+    usable = sum(1 for r in rows if r.get("objective_usable") == "True" and r.get("review") != "drop")
+    lines = [
+        f"# 주간 점검 — {today:%Y-%m-%d} (자동 생성 `soupctl.py weekly`)",
+        "",
+        f"- 이번 주(최근 7일) 세션 {len(week)}개 · 전체 {len(rows)}개",
+        f"- 판정: 사용 {sum(r.get('review') == 'use' for r in rows)} · 보류 {sum(r.get('review') == 'hold' for r in rows)}"
+        f" · 제외 {sum(r.get('review') == 'drop' for r in rows)} · 미판정 {sum(not r.get('review') for r in rows)}",
+        f"- 객관 라벨 가능(끓기 시작 등 검출, 제외 판정 빼고): {usable}개",
+        f"- 용량: {sum(int(r['bytes_written'] or 0) for r in rows) / 1e9:.1f} GB" if rows else "- 용량: 0",
+        f"- Jetson 여유 추이: {' → '.join(free_trend) if free_trend else '기록 없음'}",
+        "",
+        "## 조건별 세션 수(제외 판정 빼고)",
+        "| 조건 | 세션 |", "|---|---|",
+        *[f"| {k} | {v} |" for k, v in sorted(by_cond.items())],
+        "",
+        "## 이번 주 세션",
+        "| 세션 | 길이(분) | 끓기 시작(분) | 끓는 구간 ℃ | 판정 | 경고 수 |", "|---|---|---|---|---|---|",
+        *[f"| {r['session_id']} | {float(r['duration_s']) / 60:.0f} | {r.get('boil_onset_min') or '—'} | {r.get('boil_plateau_c') or '—'}"
+          f" | {r.get('review') or '미판정'} | {r.get('heating_flags') or 0} |" if r.get("duration_s") else
+          f"| {r['session_id']} | — | — | — | {r.get('review') or '미판정'} | — |" for r in week],
+        "",
+        "## 관찰·조정(사람이 적음)",
+        "- ",
+    ]
+    out = Path(a.out) if a.out else root / "weekly" / f"weekly-{today:%Y%m%d}.md"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"주간 점검: {out}")
     return 0
 
 
 def cmd_build_dataset(a) -> int:
     from soupdata.dataset import build_dataset
 
-    summary = build_dataset(data_root(), a.version, a.session_ids or None)
+    summary = build_dataset(data_root(), a.version, a.session_ids or None, _parse_rules(a.rule), a.require_review)
     used = sum(len(v) for v in summary["splits"].values())
     counts = {k: len(v) for k, v in summary["splits"].items()}
     print(f"데이터셋 {a.version}: 세션 {used}개 사용 · 분할 {counts}")
-    print(f"행 라벨 분포: {summary['label_counts_rows']}")
+    print(f"라벨 규칙: {summary['label_rules']}")
+    print(f"행 라벨 분포(객관): {summary['label_counts_rows']} · 관능: {summary['label_counts_rows_sensory']}")
+    if summary["unreviewed_sessions"]:
+        print(f"  ⚠️ 미판정 세션 포함 {len(summary['unreviewed_sessions'])}개 — 동결 전 review 또는 --require-review")
     for s in summary["sessions"]:
         if s.get("skipped"):
             print(f"  제외 {s['session_id']}: {s['skipped']}")
@@ -530,8 +712,15 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--min-free-gb", type=float, default=None,
                    help="Jetson 여유가 이 값(GB) 이상이면 지우지 않고, 밑이면 오래된 것부터 기준을 넘길 만큼만 지운다")
     s.set_defaults(fn=cmd_jetson_prune)
-    s = sub.add_parser("labels"); s.add_argument("session_id"); s.set_defaults(fn=cmd_labels)
+    s = sub.add_parser("labels"); s.add_argument("session_id"); s.add_argument("--rule", action="append")
+    s.set_defaults(fn=cmd_labels)
+    s = sub.add_parser("review"); s.add_argument("session_id"); s.add_argument("verdict", choices=["use", "hold", "drop"])
+    s.add_argument("--reason"); s.set_defaults(fn=cmd_review)
+    s = sub.add_parser("status"); s.add_argument("--src"); s.set_defaults(fn=cmd_status)
+    s = sub.add_parser("weekly"); s.add_argument("--out"); s.set_defaults(fn=cmd_weekly)
     s = sub.add_parser("build-dataset"); s.add_argument("version"); s.add_argument("session_ids", nargs="*")
+    s.add_argument("--rule", action="append", help="라벨 규칙 덮어쓰기 키=값(예: done_start=temp:75, overcooked=evap:0.1)")
+    s.add_argument("--require-review", action="store_true", help="판정이 use인 세션만")
     s.set_defaults(fn=cmd_build_dataset)
     a = p.parse_args(argv)
     if shutil.which("rsync") is None and a.cmd in ("list", "pull"):
