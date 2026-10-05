@@ -86,6 +86,7 @@ def test_session_table_rows(tmp_path):
     r = df.iloc[9]  # t = 10 s
     assert r["pt100_c"] == boil_curve(10) and r["pt100_cal_c"] == r["pt100_c"]
     assert pd.isna(r["min_since_boil"]) and r["c100_cum"] > 0 and pd.isna(r["evap_frac_est"])
+    assert "rgb_feat_cam_rgb_0_sharp" in df and df["rgb_feat_cam_rgb_0_motion"].notna().any()   # 카메라 특징(가짜 JPEG)
     assert info["labels"]["agreement"]["overcooked_diff_s"] == 0.0
     assert r["thermal_max_c"] == 30.0 and "frames/000011." in r["rgb_cam_rgb_0_path"]  # cv2 없으면 .raw
     assert r["param_heat_level"] == 5

@@ -27,3 +27,18 @@
 ## 남은 일
 - 포장지 문구·교수 확인 뒤 `label_rules.json` 확정(기본 `boil`/`mark`는 잠정).
 - 물 가열 실험으로 PT100 보정(`calibration.json`)과 증발 추정 검증(계량컵 있으면).
+
+## 후속 (같은 날, `fedora/camera-qc`)
+- `soupdata/camera.py`: 프레임 선명도(라플라시안 분산)·밝기·화면 정지 점검과 솥 영역 L*a*b*·ΔE·움직임 특징. 축소 디코드 약 6 ms/프레임.
+  9/28 실측: GMSL2 ① 선명도 0.8(초점 완전 흐림), **GMSL2 ②도 끓기 시작 후 350→20~160(김 서림)**, Gemini 컬러 ≈1.
+  → 판정 기준: 중앙값 < 5 = 흐림·가림, 앞 2분 기준의 30% 미만이 5% 넘으면 김 서림. 9/28에서 세 카메라 모두 맞게 경고.
+- `qc.auto_flags`: 기본 4스트림 누락, 미저장 >1%, 최대 수신 간격, 카메라 경고, 가열 곡선 경고, Pi 내보내기·조건·정답 사건·시계 오차 → QC 맨 위,
+  카탈로그 `auto_flags`, 요약 이미지 카메라 줄 표시(⚠ 흐림 / ⚠ 김 N분~).
+- 야간: 최근 7일 세션의 Pi 기록을 다시 받아 **바뀐 것만 저장**하고 그 세션 QC·요약을 다시 만든다(다음 날 사후 입력 반영 — 구멍 수정).
+- 야간 작업 전용 폴더(runtime worktree, 원격 main 고정) — `notes/fedora/server-setup.md`.
+- `soupctl heating`(물 실험·반복 비교 표·겹친 그림·출력별 평균±SD), `soupctl calibrate`(2점/1점 → calibration.json, 백업).
+- 데이터셋에 `rgb_feat_<카메라>_<지표>` 1 Hz 열, 기준 모델 트랙을 thermal/camera/noprobe로 나눔(센서별 기여 비교).
+- `research/soup` 짧은 실행기, `~/soup-data/settings.json` 기본 주소, `docs/daily-routine.md`.
+- 테스트 36개 통과.
+- **라벨링 프로그램은 따로 만들지 않는다(사용자 질문 답):** 관능 = Pi 버튼(사후 입력 포함), 객관 = PT100 곡선 자동(D-041),
+  판정 = 요약 이미지 + `review`. 화면 속 물체(거품 등) 표시가 필요해지면 Label Studio·CVAT 같은 기존 도구를 쓴다.

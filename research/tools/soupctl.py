@@ -16,8 +16,12 @@
                                                   Fedora 검증 OK 세션의 Jetson 원본 삭제(최신 N개는 남김). --min-free-gb면
                                                   여유가 G 밑일 때만 오래된 것부터 필요한 만큼. --yes 없으면 미리보기만
     soupctl.py labels <session_id>                객관 라벨(PT100 곡선, D-041)·관능 라벨(Pi 사건)·차이·가열 곡선 요약
-    soupctl.py baseline <version> [--tracks trivial,thermal,probe,all] [--target label] [--train-sizes 2,4,8]
+    soupctl.py baseline <version> [--tracks trivial,thermal,camera,noprobe,probe] [--target label] [--train-sizes 2,4,8]
                                                   기준 모델 LOSO 평가 → results/<version>/<시각>/report.md·metrics.json
+    soupctl.py heating <session_id>... [--out PNG] [--align start|boil]
+                                                  여러 세션 온도 곡선 비교(물 실험·같은 조건 반복): 표 + 겹친 그림 + 조건별 평균±표준편차
+    soupctl.py calibrate [--ice-read R] [--boil-read R | --boil-session SID] [--boil-ref 100]
+                                                  PT100 보정값(a·T+b) 계산 → calibration.json(이전 파일은 백업)
     soupctl.py review <session_id> use|hold|drop [--reason TEXT]
                                                   세션 판정 기록(review.jsonl, 덧붙이기). 데이터셋은 hold·drop을 뺀다
     soupctl.py status [--src SRC]                 마지막 야간 작업·저장량·검증 실패·미판정·Pi 백업·(Jetson 여유) 한눈에
@@ -55,6 +59,11 @@ from soupdata.session import read_json  # noqa: E402
 
 def data_root() -> Path:
     return Path(os.environ.get("SOUP_DATA_ROOT", Path.home() / "soup-data")).expanduser()
+
+
+def settings() -> dict:
+    """`$SOUP_DATA_ROOT/settings.json` — 자주 쓰는 주소 기본값(`pi_url`, `src`). 없으면 빈 dict."""
+    return read_json(data_root() / "settings.json") or {}
 
 
 def _src(src: str, *parts: str) -> str:
@@ -607,6 +616,134 @@ def cmd_baseline(a) -> int:
     return 0 if any(s.get("folds") for s in sums.values()) else 1
 
 
+def _curve_for(sid: str, calibrated: bool = True):
+    from soupdata.dataset import session_curve
+    from soupdata.qc import parse_utc
+
+    sess, pi, _ = _load(sid)
+    cal, rules = _ctx()
+    t0 = parse_utc((sess.meta.get("phases") or {}).get("running"))
+    if t0 is None:
+        return None, pi
+    return session_curve(sess, t0, pi, cal if calibrated else None, rules), pi
+
+
+def cmd_heating(a) -> int:
+    import numpy as np
+
+    rows, curves = [], []
+    for sid in a.session_ids:
+        curve, pi = _curve_for(sid)
+        if curve is None:
+            print(f"{sid}: PT100 곡선 없음", file=sys.stderr)
+            continue
+        params = ((pi or {}).get("session") or {}).get("params") or {}
+        s = curve.summary()
+        y0 = float(curve.y[np.isfinite(curve.y)][0]) if len(curve.y) else None
+        rows.append({"session_id": sid, "heat_level": params.get("heat_level"), "mass_kg": s.mass_kg,
+                     "lid": params.get("lid_initial"), "start_c": y0,
+                     "boil_min": None if s.boil.onset_s is None else s.boil.onset_s / 60,
+                     "plateau_c": s.boil.plateau_c, "ref_min": None if s.t_ref_reached_s is None else s.t_ref_reached_s / 60,
+                     "rate": s.rate_c_per_min, "p_kw": s.p_net_kw, "c100": s.c100_end})
+        curves.append((sid, params.get("heat_level"), curve))
+    if not rows:
+        return 1
+    f = lambda v, nd=1: "—" if v is None else f"{v:.{nd}f}"  # noqa: E731
+    print("| 세션 | 출력 | 질량 kg | 뚜껑 | 시작 ℃ | 끓기 시작(분) | 끓는 구간 ℃ | 75 ℃ 유지(분) | 가열 ℃/분 | 열량 kW | C100 |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|")
+    for r in rows:
+        print(f"| {r['session_id']} | {r['heat_level'] if r['heat_level'] is not None else '?'} | {f(r['mass_kg'], 2)} | "
+              f"{r['lid'] or '?'} | {f(r['start_c'])} | {f(r['boil_min'])} | {f(r['plateau_c'])} | {f(r['ref_min'])} | "
+              f"{f(r['rate'])} | {f(r['p_kw'], 2)} | {f(r['c100'])} |")
+    groups: dict[str, list[dict]] = {}
+    for r in rows:
+        groups.setdefault(str(r["heat_level"] if r["heat_level"] is not None else "?"), []).append(r)
+    print("\n| 출력 | 세션 수 | 끓기 시작 평균±SD(분) | 가열 속도 평균±SD(℃/분) |")
+    print("|---|---|---|---|")
+    for k, rs in sorted(groups.items()):
+        b = [r["boil_min"] for r in rs if r["boil_min"] is not None]
+        rt = [r["rate"] for r in rs if r["rate"] is not None]
+        ms = lambda xs: "—" if not xs else (f"{np.mean(xs):.2f}" + (f" ± {np.std(xs, ddof=1):.2f}" if len(xs) > 1 else ""))  # noqa: E731
+        print(f"| {k} | {len(rs)} | {ms(b)} | {ms(rt)} |")
+    out = Path(a.out) if a.out else data_root() / "heating" / f"heating-{__import__('datetime').datetime.now():%Y%m%dT%H%M%S}.png"
+    from soupdata.summary import INK2, MUTED, SERIES, SURFACE, GRID, _font
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    _font()
+    palette = SERIES + ["#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]  # dataviz 범주 순서(고정)
+    keys = sorted(groups)
+    fig, ax = plt.subplots(figsize=(11, 5.5), dpi=110, facecolor=SURFACE)
+    ax.set_facecolor(SURFACE)
+    for sid, level, curve in curves:
+        k = str(level if level is not None else "?")
+        color = palette[keys.index(k) % len(palette)]
+        x = curve.grid.copy()
+        if a.align == "boil" and curve.boil.onset_s is not None:
+            x = x - curve.boil.onset_s
+        ax.plot(x / 60, curve.y, color=color, lw=1.5, alpha=0.9, label=f"출력 {k}")
+        if curve.boil.onset_s is not None:
+            xb = (0 if a.align == "boil" else curve.boil.onset_s) / 60
+            ax.plot([xb], [curve.boil.plateau_c], "o", ms=8, color=color, mec=SURFACE, mew=2)
+    h, l = ax.get_legend_handles_labels()
+    seen = {}
+    for hh, ll in zip(h, l):
+        seen.setdefault(ll, hh)
+    ax.legend(seen.values(), seen.keys(), frameon=False, fontsize=9.5, labelcolor=INK2)
+    ax.set_xlabel("끓기 시작 기준 경과 (분)" if a.align == "boil" else "촬영 시작 후 경과 (분)", color=INK2)
+    ax.set_ylabel("PT100 온도 (°C)", color=INK2)
+    ax.grid(axis="y", color=GRID, lw=0.8)
+    for sp in ("top", "right"):
+        ax.spines[sp].set_visible(False)
+    ax.tick_params(colors=MUTED)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, facecolor=SURFACE, bbox_inches="tight")
+    plt.close(fig)
+    print(f"\n그림: {out}")
+    return 0
+
+
+def cmd_calibrate(a) -> int:
+    """PT100 보정 a·T+b. 두 점(얼음물 0 ℃·끓는 물)이면 기울기·절편, 끓는 물 한 점이면 절편만(경고)."""
+    from datetime import datetime
+
+    boil_read = a.boil_read
+    if a.boil_session:
+        curve, _ = _curve_for(a.boil_session, calibrated=False)
+        if curve is None or curve.boil.plateau_c is None:
+            print(f"{a.boil_session}: 끓는 구간을 못 찾음", file=sys.stderr)
+            return 1
+        boil_read = curve.boil.plateau_c
+    if boil_read is None:
+        print("--boil-read 또는 --boil-session 필요", file=sys.stderr)
+        return 1
+    if a.ice_read is not None:
+        if abs(boil_read - a.ice_read) < 20:
+            print("두 기준점 읽은 값 차이가 너무 작음 — 측정 확인", file=sys.stderr)
+            return 1
+        slope = (a.boil_ref - a.ice_ref) / (boil_read - a.ice_read)
+        icept = a.ice_ref - slope * a.ice_read
+        kind = "2점"
+    else:
+        slope, icept, kind = 1.0, a.boil_ref - boil_read, "1점(끓는 물만 — 절편만 보정, 얼음물 점 추가 권장)"
+    root = data_root()
+    path = root / "calibration.json"
+    old = read_json(path) or {}
+    if path.exists():
+        path.rename(root / f"calibration.json.bak-{datetime.now():%Y%m%dT%H%M%S}")
+    entry = {"a": round(slope, 6), "b": round(icept, 4), "kind": kind, "boil_read": boil_read, "boil_ref": a.boil_ref,
+             "ice_read": a.ice_read, "ice_ref": a.ice_ref if a.ice_read is not None else None,
+             "boil_session": a.boil_session, "note": a.note, "at": datetime.now().isoformat(timespec="seconds")}
+    old[a.sensor] = entry
+    root.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(old, ensure_ascii=False, indent=2))
+    print(f"{a.sensor} 보정({kind}): T = {slope:.5f}·읽은값 + {icept:+.3f}  →  읽은값 75.0 ℃ ⇒ {slope * 75 + icept:.2f} ℃")
+    print(f"저장: {path} — 이후 QC·라벨·데이터셋은 보정값을 쓴다(원본은 그대로)")
+    return 0
+
+
 def cmd_review(a) -> int:
     from soupdata.review import VERDICT_KO, add_review
 
@@ -677,8 +814,9 @@ def cmd_status(a) -> int:
     backups = sorted((root / "pi-db").glob("pi-server-*.sqlite3"))
     print(f"■ Pi DB 백업: {len(backups)}개" + (f" · 최근 {backups[-1].name}" if backups else " ⚠️ 없음"))
     warn += not backups
-    if a.src:
-        jf = _remote_free_bytes(a.src)
+    src = a.src or settings().get("src")
+    if src:
+        jf = _remote_free_bytes(src)
         if jf is None:
             print("■ Jetson 여유: 확인 못 함(접속 실패)")
             warn += 1
@@ -748,7 +886,8 @@ def cmd_weekly(a) -> int:
 def cmd_build_dataset(a) -> int:
     from soupdata.dataset import build_dataset
 
-    summary = build_dataset(data_root(), a.version, a.session_ids or None, _parse_rules(a.rule), a.require_review)
+    summary = build_dataset(data_root(), a.version, a.session_ids or None, _parse_rules(a.rule), a.require_review,
+                            camera_features=not a.no_camera_features)
     used = sum(len(v) for v in summary["splits"].values())
     counts = {k: len(v) for k, v in summary["splits"].items()}
     print(f"데이터셋 {a.version}: 세션 {used}개 사용 · 분할 {counts}")
@@ -798,8 +937,17 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("review"); s.add_argument("session_id"); s.add_argument("verdict", choices=["use", "hold", "drop"])
     s.add_argument("--reason"); s.set_defaults(fn=cmd_review)
     s = sub.add_parser("status"); s.add_argument("--src"); s.set_defaults(fn=cmd_status)
+    s = sub.add_parser("heating"); s.add_argument("session_ids", nargs="+"); s.add_argument("--out")
+    s.add_argument("--align", choices=["start", "boil"], default="start"); s.set_defaults(fn=cmd_heating)
+    s = sub.add_parser("calibrate"); s.add_argument("--sensor", default="pt100_0")
+    s.add_argument("--ice-read", type=float, help="얼음물(0 ℃)에서 PT100이 읽은 값")
+    s.add_argument("--ice-ref", type=float, default=0.0)
+    s.add_argument("--boil-read", type=float, help="끓는 물에서 PT100이 읽은 값")
+    s.add_argument("--boil-session", help="끓는 물 세션 ID — 자동으로 끓는 구간 평탄 온도를 읽은 값으로 씀")
+    s.add_argument("--boil-ref", type=float, default=100.0, help="그 장소 끓는점(기본 100 ℃, 저지대 기압 기준 99.5~100)")
+    s.add_argument("--note"); s.set_defaults(fn=cmd_calibrate)
     s = sub.add_parser("baseline"); s.add_argument("version")
-    s.add_argument("--tracks", default="trivial,thermal,probe,all")
+    s.add_argument("--tracks", default="trivial,thermal,camera,noprobe,probe")
     s.add_argument("--target", default="label", choices=["label", "label_sensory"])
     s.add_argument("--guard-s", type=float, default=60.0, help="경계 ±초 — F1(경계 제외)·--guard-train에 사용")
     s.add_argument("--train-step", type=int, default=5, help="학습 행을 N초마다 하나씩(이웃 프레임 상관 줄이기)")
@@ -810,6 +958,7 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("build-dataset"); s.add_argument("version"); s.add_argument("session_ids", nargs="*")
     s.add_argument("--rule", action="append", help="라벨 규칙 덮어쓰기 키=값(예: done_start=temp:75, overcooked=evap:0.1)")
     s.add_argument("--require-review", action="store_true", help="판정이 use인 세션만")
+    s.add_argument("--no-camera-features", action="store_true", help="카메라 특징(프레임 디코드, 세션당 수십 초) 생략")
     s.set_defaults(fn=cmd_build_dataset)
     a = p.parse_args(argv)
     if shutil.which("rsync") is None and a.cmd in ("list", "pull"):

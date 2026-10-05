@@ -26,6 +26,11 @@
   Fedora 검증 OK이고 사본이 있는 세션을 **오래된 것부터 기준을 넘길 만큼만** 지운다(그 전까지는 Jetson·Fedora 2벌 유지). 최신 2개는 무조건 보존. 지우기 직전 Jetson·Fedora의 manifest 동일, 파일 수·총 바이트 동일을 다시 대조하고, 촬영 중이거나 Pi 응답이 없으면 중단.
   `--yes` 없으면 미리보기만. 기록 `~/soup-data/logs/prune.log`. 야간 작업에 넣으려면 서비스 `ExecStart`에 `--prune-keep 2`(여유 기준 기본 100 GB, `--prune-min-free-gb`로 변경).
   주의: 지운 뒤엔 원본이 Fedora 1벌뿐이다(백업 디스크 없음).
+- **야간 작업 전용 폴더(2026-10-05):** 서비스는 개발 폴더가 아니라 `~/projects/customfood-soup-automation-runtime`
+  (원격 main을 분리 체크아웃한 git worktree)의 코드로 돈다 — 낮에 개발 폴더가 다른 브랜치·작업 중 상태여도 밤 작업은 병합된 코드만 쓴다.
+  파이썬은 개발 폴더의 `research/.venv`. **main에 병합한 뒤 갱신:**
+  `git -C ~/projects/customfood-soup-automation-runtime fetch -q origin && git -C ~/projects/customfood-soup-automation-runtime checkout -q --detach origin/main`
+  (자동 pull은 하지 않는다 — 운영 코드는 사람이 갱신).
 - **외장 SSD는 예비:** 네트워크 장애 시 `soupctl.py pull <SSD>/collector-data <id>`.
 - 관리: 끄기 `systemctl --user disable --now soup-nightly.timer`, 다음 실행 `systemctl --user list-timers`, 수동 실행 `systemctl --user start soup-nightly`.
 

@@ -2,7 +2,8 @@
 
 표 한 줄 = Jetson 시계 1초:
 `session_id, t_utc, elapsed_s, label, label_sensory, boundary_dist_s, pt100_c, pt100_cal_c, c100_cum, min_since_boil,
- evap_frac_est, thermal_max_c, thermal_mean_c, thermal_p95_c, rgb_<sensor>_path(세션 디렉터리 기준 상대 경로), param_*`.
+ evap_frac_est, thermal_max_c, thermal_mean_c, thermal_p95_c, rgb_<sensor>_path(세션 디렉터리 기준 상대 경로),
+ rgb_feat_<sensor>_<지표>(선명도·밝기·L*a*b*·ΔE·움직임, `camera.py`), param_*`.
 
 - **label = 객관 라벨**(D-041: PT100 곡선 + 규칙 `LabelRules`), **label_sensory = Pi 사건(관능) 라벨** — 검증용.
 - 값은 그 초 **이전의 가장 가까운 샘플**(허용 간격 안)만 쓴다 — 미래 값을 끌어오지 않는다.
@@ -72,8 +73,12 @@ def session_curve(sess: Session, t0: datetime, pi_export: dict[str, Any] | None,
                         ref_c=rules.ref_c, hold_s=rules.hold_s, min_boil_c=rules.min_boil_c, z=rules.z)
 
 
+CAMERA_METRICS = ("sharp", "bright", "L", "a", "b", "dE", "motion")
+
+
 def session_table(sess: Session, pi_export: dict[str, Any] | None, calibration: dict[str, Any] | None = None,
-                  offset_s: float | None = None, rules: LabelRules | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+                  offset_s: float | None = None, rules: LabelRules | None = None,
+                  camera_features: bool = True) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """(행 목록, 세션 정보). 행이 없으면 정보의 `skipped`에 이유."""
     rules = rules or LabelRules()
     info: dict[str, Any] = {"session_id": sess.session_id}
@@ -107,6 +112,16 @@ def session_table(sess: Session, pi_export: dict[str, Any] | None, calibration: 
         th = _Series(stats)
     cams = {r.sensor_id: _Series([(parse_utc(ln["host_recv_utc"]), ln["path"]) for ln in sess.stored(r.sensor_id, r.stream_id)])
             for r in refs.values() if r.kind == IMAGE}
+    cam_feats: dict[str, dict[str, _Series]] = {}
+    if camera_features:
+        from .camera import camera_series
+
+        for r in refs.values():
+            if r.kind != IMAGE:
+                continue
+            ser = camera_series(sess, r.sensor_id, r.stream_id, t0, step_s=1.0)
+            cam_feats[r.sensor_id] = {m: _Series([(t0 + timedelta(seconds=x["sec"]), x[m]) for x in ser if x.get(m) is not None])
+                                      for m in CAMERA_METRICS}
     cal = (calibration or {}).get(PT100[0]) or {}
     a, b = cal.get("a"), cal.get("b")
     params = ((pi_export or {}).get("session") or {}).get("params") or {}
@@ -137,6 +152,9 @@ def session_table(sess: Session, pi_export: dict[str, Any] | None, calibration: 
         }
         for cam, ser in sorted(cams.items()):
             row[f"rgb_{cam}_path"] = ser.at(t, MAX_AGE["image"])
+        for cam, feats in sorted(cam_feats.items()):
+            for m, ser in feats.items():
+                row[f"rgb_feat_{cam}_{m}"] = ser.at(t, 2.0)
         for key, val in params.items():
             row[f"param_{key}"] = val
         rows.append(row)
@@ -161,7 +179,8 @@ def load_rules(data_root: Path, override: dict[str, Any] | None = None) -> Label
 
 
 def build_dataset(data_root: Path, version: str, session_ids: list[str] | None = None,
-                  rules_override: dict[str, Any] | None = None, require_review: bool = False) -> dict[str, Any]:
+                  rules_override: dict[str, Any] | None = None, require_review: bool = False,
+                  camera_features: bool = True) -> dict[str, Any]:
     """`data_root/datasets/<version>/`에 세션별 parquet·splits.json·summary.json을 쓴다. 이미 있으면 거부.
 
     세션 판정(`review.jsonl`)이 drop·hold면 뺀다. `require_review`면 판정이 use인 세션만 쓴다.
@@ -197,7 +216,7 @@ def build_dataset(data_root: Path, version: str, session_ids: list[str] | None =
                 continue
             unreviewed.append(sid)
         rows, info = session_table(Session(raw / sid), read_json(data_root / "pi" / f"{sid}.json"), calibration,
-                                   rules=rules)
+                                   rules=rules, camera_features=camera_features)
         if not rows:
             infos.append(info)
             continue

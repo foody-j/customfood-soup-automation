@@ -259,3 +259,28 @@ def test_pi_refresh_saves_only_changes(tmp_path, data_root, monkeypatch):
     monkeypatch.setattr(soupctl, "fetch_pi_export", boom)
     ch, un, fail = soupctl.refresh_pi_meta("http://pi", ["s1"])
     assert ch == [] and fail and fail[0].startswith("s1")
+
+
+def test_heating_compare_and_calibrate(tmp_path, data_root, capsys):
+    from datetime import datetime, timezone
+
+    t0 = datetime(2026, 10, 21, 1, 0, tzinfo=timezone.utc)
+    src = tmp_path / "jetson"
+    for sid, rate in (("sess-20261021T010000Z-w1", 1.5), ("sess-20261021T020000Z-w2", 1.6)):
+        make_session(src, sid, frames=150, start=t0, step_s=1.0, pt100=lambda i, r=rate: min(25 + r * i, 93.5))
+        assert soupctl.main(["pull", str(src), sid]) == 0
+    png = tmp_path / "h.png"
+    assert soupctl.main(["heating", "sess-20261021T010000Z-w1", "sess-20261021T020000Z-w2", "--out", str(png),
+                         "--align", "boil"]) == 0
+    out = capsys.readouterr().out
+    assert "끓는 구간" in out and "93.5" in out and png.stat().st_size > 10_000
+    # 끓는 물 세션(93.5 ℃로 읽힘)으로 1점 보정 → 절편 +6.5
+    assert soupctl.main(["calibrate", "--boil-session", "sess-20261021T010000Z-w1"]) == 0
+    cal = json.loads((data_root / "calibration.json").read_text())["pt100_0"]
+    assert cal["a"] == 1.0 and abs(cal["b"] - 6.5) < 0.2
+    # 2점(얼음물 0.4, 끓는 물 93.5) → 이전 파일 백업
+    assert soupctl.main(["calibrate", "--ice-read", "0.4", "--boil-read", "93.5"]) == 0
+    cal2 = json.loads((data_root / "calibration.json").read_text())["pt100_0"]
+    assert abs(cal2["a"] * 93.5 + cal2["b"] - 100) < 1e-3 and abs(cal2["a"] * 0.4 + cal2["b"]) < 1e-3  # 저장 반올림
+    assert list(data_root.glob("calibration.json.bak-*"))
+    assert soupctl.main(["calibrate", "--ice-read", "50", "--boil-read", "60"]) == 1     # 두 점이 너무 가까움

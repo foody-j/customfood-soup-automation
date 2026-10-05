@@ -2,13 +2,15 @@
 
 입력 묶음(트랙):
   trivial  경과 시간 + 조건(param_*) — "시간만 재도 되나" 기준선. 이게 높으면 다른 센서의 기여가 과장된다.
-  thermal  trivial + 열화상 특징 — **탐침 없는 모델**(연구 질문: 비접촉 센서로 판단 가능한가)
+  thermal  trivial + 열화상 특징
+  camera   trivial + 카메라 특징(`rgb_feat_*`: 선명도·밝기·색·ΔE·움직임)
+  noprobe  trivial + 열화상 + 카메라 — **탐침 없는 모델(연구 질문: 비접촉 센서로 판단 가능한가)**
   probe    trivial + PT100 특징 — 정답(D-041)과 같은 출처라 순환. 참고용 상한으로만 본다
-  all      trivial + 열화상 + PT100
+  all      trivial + 열화상 + 카메라 + PT100
 
 평가는 세션 하나씩 빼고 나머지로 학습해 빠진 세션을 예측한다(LOSO — 같은 세션이 학습·평가에 섞이지 않음).
 지표: macro-F1(전체 / 경계 ±guard 제외), 정확도, 순서 오차(MAE), **완료 알림 시각 오차(초)·조기 경보·놓침**, 과조리 경보 오차.
-특징은 모두 그 시각까지의 값만 쓴다(창 평균·기울기는 과거 창). 카메라 특징은 `rgb_feat_*` 열이 생기면 thermal·all에 자동 포함.
+특징은 모두 그 시각까지의 값만 쓴다(창 평균·기울기는 과거 창). 탐침 없는 트랙에 탐침 특징이 섞이면 멈춘다.
 """
 
 from __future__ import annotations
@@ -25,7 +27,8 @@ from .labels import DONE, OVERCOOKED, UNDERCOOKED
 
 CLASSES = (UNDERCOOKED, DONE, OVERCOOKED)
 CODE = {c: i for i, c in enumerate(CLASSES)}
-TRACKS = ("trivial", "thermal", "probe", "all")
+TRACKS = ("trivial", "thermal", "camera", "noprobe", "probe", "all")
+NO_PROBE_TRACKS = ("trivial", "thermal", "camera", "noprobe")
 THERMAL_COLS = ("thermal_max_c", "thermal_mean_c", "thermal_p95_c")
 WINDOWS = (30, 120, 300)  # 초 — 끓음(수십 초)·졸임(수 분) 둘 다 보이게
 PROBE_PREFIXES = ("pt100", "c100", "min_since_boil", "evap")
@@ -63,13 +66,13 @@ def build_features(df: pd.DataFrame, track: str) -> pd.DataFrame:
         raise ValueError(f"트랙은 {TRACKS} 중 하나: {track!r}")
     df = df.sort_values("elapsed_s").reset_index(drop=True)
     parts = [pd.DataFrame({"elapsed_min": df["elapsed_s"] / 60.0}), _param_features(df)]
-    if track in ("thermal", "all"):
+    if track in ("thermal", "noprobe", "all"):
         for c in THERMAL_COLS:
             if c in df:
                 parts.append(_window_features(pd.to_numeric(df[c], errors="coerce"), c.replace("_c", "")))
-        rgb = [c for c in df.columns if c.startswith("rgb_feat_")]
-        if rgb:
-            parts.append(df[rgb].apply(pd.to_numeric, errors="coerce"))
+    if track in ("camera", "noprobe", "all"):
+        for c in (c for c in df.columns if c.startswith("rgb_feat_")):
+            parts.append(_window_features(pd.to_numeric(df[c], errors="coerce"), c))
     if track in ("probe", "all"):
         sig = df["pt100_cal_c"] if "pt100_cal_c" in df and df["pt100_cal_c"].notna().any() else df.get("pt100_c")
         if sig is not None:
@@ -78,7 +81,7 @@ def build_features(df: pd.DataFrame, track: str) -> pd.DataFrame:
             if c in df:
                 parts.append(pd.to_numeric(df[c], errors="coerce").rename(c).to_frame())
     feats = pd.concat(parts, axis=1)
-    if track in ("trivial", "thermal"):
+    if track in NO_PROBE_TRACKS:
         leaked = [c for c in feats.columns if c.startswith(PROBE_PREFIXES)]
         if leaked:
             raise AssertionError(f"탐침 없는 트랙에 탐침 특징이 섞임: {leaked}")
@@ -263,7 +266,8 @@ def report_markdown(version: str, summaries: dict[str, dict[str, Any]], folds: d
 
     lines = [f"# 기준 모델 결과 — 데이터셋 {version} (정답 `{target}`)", "",
              f"라벨 규칙: `{json.dumps(rules or {}, ensure_ascii=False)}`. 평가: 세션 하나씩 빼고 학습(LOSO).",
-             "**probe·all은 정답(PT100)과 같은 출처라 순환 — 참고용.** 핵심 비교는 trivial(시간·조건) vs thermal(탐침 없음).", "",
+             "**probe·all은 정답(PT100)과 같은 출처라 순환 — 참고용.** 핵심 비교는 trivial(시간·조건) vs noprobe(열화상+카메라, 탐침 없음)"
+             " — thermal·camera는 센서별 기여.", "",
              "| 트랙 | 세션 | macro-F1 | F1(경계 제외) | 정확도 | 순서 오차 | 완료 알림 오차 중앙값(초) | 조기 경보율 | 놓침률 | 과조리 오차(초) |",
              "|---|---|---|---|---|---|---|---|---|---|"]
     for t, s in summaries.items():

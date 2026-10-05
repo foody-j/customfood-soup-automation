@@ -32,7 +32,10 @@ def synth_session(sid: str, rate: float, seed: int, over_after_min: float = 8.0,
         "session_id": sid, "t_utc": None, "elapsed_s": t, "label": label, "label_sensory": None, "boundary_dist_s": bd,
         "pt100_c": pt, "pt100_cal_c": None, "c100_cum": np.nan, "min_since_boil": np.where(t >= t_boil, (t - t_boil) / 60, np.nan),
         "evap_frac_est": np.nan, "thermal_max_c": th_max, "thermal_mean_c": th_max - 25, "thermal_p95_c": th_max - 5,
-        "param_heat_level": rate, "param_lid_initial": "off", "param_taster": "YJ"})
+        "param_heat_level": rate, "param_lid_initial": "off", "param_taster": "YJ",
+        # 카메라: 끓으면 거품으로 움직임이 커지고 김으로 선명도가 떨어진다
+        "rgb_feat_cam_rgb_1_motion": np.where(t >= t_boil, 0.06, 0.008) + rng.normal(0, 0.003, len(t)),
+        "rgb_feat_cam_rgb_1_sharp": np.where(t >= t_boil + 60, 60.0, 350.0) + rng.normal(0, 5, len(t))})
 
 
 def tables(n=6):
@@ -50,9 +53,13 @@ def test_alert_time_rule():
 
 def test_no_probe_features_in_probe_free_tracks():
     df = synth_session("x", 10, 0)
-    for track in ("trivial", "thermal"):
+    for track in ("trivial", "thermal", "camera", "noprobe"):
         cols = build_features(df, track).columns
         assert not any(c.startswith(("pt100", "c100", "min_since_boil", "evap")) for c in cols)
+    cam = build_features(df, "camera").columns
+    assert any(c.startswith("rgb_feat_") for c in cam) and not any(c.startswith("thermal") for c in cam)
+    nop = build_features(df, "noprobe").columns
+    assert any(c.startswith("rgb_feat_") for c in nop) and any(c.startswith("thermal") for c in nop)
     assert "param_taster" not in build_features(df, "trivial").columns
     assert any(c.startswith("pt100") for c in build_features(df, "probe").columns)
     # 창 특징은 과거만: 첫 행의 30초 기울기는 비어 있어야 한다
@@ -69,8 +76,10 @@ def test_loso_never_trains_on_test_session_and_metrics_make_sense():
     assert s["macro_f1"] > 0.8 and s["done_abs_err_median_s"] < 120   # 탐침으로는 끓기 시작이 쉽게 보인다
     th = summarize(evaluate(tb, "thermal"))
     assert th["folds"] == 6 and th["macro_f1"] is not None
+    cam = summarize(evaluate(tb, "camera"))
+    assert cam["macro_f1"] > 0.8                                       # 합성 카메라 신호(거품·김)로도 끓음이 보임
     with pytest.raises(ValueError):
-        build_features(tb["s0"], "camera")
+        build_features(tb["s0"], "microphone")
 
 
 def test_learning_curve_and_cli(tmp_path, data_root):

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# 짧은 실행기: research/soup <명령> ... = research/.venv/bin/python research/tools/soupctl.py <명령> ...
+here="$(cd "$(dirname "$0")" && pwd)"
+exec "$here/.venv/bin/python" "$here/tools/soupctl.py" "$@"
