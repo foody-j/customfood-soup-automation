@@ -139,6 +139,7 @@ def test_nightly_pulls_new_sessions_and_skips_when_capturing(tmp_path, data_root
     assert soupctl.main(["nightly", "http://pi:8100", str(src), "--until", ""]) == 0
     assert {p.name for p in (data_root / "raw").iterdir() if not p.name.startswith(".")} == {"sess-n1", "sess-n2"}
     assert (data_root / "qc" / "sess-n1.md").is_file() and (data_root / "catalog.csv").is_file()
+    assert (data_root / "summary" / "sess-n1.png").stat().st_size > 10_000
     log = next((data_root / "logs").glob("nightly-*.log")).read_text()
     assert "받음 2, 실패 0" in log
     make_session(src, "sess-n3")
@@ -204,3 +205,19 @@ def test_jetson_prune_only_when_space_is_low(tmp_path, data_root, monkeypatch):
     monkeypatch.setattr(soupctl, "_remote_free_bytes", lambda s: None)
     assert soupctl.main(["jetson-prune", "http://pi", str(src), "--keep", "1", "--min-free-gb", "100", "--yes"]) == 1
     assert len(list(src.iterdir())) == 3
+
+
+def test_summary_png_renders_with_marks(tmp_path, data_root):
+    from datetime import datetime, timezone
+
+    src = tmp_path / "jetson"
+    t0 = datetime(2026, 10, 20, 1, 0, tzinfo=timezone.utc)
+    make_session(src, "sess-sum", frames=120, start=t0, step_s=1.0)
+    assert soupctl.main(["pull", str(src), "sess-sum"]) == 0
+    (data_root / "pi").mkdir(exist_ok=True)
+    (data_root / "pi" / "sess-sum.json").write_text(json.dumps({"session": {"params": {"heat_level": 5}}, "events": [
+        {"origin": "manual", "code": "mark.taste", "ts": "2026-10-20T01:00:40Z", "detail": {"value": "undercooked"}},
+        {"origin": "manual", "code": "mark.done_start", "ts": "2026-10-20T01:01:10Z", "detail": {}}]}))
+    out = tmp_path / "s.png"
+    assert soupctl.main(["summary", "sess-sum", "--out", str(out)]) == 0
+    assert out.stat().st_size > 10_000

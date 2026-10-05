@@ -7,6 +7,7 @@
     soupctl.py pi-meta <PI_URL> <session_id> ...  Pi 세션 내보내기(json) 저장 → pi/<id>.json
     soupctl.py qc     <session_id> [--out FILE]   QC 요약 Markdown
     soupctl.py catalog                            catalog.csv 갱신
+    soupctl.py summary <session_id> [--out PNG]   세션 요약 이미지(썸네일·온도·사건·수신 상태) → summary/<id>.png
     soupctl.py pi-backup <PI_URL> [--keep N]      Pi SQLite(정답 사건·조건이 있는 유일한 원본) 일관 백업 → pi-db/, 무결성 검사
     soupctl.py nightly <PI_URL> <SRC> [--until HH:MM] [--bwlimit KBPS]
                                                   야간 일괄: Pi DB 백업 → 새 세션 반출·검증 → Pi 내보내기 → QC → 카탈로그.
@@ -286,6 +287,7 @@ def cmd_nightly(a) -> int:
             log(f"  {sid}: Pi 내보내기 없음(Pi가 모르는 세션일 수 있음)")
         (root / "qc").mkdir(exist_ok=True)
         run(cmd_qc, argparse.Namespace(session_id=sid, out=str(root / "qc" / f"{sid}.md")))
+        run(cmd_summary, argparse.Namespace(session_id=sid, out=None))
     run(cmd_catalog, argparse.Namespace())
     if a.prune_keep is not None:
         log(f"Jetson 정리(검증 사본 있는 세션, 최신 {a.prune_keep}개 보존)")
@@ -446,6 +448,15 @@ def cmd_qc(a) -> int:
     return 0
 
 
+def cmd_summary(a) -> int:
+    from soupdata.summary import render_summary
+
+    sess, pi, ver = _load(a.session_id)
+    out = Path(a.out) if a.out else data_root() / "summary" / f"{a.session_id}.png"
+    print(f"요약 이미지: {render_summary(sess, out, pi, ver)}")
+    return 0
+
+
 def cmd_catalog(a) -> int:
     root = data_root()
     rows = []
@@ -501,6 +512,7 @@ def main(argv: list[str] | None = None) -> int:
     s.set_defaults(fn=cmd_pi_meta)
     s = sub.add_parser("qc"); s.add_argument("session_id"); s.add_argument("--out"); s.set_defaults(fn=cmd_qc)
     s = sub.add_parser("catalog"); s.set_defaults(fn=cmd_catalog)
+    s = sub.add_parser("summary"); s.add_argument("session_id"); s.add_argument("--out"); s.set_defaults(fn=cmd_summary)
     s = sub.add_parser("pi-backup"); s.add_argument("pi_url"); s.add_argument("--keep", type=int, default=60)
     s.set_defaults(fn=cmd_pi_backup)
     s = sub.add_parser("nightly"); s.add_argument("pi_url"); s.add_argument("src")

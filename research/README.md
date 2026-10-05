@@ -33,11 +33,13 @@ $R research/tools/soupctl.py pi-meta http://<pi>:8100 <session_id>
 $R research/tools/soupctl.py qc <session_id> --out notes/data/experiments/YYYYMMDD_<session_id>.md
 $R research/tools/soupctl.py catalog
 $R research/tools/soupctl.py labels <session_id>      # 라벨 구간·경고·맛보기 불일치 확인
+$R research/tools/soupctl.py summary <session_id>     # 세션 요약 이미지 → ~/soup-data/summary/<id>.png
 ```
 
 ## 매일 밤 자동 처리
 
-Fedora 사용자 타이머 `soup-nightly`(01:00)가 `soupctl.py nightly`를 돌린다 — Pi DB 백업, 새 세션 반출·검증, Pi 내보내기, QC, 카탈로그.
+Fedora 사용자 타이머 `soup-nightly`(01:00)가 `soupctl.py nightly`를 돌린다 — Pi DB 백업, 새 세션 반출·검증, Pi 내보내기, QC, **요약 이미지**, 카탈로그.
+세션 다음 날 `~/soup-data/summary/<id>.png`를 보고 김 서림·가림·탐침 이탈·사건 누락을 확인한다(이상하면 카탈로그에 제외 사유).
 촬영 중이면 반출하지 않는다. 설정·관리 방법은 `notes/fedora/server-setup.md`.
 
 ## 데이터셋 버전 만들기
