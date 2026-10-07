@@ -35,6 +35,7 @@ from .capture import (
     CaptureConflict,
     CaptureService,
     CaptureUnavailable,
+    MarkInvalid,
     SessionNotFound,
 )
 from .config import (
@@ -552,7 +553,14 @@ async def add_mark(request: Request, body: MarkRequest) -> EventInfo:
 
     `occurred_at`을 주면 **사후 입력**으로 보고 발생 시각과 입력 시각을 구분해 저장한다.
     """
-    row = _capture(request).add_mark(body, actor=_actor(request))
+    try:
+        row = _capture(request).add_mark(body, actor=_actor(request))
+    except SessionNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except CaptureConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except MarkInvalid as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return EventInfo.model_validate(row)
 
 

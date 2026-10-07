@@ -64,6 +64,15 @@ let sensorView = null;
 let savedConfig = {};
 /** 최근 세션의 실제 쓰기량(바이트/초) — 예상 저장량 추정용. 없으면 null */
 let recentRate = null;
+/** 이 화면에서 고른 프리셋 키. **저장 설정에는 남기지 않고** 촬영 시작 때만 그 세션 스냅샷의 config.extra.preset에 싣는다
+ *  (예전에는 저장 설정에 남아 이후 일반 세션까지 데이터셋으로 취급됐다). 다른 프리셋·'해제'로 바뀐다. */
+let pendingPreset = null;
+
+/** 저장 설정의 extra에서 preset 키를 뺀 사본 — 예전 버전이 남긴 값도 지운다 */
+function extraWithoutPreset(extra) {
+  const { preset: _drop, ...rest } = extra || {};
+  return rest;
+}
 /** 마지막으로 받은 /api/status — 입력 변경 시 시작 전 점검을 바로 다시 그리기 위함 */
 let lastStatus = null;
 
@@ -375,6 +384,10 @@ function renderPreflight(s) {
 
   const storage = report && report.storage;
   items.push(['남은 용량', storage ? bytesText(storage.free_bytes) : UNKNOWN]);
+  items.push(['프리셋', pendingPreset
+    ? `${escapeHtml(PRESETS[pendingPreset].name)}${pendingPreset === 'dataset' ? ' — 조건 전송·종료 전 정답 사건 확인' : ''}
+       <button type="button" class="btn btn-small" id="btn-preset-clear">해제</button>`
+    : '없음 (일반 세션)']);
   items.push(['미리보기', $('in-preview').checked ? '켬 (1 Hz 출발)' : '끔']);
   const dur = maxDurationValue();
   items.push(['최대 촬영 시간', dur == null
@@ -655,6 +668,8 @@ function bind() {
       ...saved,
       preview: { ...prevPreview, enabled: previewOn, max_fps: prevPreview.max_fps || 1 },
       max_duration_sec: maxDur,
+      // 프리셋 표시는 이 세션 스냅샷에만(저장 설정에는 남기지 않음)
+      extra: pendingPreset ? { ...extraWithoutPreset(saved.extra), preset: pendingPreset } : extraWithoutPreset(saved.extra),
     };
     const missing = TRIAL_SENSORS.filter((id) => !(saved.sensors || []).includes(id));
     const lines = [
@@ -683,7 +698,9 @@ function bind() {
 
   document.querySelectorAll('.btn-mark').forEach((btn) => {
     btn.addEventListener('click', () => withBusy(async () => {
-      const typed = $('mark-text').value.trim();
+      // 조리 정답 버튼은 메모 칸을 쓰지 않는다 — 남아 있던 '정정: …' 문구가 정답 사건에 붙지 않게(지우지도 않음)
+      const gt = btn.classList.contains('btn-gt');
+      const typed = gt ? '' : $('mark-text').value.trim();
       const quick = btn.dataset.text || '';
       const body = {
         kind: btn.dataset.kind,
@@ -692,10 +709,12 @@ function bind() {
         occurred_at: markTimeToUtc(),
       };
       const ev = await api('/api/marks', { method: 'POST', body: JSON.stringify(body) });
-      $('mark-text').value = '';
+      if (!gt) $('mark-text').value = '';
       $('mark-time').value = '';
       await loadMarks();
-      return `기록됨: ${ev.message}`;
+      const leftover = gt && $('mark-text').value.trim()
+        ? ' (메모 칸 내용은 붙이지 않았습니다 — 메모 버튼으로 남기세요)' : '';
+      return `기록됨: ${ev.message}${leftover}`;
     }, $('mark-msg')));
   });
 
@@ -740,6 +759,12 @@ function bind() {
     return `라이브 보기 시작: ${sess.session_id} — 저장하지 않습니다. 최대 ${durationText(sess.config.max_duration_sec)} 뒤 자동 종료.`;
   }, $('capture-msg')));
   $('btn-preset-dataset').addEventListener('click', () => applyPreset('dataset'));
+  $('preflight').addEventListener('click', (ev) => {
+    if (ev.target.id !== 'btn-preset-clear') return;
+    pendingPreset = null;
+    $('params-box').open = false;
+    if (lastStatus) renderPreflight(lastStatus);
+  });
   $('mark-list').addEventListener('click', (ev) => {
     const li = ev.target.closest('.mark-item');
     if (!li) return;
@@ -792,7 +817,7 @@ function collectParams() {
     filled = true;
     out[k] = PARAM_TEXT.has(k) ? raw : Number(raw);
   });
-  const dataset = (savedConfig.extra || {}).preset === 'dataset';
+  const dataset = pendingPreset === 'dataset';
   return filled || dataset ? out : null;
 }
 
@@ -826,9 +851,10 @@ function applyPreset(key) {
       method: 'PUT',
       body: JSON.stringify({
         sensors: TRIAL_SENSORS, fps: 10, max_duration_sec: p.max_duration_sec, preview,
-        extra: { ...(saved.extra || {}), preset: key },  // 데이터셋 세션 구분(종료 전 정답 사건 확인)
+        extra: extraWithoutPreset(saved.extra),  // 프리셋 키는 저장하지 않는다 — pendingPreset으로 시작 때만 싣는다
       }),
     });
+    pendingPreset = key;
     $('params-box').open = key === 'dataset';
     setMaxDurationUi(p.max_duration_sec);
     fillConfigForm(savedConfig);

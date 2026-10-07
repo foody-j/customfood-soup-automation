@@ -406,11 +406,16 @@ def test_manual_mark_separates_occurred_and_recorded_time(client):
     assert now_mark["session_id"] == session["session_id"]
     assert now_mark["occurred_at"] is None  # 지금 일어난 일 → ts만 있으면 된다
 
+    # 사후 입력 시각은 세션 시작 이후여야 한다(이전이면 422 — test_marks_hardening.py)
+    from datetime import datetime, timedelta
+
+    when = (datetime.fromisoformat(session["started_at"].replace("Z", "+00:00")) + timedelta(milliseconds=1)
+            ).isoformat(timespec="milliseconds").replace("+00:00", "Z")
     late = client.post(
         "/api/marks",
-        json={"kind": "ingredient", "text": "두부", "occurred_at": "2026-09-12T01:00:00.000Z"},
+        json={"kind": "ingredient", "text": "두부", "occurred_at": when},
     ).json()
-    assert late["occurred_at"] == "2026-09-12T01:00:00.000Z"
+    assert late["occurred_at"] == when
     assert late["ts"] != late["occurred_at"], "입력 시각과 발생 시각이 같으면 안 된다"
     assert late["detail"]["late_entry"] is True
 

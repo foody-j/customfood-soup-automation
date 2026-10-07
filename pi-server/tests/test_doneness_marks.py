@@ -57,9 +57,14 @@ def test_mark_value_validation(client):
 
 
 def test_late_entry_keeps_occurred_at(client):
-    sid = start(client)["session_id"]
-    ev = mark(client, kind="taste", value="done", occurred_at="2026-10-03T05:00:00.000Z").json()
-    assert ev["occurred_at"] == "2026-10-03T05:00:00.000Z" and ev["detail"]["late_entry"] is True
+    from datetime import datetime, timedelta
+
+    sess = start(client)
+    sid = sess["session_id"]
+    when = (datetime.fromisoformat(sess["started_at"].replace("Z", "+00:00")) + timedelta(milliseconds=1)
+            ).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    ev = mark(client, kind="taste", value="done", occurred_at=when).json()
+    assert ev["occurred_at"] == when and ev["detail"]["late_entry"] is True
     assert "(사후 입력)" in ev["message"] and "맛보기(완료)" in ev["message"]
     assert ev["session_id"] == sid
 
