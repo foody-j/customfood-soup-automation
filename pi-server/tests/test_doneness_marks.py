@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-TRIAL = {"sensors": ["cam_rgb_0", "cam_rgb_1", "thermal_0", "pt100_0"], "fps": 10}
+TRIAL = {"sensors": ["cam_rgb_0", "thermal_0", "pt100_0"], "fps": 10}
 PARAMS = {"heat_level": 7, "water_added_ml": 200, "lid_initial": "off", "start_temp_c": 18.5,
           "probe_depth_mm": 40, "product_weight_g": 1000, "taster": "YJ"}
 

@@ -76,9 +76,9 @@ function extraWithoutPreset(extra) {
 /** 마지막으로 받은 /api/status — 입력 변경 시 시작 전 점검을 바로 다시 그리기 위함 */
 let lastStatus = null;
 
-/** 첫 조리 시험 기본 센서(GMSL2 카메라 2 + 열화상 + PT100). 누락 여부를 시작 전에 보여 준다.
- *  Gemini 2(cam_depth_0)는 D-039로 제외 — Jetson은 연결 안 된 센서를 요청하면 시작을 거절하므로 넣지 않는다. */
-const TRIAL_SENSORS = ['cam_rgb_0', 'cam_rgb_1', 'thermal_0', 'pt100_0'];
+/** 첫 조리 시험 기본 센서(GMSL2 top view 1 + 열화상 + PT100). 누락 여부를 시작 전에 보여 준다.
+ *  Gemini 2(cam_depth_0)는 D-039, 비스듬한 GMSL2 ②(cam_rgb_1)는 top view 전환으로 제외 — Jetson은 연결 안 된 센서를 요청하면 시작을 거절하므로 넣지 않는다. */
+const TRIAL_SENSORS = ['cam_rgb_0', 'thermal_0', 'pt100_0'];  // top view 카메라만(notes/jetson/topview-only.md) — cam_rgb_1을 요청하면 Jetson이 시작을 거절한다
 const MAX_DURATION_REASON = 'max_duration_sec=';  // Jetson stop_reason 접두사(자동 중지)
 const PRESETS = {
   check: {

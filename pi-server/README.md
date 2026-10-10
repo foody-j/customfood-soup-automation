@@ -283,7 +283,7 @@ curl -X PUT localhost:8100/api/identity -H 'content-type: application/json' \
   유지된다 — 작업 거리 0.5 m면 1000~1500.
 - **요청이 멈추는 때:** 컴포넌트가 화면 밖(스크롤·`display:none`·DOM 제거), 브라우저 탭 숨김, 진행 중 세션 없음, `destroy()`.
   실패가 이어지면 주기를 최대 8배까지 늘린다.
-- 카메라 목록은 `SOUP_PREVIEW_CAMERAS`(JSON)로 바꾼다. 기본은 GMSL2 ①(`cam_rgb_0`)·②(`cam_rgb_1`) 2면(2026-10-01 D-039로 Gemini 2 제외 — 스트림 전환 기능은 유지).
+- 카메라 목록은 `SOUP_PREVIEW_CAMERAS`(JSON)로 바꾼다. 기본은 GMSL2 top view(`cam_rgb_0`) 1면(2026-10-10 Jetson top view 전환으로 `cam_rgb_1` 제외, 2026-10-01 D-039로 Gemini 2 제외 — 스트림 전환 기능은 유지).
   형식이 틀리면 기본 목록으로 뜨고 `/api/preview/config`의 `config_error`에 이유가 나온다.
 - Pi는 미리보기 그림을 저장하지 않고, 조회를 이벤트로 남기지도 않는다.
 
@@ -308,7 +308,7 @@ curl -X PUT localhost:8100/api/identity -H 'content-type: application/json' \
 - **최대 촬영 시간**: 촬영 카드에서 고른다(60초 점검 / 10분 첫 실험 / 30분 / 60분 / 제한 없음=0 / 직접 입력). 바꾸면
   `PUT /api/config`에 저장되고 다시 열어도 유지된다. 시작 요청 `config` 최상위 `max_duration_sec`로 Jetson에 가며,
   **Jetson이** 멈춘다(브라우저 타이머 없음). 데이터 촬영 종료일 뿐 인덕션은 끄지 않는다. 값을 고르지 않으면 시작하지 않는다.
-- **프리셋**: '점검 60초 (가열 없음)', '소고기무국 재가열 관찰'(10분). 센서 4개(`cam_rgb_0/1`, `thermal_0`, `pt100_0` — D-039로 Gemini 제외)·
+- **프리셋**: '점검 60초 (가열 없음)', '소고기무국 재가열 관찰'(10분). 센서 3개(`cam_rgb_0`, `thermal_0`, `pt100_0` — top view만, D-039로 Gemini 제외)·
   10 fps·미리보기 1 Hz를 실험 설정에 저장하고 재료·조건 칸에 `___` 자리를 채운다 — 중량·물·출력·뚜껑·탐침/카메라 위치는
   현장 실측값으로 적는다(임의 값 확정 안 함).
 - **시작 전 점검**: 모의 여부, 기본 센서의 설정 누락·미연결, 남은 용량, 미리보기, 최대 시간, 예상 저장량

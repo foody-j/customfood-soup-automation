@@ -41,4 +41,24 @@ def test_jetson_still_reporting_gemini_is_shown_but_has_no_panel(client_factory)
     kinds = {s["sensor_id"]: s["kind"] for s in status["report"]["sensors"]}
     assert kinds == {"cam_rgb_0": "rgb_gmsl2", "cam_depth_0": "depth_usb"}
     cams = [c["sensor_id"] for c in client.get("/api/preview/config").json()["cameras"]]
-    assert cams == ["cam_rgb_0", "cam_rgb_1"]
+    assert cams == ["cam_rgb_0"]  # top view 1면
+
+
+def test_past_session_with_angled_camera_still_exported(client: TestClient):
+    """top view 전환 전 세션(cam_rgb_1 포함)도 이력·내보내기가 그대로 — 기록을 고치지 않는다."""
+    old = {"sensors": ["cam_rgb_0", "cam_rgb_1", "thermal_0", "pt100_0"], "fps": 10}
+    sid = client.post("/api/capture/start", json={"name": "옛 2카메라 세션", "config": old}).json()["session_id"]
+    client.post("/api/capture/stop", json={})
+    assert client.get(f"/api/sessions/{sid}").json()["config"]["sensors"] == old["sensors"]
+    assert client.get(f"/api/sessions/{sid}/export").json()["config_snapshot"]["sensors"] == old["sensors"]
+
+
+def test_preset_sensors_match_mock_jetson(client: TestClient):
+    """프리셋 기본 센서(app.js TRIAL_SENSORS)가 Jetson이 보고하는 센서 안에 있어야 시작이 거절되지 않는다."""
+    import re
+    from pathlib import Path
+
+    js = (Path(__file__).resolve().parents[1] / "app" / "static" / "app.js").read_text(encoding="utf-8")
+    trial = re.findall(r"'([a-z0-9_]+)'", re.search(r"const TRIAL_SENSORS = \[([^\]]*)\]", js).group(1))
+    reported = {s["sensor_id"] for s in client.post("/api/status/refresh").json()["report"]["sensors"]}
+    assert trial == ["cam_rgb_0", "thermal_0", "pt100_0"] and set(trial) <= reported

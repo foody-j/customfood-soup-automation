@@ -13,7 +13,6 @@
  *     apiBase: '/api/preview',            // 필수. 다른 출처면 'http://pi:8100/api/preview'
  *     cameras: [                          // 필수
  *       { id: 'gmsl2_1', label: 'GMSL2 ①', sensor_id: 'cam_rgb_0', streams: [{ id: 'rgb', label: 'RGB' }] },
- *       { id: 'gmsl2_2', label: 'GMSL2 ②', sensor_id: 'cam_rgb_1', streams: [{ id: 'rgb', label: 'RGB' }] },
  *       // 스트림이 여럿인 카메라는 패널에 전환 버튼이 생긴다: streams: [{ id: 'color', ... }, { id: 'depth', ... }]
  *     ],
  *     intervalMs: 1000,                   // 선택(기본 1000, 하한 250)

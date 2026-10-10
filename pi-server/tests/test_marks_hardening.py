@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.jetson.base import JetsonUnreachable
 
-TRIAL = {"sensors": ["cam_rgb_0", "cam_rgb_1", "thermal_0", "pt100_0"], "fps": 10}
+TRIAL = {"sensors": ["cam_rgb_0", "thermal_0", "pt100_0"], "fps": 10}
 
 
 def start(client: TestClient, **extra) -> dict:

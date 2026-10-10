@@ -28,13 +28,13 @@ POWER_UNSUPPORTED = "unsupported"  # 회로 미구성 — 조작 불가로 표�
 POWER_MOCK = "mock"  # 모의 전원. 실제 전원을 제어하는 것처럼 보이게 하지 않는다.
 
 
-#: 미리보기 컴포넌트 기본 카메라 2면(GMSL2 ①·②). Gemini 2(`cam_depth_0`)는 D-039로 장비 구성에서 뺐다 —
+#: 미리보기 컴포넌트 기본 카메라 1면(GMSL2 top view `cam_rgb_0`). 비스듬한 GMSL2 ②(`cam_rgb_1`)는 Jetson이
+#: top view만 쓰도록 바뀌어(notes/jetson/topview-only.md) 기본 목록에서 뺐다 — 다시 쓰면 `SOUP_PREVIEW_CAMERAS`로 추가.
+#: (이전: GMSL2 ①·②.) Gemini 2(`cam_depth_0`)는 D-039로 장비 구성에서 뺐다 —
 #: 다시 붙이면 `SOUP_PREVIEW_CAMERAS`로 패널을 추가한다(스트림 전환 기능은 그대로 있다). `sensor_id`·스트림 ID는 Jetson 수집 서비스
 #: (`jetson/collector/app/sensors/registry.py`)가 쓰는 이름과 같아야 한다.
 DEFAULT_PREVIEW_CAMERAS: list[dict] = [
-    {"id": "gmsl2_1", "label": "GMSL2 ①", "sensor_id": "cam_rgb_0",
-     "streams": [{"id": "rgb", "label": "RGB"}]},
-    {"id": "gmsl2_2", "label": "GMSL2 ②", "sensor_id": "cam_rgb_1",
+    {"id": "gmsl2_1", "label": "GMSL2 top view", "sensor_id": "cam_rgb_0",
      "streams": [{"id": "rgb", "label": "RGB"}]},
 ]
 

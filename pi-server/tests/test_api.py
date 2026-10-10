@@ -518,7 +518,7 @@ def test_sensor_stats_and_storage_summary_are_surfaced(client):
     # D-030·D-031: 제거한 비접촉 센서를 장비 상태에 다시 노출하지 않는다.
     # 첫 조리 시험 구성: 카메라 3 + 열화상 1 + PT100 1
     assert {s["sensor_id"] for s in sensors} == {
-        "cam_rgb_0", "cam_rgb_1", "thermal_0", "pt100_0",
+        "cam_rgb_0", "thermal_0", "pt100_0",  # top view 1대
     }
     assert all(s["kind"] != "point_temp_i2c" for s in sensors)
     assert sensors[0]["stats"]["frames_written"] >= 0
@@ -582,7 +582,7 @@ def test_restart_keeps_experiment_records_and_flags_open_session(client_factory)
 # ─────────────────────────────────────────────────────────────────────────────
 # 미리보기 중계
 # ─────────────────────────────────────────────────────────────────────────────
-PREVIEW_ON = {"sensors": ["cam_rgb_0", "cam_rgb_1"], "fps": 10, "preview": {"enabled": True, "max_fps": 2}}
+PREVIEW_ON = {"sensors": ["cam_rgb_0"], "fps": 10, "preview": {"enabled": True, "max_fps": 2}}
 
 
 def test_preview_requires_active_session(client):
@@ -591,7 +591,7 @@ def test_preview_requires_active_session(client):
 
 def test_preview_relays_each_camera(client):
     sess = client.post("/api/capture/start", json={"name": "미리보기", "config": PREVIEW_ON}).json()
-    for sensor in ("cam_rgb_0", "cam_rgb_1"):
+    for sensor in ("cam_rgb_0",):
         res = client.get(f"/api/preview/{sensor}/rgb")
         assert res.status_code == 200, sensor
         assert res.headers["content-type"].startswith("image/")
@@ -602,8 +602,9 @@ def test_preview_relays_each_camera(client):
     assert client.get("/api/preview/thermal_0/temp_array").status_code == 404
     assert client.get("/api/preview/cam_rgb_0/depth").status_code == 404
     assert client.get("/api/preview/nope/color").status_code == 404
-    # D-039: Gemini 2는 모의 구성에서 빠졌다
+    # D-039: Gemini 2, top view 전환: 비스듬한 GMSL2 ②는 모의 구성에서 빠졌다
     assert client.get("/api/preview/cam_depth_0/color").status_code == 404
+    assert client.get("/api/preview/cam_rgb_1/rgb").status_code == 404
 
 
 def test_preview_off_session_has_no_frame_and_config_untouched(client):
@@ -635,14 +636,14 @@ def test_preview_setting_is_validated_and_snapshotted(client):
     # 시작 요청에 config를 안 실으면 저장된 설정(미리보기 포함)이 그대로 박제된다
     sess = client.post("/api/capture/start", json={"name": "박제"}).json()
     assert sess["config"]["preview"]["enabled"] is True
-    assert client.get("/api/preview/cam_rgb_1/rgb").status_code == 200
+    assert client.get("/api/preview/cam_rgb_0/rgb").status_code == 200
 
 
 def test_preview_component_config_default_three_cameras(client):
     cfg = client.get("/api/preview/config").json()
     assert cfg["api_base"] == "/api/preview" and cfg["config_error"] is None
     assert [(c["sensor_id"], [s["id"] for s in c["streams"]]) for c in cfg["cameras"]] == [
-        ("cam_rgb_0", ["rgb"]), ("cam_rgb_1", ["rgb"]),
+        ("cam_rgb_0", ["rgb"]),  # top view 1면
     ]  # D-039: Gemini 2 패널 없음
 
 
@@ -659,7 +660,7 @@ def test_preview_component_config_from_env_value(client_factory):
 
 def test_preview_component_config_bad_value_falls_back(client_factory):
     cfg = client_factory(preview_cameras_json="{not json").get("/api/preview/config").json()
-    assert len(cfg["cameras"]) == 2 and "SOUP_PREVIEW_CAMERAS" in cfg["config_error"]
+    assert len(cfg["cameras"]) == 1 and "SOUP_PREVIEW_CAMERAS" in cfg["config_error"]
 
 
 def test_http_client_preview_maps_jetson_responses(tmp_path):

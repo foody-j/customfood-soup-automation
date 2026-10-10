@@ -13,7 +13,7 @@ from app.jetson.base import JetsonError, JetsonUnreachable
 from app.jetson.http_client import HttpJetsonClient
 from conftest import make_settings
 
-SENSORS = ["cam_rgb_0", "cam_rgb_1", "thermal_0", "pt100_0"]
+SENSORS = ["cam_rgb_0", "thermal_0", "pt100_0"]
 TRIAL = {"sensors": SENSORS, "fps": 10, "preview": {"enabled": True, "max_fps": 1}}
 
 

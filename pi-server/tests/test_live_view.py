@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-TRIAL = {"sensors": ["cam_rgb_0", "cam_rgb_1", "thermal_0", "pt100_0"], "fps": 10}
+TRIAL = {"sensors": ["cam_rgb_0", "thermal_0", "pt100_0"], "fps": 10}
 
 
 def refresh(client: TestClient) -> dict:
