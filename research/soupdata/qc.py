@@ -11,8 +11,8 @@ from typing import Any
 
 from .session import ARRAY, IMAGE, SCALAR, Session
 
-#: D-039 이후 데이터셋 기본 4센서 스트림 — 없으면 자동 경고
-EXPECTED_STREAMS = ("cam_rgb_0/rgb", "cam_rgb_1/rgb", "thermal_0/temp_array", "pt100_0/temp")
+#: 데이터셋 기본 센서 스트림 — 없으면 자동 경고. D-039(Gemini 제외), D-042(카메라는 top view 1대, 10/07)
+EXPECTED_STREAMS = ("cam_rgb_0/rgb", "thermal_0/temp_array", "pt100_0/temp")
 CLOCK_OFFSET_WARN_S = 0.5
 
 #: Pi 정답 사건(`mark.<kind>`) — Pi `doneness-marks` 지시서 기준. 없는 사건은 0으로 센다.

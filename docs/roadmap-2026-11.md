@@ -31,6 +31,7 @@
 | 10/01 | Jetson | Gemini 2 수집 제외 | `notes/fedora/orders/20261001-drop-gemini-jetson.md` |
 | 10/02 | Pi | 정답 사건·조건 입력·데이터셋 프리셋·시계 오차 기록 | `notes/fedora/orders/20261002-doneness-marks-pi.md` |
 | 10/02 | Jetson | 저장량 실측·PT100 재측정·카메라 정리·시계 동기 | `notes/fedora/orders/20261002-cook-ready-jetson.md` |
+| 10/10 | Pi | 카메라 1대 반영(프리셋·미리보기) + 테스트 고침 | `notes/fedora/orders/20261010-topview-pi.md` |
 
 ## 결정 대기
 

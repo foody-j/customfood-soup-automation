@@ -59,7 +59,7 @@ TXT = {
 }
 
 DEFAULT_META = [  # 저장소 문서에 근거한 값만 — 모르는 사양은 TBD(논문 전에 사람이 채운다)
-    {"component": "RGB camera ×2", "model": "Sensing ISX031F (GMSL2)", "spec": "1920×1536, JPEG frames", "rate": "2–10 fps (per protocol)", "accuracy": "—"},
+    {"component": "RGB camera (top view)", "model": "Sensing ISX031F (GMSL2), 100° wide-angle lens", "spec": "1920×1536, JPEG frames; pot ROI auto-detected (Hough circle)", "rate": "TBD (2–10 fps)", "accuracy": "—"},
     {"component": "Thermal array", "model": "Melexis MLX90640 (D55, 55°×35°)", "spec": "32×24 px", "rate": "2 Hz", "accuracy": "TBD"},
     {"component": "Core temperature", "model": "PT100 (3-wire) + MAX31865", "spec": "immersed probe, fixed depth", "rate": "1 Hz", "accuracy": "TBD (2-point calibration)"},
     {"component": "Edge computer", "model": "NVIDIA Jetson Orin Nano Super 8 GB", "spec": "acquisition & storage", "rate": "—", "accuracy": "—"},

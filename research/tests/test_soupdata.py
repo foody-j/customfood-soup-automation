@@ -284,3 +284,29 @@ def test_heating_compare_and_calibrate(tmp_path, data_root, capsys):
     assert abs(cal2["a"] * 93.5 + cal2["b"] - 100) < 1e-3 and abs(cal2["a"] * 0.4 + cal2["b"]) < 1e-3  # 저장 반올림
     assert list(data_root.glob("calibration.json.bak-*"))
     assert soupctl.main(["calibrate", "--ice-read", "50", "--boil-read", "60"]) == 1     # 두 점이 너무 가까움
+
+
+def test_camera_uses_pot_circle_when_recorded(tmp_path):
+    import cv2
+    import numpy as np
+
+    from soupdata.camera import frame_metrics, session_roi
+
+    img = np.zeros((100, 120, 3), np.uint8)
+    img[:, :] = (0, 0, 255)                                    # 바깥은 빨강(BGR)
+    cv2.circle(img, (60, 50), 30, (255, 0, 0), -1)            # 솥 안은 파랑
+    p = tmp_path / "f.jpg"
+    cv2.imwrite(str(p), img)
+    circ = {"cx": 0.5, "cy": 0.5, "r": 0.25}                  # 반지름 = 너비 비율(30/120)
+    m_circle, m_rect = frame_metrics(p, circ), frame_metrics(p, (0.0, 0.0, 1.0, 1.0))
+    assert m_circle["b"] < -30 and m_rect["b"] > m_circle["b"]  # 원 안만 보면 파랑(b* 음수)이 뚜렷
+
+    d = make_session(tmp_path / "j", "sess-roi")
+    from soupdata import Session
+
+    s = Session(d)
+    assert session_roi(s, "cam_rgb_0")[1] == "default_rect"
+    meta = json.loads((d / "session.json").read_text())
+    meta["pot_roi"] = {"summary": {"cam_rgb_0": {"circle": {"norm": circ}}}}
+    (d / "session.json").write_text(json.dumps(meta))
+    assert session_roi(Session(d), "cam_rgb_0") == (circ, "pot_circle")
