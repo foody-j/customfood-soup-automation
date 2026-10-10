@@ -84,6 +84,22 @@ async def capture_preview_array(request: Request, sensor_id: str, stream_id: str
     return {"session_id": active_session_id, "host_utc": host_utc, "seq": seq, **payload}
 
 
+@router.get("/capture/pot_roi")
+async def capture_pot_roi(request: Request, session_id: str | None = None) -> dict:
+    """활성 세션의 솥 원 검출 결과(센서별 마지막 시도·마지막 성공). 좌표는 원본 화소와 비율(`norm`, `bbox_ratio`)."""
+    roi = _svc(request).pot_roi(session_id=session_id)
+    if roi is None:
+        raise HTTPException(status_code=404, detail="활성 세션이 없거나 솥 ROI 대상 카메라가 없음")
+    return roi
+
+
+@router.post("/capture/pot_roi/redetect")
+async def capture_pot_roi_redetect(request: Request, sensor_id: str | None = None) -> dict:
+    """다음 프레임에서 솥 원을 바로 다시 찾게 한다(솥을 옮긴 뒤 확인용)."""
+    hit = _svc(request).pot_roi_redetect(sensor_id)
+    return {"accepted": bool(hit), "sensors": hit}
+
+
 @router.post("/system/shutdown", response_model=CaptureAck)
 async def system_shutdown(request: Request) -> CaptureAck:
     return await asyncio.to_thread(_svc(request).shutdown)

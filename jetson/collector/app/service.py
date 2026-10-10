@@ -334,6 +334,20 @@ class CollectorService:
         payload, host_utc, seq = cached
         return cur.session_id, payload, host_utc, seq
 
+    def pot_roi(self, session_id: str | None = None) -> dict | None:
+        """활성 세션의 솥 ROI 최신 검출. 세션이 없거나 대상 카메라가 없으면 None."""
+        with self._lock:
+            cur = self._session
+        if cur is None or (session_id is not None and cur.session_id != session_id):
+            return None
+        latest = cur.pot_roi_status()
+        return None if latest is None else {"session_id": cur.session_id, "sensors": latest}
+
+    def pot_roi_redetect(self, sensor_id: str | None = None) -> list[str]:
+        with self._lock:
+            cur = self._session
+        return [] if cur is None else cur.pot_roi_redetect(sensor_id)
+
     # ── 정상 종료 ───────────────────────────────────────────────────────────
     def shutdown(self) -> CaptureAck:
         with self._lock:

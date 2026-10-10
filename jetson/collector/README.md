@@ -69,6 +69,8 @@ Pi와 붙이기: Pi의 `/etc/default/soup-pi-server`에
 | `COLLECTOR_STOP_WAIT` | 120 초 | stop 응답이 저장 완료를 기다리는 상한 |
 | `COLLECTOR_CHECKSUM` | `after_stop` | 세션 종료 후 백그라운드 sha256 (`none`으로 끔) |
 | `COLLECTOR_ARRAY_COMPRESSION` | `lz4` | records.bin 레코드 압축(`none`으로 끔). depth 3.7배·레코드당 약 7 ms(D-035) |
+| `COLLECTOR_POT_ROI_SENSORS` | `cam_rgb_0` | 솥 원(ROI)을 찾을 top view 카메라(쉼표 구분, `off`로 끔). 결과 `<session>/pot_roi.jsonl`·session.json `pot_roi` |
+| `COLLECTOR_POT_ROI_FIRST_DELAY` / `INTERVAL` / `MIN_SCORE` | 3 / 60 초 / 0.65 | 첫 검출 지연·재검출 주기·테두리 일치 점수 하한 |
 | `COLLECTOR_POWEROFF_CMD` | (없음) | shutdown 마지막 단계 명령. 비우면 저장 완료 후 로그만 |
 | `COLLECTOR_LOG_LEVEL` / `LOG_FILE` / `LOG_MAX_MB` / `LOG_BACKUPS` | INFO / 없음 / 5 / 3 | 서비스 로그 레벨·회전 파일 |
 | `COLLECTOR_LOG_SUMMARY_INTERVAL` | 30 초 | 수집 중 요약 로그 주기 |
@@ -202,3 +204,10 @@ $PY tools/sensor_check.py pt100 --cs-pin <핀> --ref-ohms <Ω> --jetson-model JE
 ```
 
 성공률·실효 Hz·취득 시간(min/mean/max)·최대 공백·재시도 수를 요약한다. 결과 JSON은 `notes/data/`에 정리한다.
+
+솥 ROI(`app/roi.py`, `notes/jetson/pot-roi.md`) — 서비스가 녹화 중 1분마다 찾아 기록한다. 그 전 세션이나 사진 한 장은 오프라인으로:
+
+```bash
+$PY tools/pot_roi.py image frame.jpg --overlay roi.jpg
+$PY tools/pot_roi.py session ~/collector-data/<session_id> --every-sec 60 --out roi.json --overlay roi.jpg
+```

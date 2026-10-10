@@ -27,6 +27,8 @@ _PAGE = """<!doctype html>
  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;min-width:0}
  .card img{width:100%;display:block;border-radius:4px;background:#000;min-height:120px}
+ .pic{position:relative} .pic svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+ .roi{font-size:12px;margin-top:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap} .roi button{padding:2px 8px;font-size:12px}
  .card.arr{max-width:340px}
  .card canvas{width:100%;max-width:240px;display:block;margin:0 auto;border-radius:4px;background:#000;image-rendering:pixelated;cursor:crosshair}
  .card .ramp,.card .ticks{max-width:240px;margin-left:auto;margin-right:auto}
@@ -40,7 +42,7 @@ _PAGE = """<!doctype html>
  .scroll{overflow-x:auto}
 </style></head><body>
 <h1>Jetson 수집 점검 화면</h1>
-<div class="mut">미리보기는 축소 JPEG(최대 2 fps)이고 열화상은 <b>숫자 배열</b>을 받아 화면에서 히트맵으로 그린다. PT100 같은 단일 온도는 숫자와 최근 추이로 보인다. 저장되는 원본과 별개다. 점검 세션은 10 fps·깊이 의사색 0~1.5 m로 열리고 <b>원본이 실제로 저장된다</b> — 고른 최대 시간(기본 10분)이 지나면 자동으로 멈춘다.</div>
+<div class="mut">미리보기는 축소 JPEG(최대 2 fps)이고 열화상은 <b>숫자 배열</b>을 받아 화면에서 히트맵으로 그린다. PT100 같은 단일 온도는 숫자와 최근 추이로 보인다. top view에는 자동으로 찾은 <b>솥 ROI 원</b>(초록, 1분마다 다시 찾음)이 겹쳐 보인다. 저장되는 원본과 별개다. 점검 세션은 10 fps·깊이 의사색 0~1.5 m로 열리고 <b>원본이 실제로 저장된다</b> — 고른 최대 시간(기본 10분)이 지나면 자동으로 멈춘다.</div>
 <div class="bar">
  <span id="state">상태 읽는 중…</span>
  <button id="start">점검 세션 시작</button><button id="stop">세션 중지</button>
@@ -78,15 +80,18 @@ async function tick(){
   const keys = streams.concat(arrays, scalars).map(s => s.sensor_id + "/" + s.stream_id);
   for (const k of Object.keys(cards)) if (!keys.includes(k)) { cards[k].remove(); delete cards[k]; }
   if (!streams.length && !arrays.length && !scalars.length && !Object.keys(cards).length) $("views").innerHTML = '<div class="card mut">실행 중인 세션이 없거나 미리보기 대상 스트림이 없다.</div>';
+  let roi = null;
+  if (streams.length) { try { const r = await fetch(API + "/capture/pot_roi", {cache:"no-store"}); if (r.ok) roi = await r.json(); } catch(e){} }
   for (const s of streams) {
     const k = s.sensor_id + "/" + s.stream_id;
     if (!cards[k]) {
       if (!Object.keys(cards).length) $("views").innerHTML = "";
       const d = document.createElement("div"); d.className = "card";
-      d.innerHTML = `<h2>${esc(k)}</h2><img alt="${esc(k)}"><div class="stat"></div>`;
+      d.innerHTML = `<h2>${esc(k)}</h2><div class="pic"><img alt="${esc(k)}"><svg></svg></div><div class="roi mut"></div><div class="stat"></div>`;
       $("views").appendChild(d); cards[k] = d;
     }
     const d = cards[k];
+    drawRoi(d, s.sensor_id, roi && roi.sensors ? roi.sensors[s.sensor_id] : null);
     d.querySelector(".stat").textContent = `수신 ${s.recv_fps ?? "-"} fps · 기록 ${s.write_fps ?? "-"} fps · 누적 ${s.written} · 드롭 ${s.dropped_total} · 무효 ${s.invalid} · 대기열 ${s.backlog}` + (s.connected === false ? " · 센서 끊김" : "");
     try {
       const r = await fetch(`${API}/capture/preview/${s.sensor_id}/${s.stream_id}`, {cache:"no-store"});
@@ -136,6 +141,20 @@ async function tick(){
     } catch(e){}
   }
   await tickScalars(scalars);
+}
+function drawRoi(d, sensorId, r){
+  const svg = d.querySelector(".pic svg"), box = d.querySelector(".roi");
+  if (!r) { svg.innerHTML = ""; box.innerHTML = ""; return; }
+  const f = r.last_found, last = r.last;
+  if (f) {
+    svg.setAttribute("viewBox", `0 0 ${f.image_w} ${f.image_h}`); svg.setAttribute("preserveAspectRatio", "none");
+    svg.innerHTML = `<circle cx="${f.cx}" cy="${f.cy}" r="${f.r}" fill="none" stroke="#22c55e" stroke-width="${f.image_w/200}"/>`
+      + `<circle cx="${f.cx}" cy="${f.cy}" r="${f.image_w/150}" fill="#22c55e"/>`;
+  } else svg.innerHTML = "";
+  const miss = last && !last.found ? ` · <span class="bad">마지막 시도 못 찾음(${esc(last.reason)}${last.score != null ? " " + last.score : ""})</span>` : "";
+  box.innerHTML = (f ? `솥 ROI 중심 (${f.cx}, ${f.cy}) r ${f.r} px · 점수 ${f.score}` : "솥 ROI 아직 없음")
+    + ` · 성공 ${r.found}/${r.tried}${miss} <button>솥 다시 찾기</button>`;
+  box.querySelector("button").onclick = () => fetch(`${API}/capture/pot_roi/redetect?sensor_id=${encodeURIComponent(sensorId)}`, {method:"POST"});
 }
 async function tickScalars(scalars){
   for (const s of scalars) {

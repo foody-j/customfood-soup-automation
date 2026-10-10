@@ -161,6 +161,15 @@ class Settings:
     #: 세션 종료 후 체크섬 계산: none | after_stop (수집을 방해하지 않는 시점에 백그라운드)
     checksum_mode: str = "after_stop"
 
+    # ── 솥 ROI(top view에서 솥 테두리 원 검출, `app/roi.py`) ─────────────────
+    #: 검출할 카메라 sensor_id(쉼표 구분). env `off`면 끈다. 결과는 `<session>/pot_roi.jsonl`·session.json `pot_roi`.
+    pot_roi_sensors: tuple[str, ...] = ("cam_rgb_0",)
+    #: 첫 검출은 세션 running 뒤 이 시간 후(노출 안정), 이후 이 주기로 다시 찾는다(솥이 밀릴 수 있다).
+    pot_roi_first_delay_sec: float = 3.0
+    pot_roi_interval_sec: float = 60.0
+    #: 테두리 일치 점수 하한(실측 솥 0.72~0.94, 솥 없음 ≤0.52).
+    pot_roi_min_score: float = 0.65
+
     # ── 통계·감시 주기 ─────────────────────────────────────────────────────
     stats_interval_sec: float = 1.0
     system_interval_sec: float = 5.0
@@ -229,6 +238,11 @@ class Settings:
             jpeg_quality=_env_int("COLLECTOR_JPEG_QUALITY", 90),
             array_compression=_env_str("COLLECTOR_ARRAY_COMPRESSION", "lz4").lower(),
             checksum_mode=_env_str("COLLECTOR_CHECKSUM", "after_stop"),
+            pot_roi_sensors=tuple(x.strip() for x in _env_str("COLLECTOR_POT_ROI_SENSORS", "cam_rgb_0").split(",")
+                                  if x.strip() and x.strip().lower() not in ("off", "none")),
+            pot_roi_first_delay_sec=_env_float("COLLECTOR_POT_ROI_FIRST_DELAY", 3.0),
+            pot_roi_interval_sec=_env_float("COLLECTOR_POT_ROI_INTERVAL", 60.0),
+            pot_roi_min_score=_env_float("COLLECTOR_POT_ROI_MIN_SCORE", 0.65),
             stats_interval_sec=_env_float("COLLECTOR_STATS_INTERVAL", 1.0),
             system_interval_sec=_env_float("COLLECTOR_SYSTEM_INTERVAL", 5.0),
             stop_wait_sec=_env_float("COLLECTOR_STOP_WAIT", 120.0),

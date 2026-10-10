@@ -26,6 +26,7 @@ from . import VERSION
 from .clock import clock_relation, utcnow_iso
 from .config import Settings
 from .models import CaptureState
+from .roi import PotRoiTracker
 from .sensors.base import SensorAdapter, SensorError
 from .storage import NullStore, NullWriter, SessionStore, StreamWriter, disk_usage
 
@@ -39,6 +40,8 @@ except Exception:  # pragma: no cover - recording still works without preview su
 _PREVIEW_STREAMS = frozenset({"rgb", "color", "depth", "ir", "left_ir", "right_ir"})
 #: 그림 대신 **숫자 배열 그대로** 내보내는 스트림(D-011: 열화상은 배열로 보내고 화면에서 히트맵을 그린다).
 _PREVIEW_ARRAY_STREAMS = frozenset({"temp_array"})
+#: 솥 ROI를 찾는 컬러 스트림(`app/roi.py`)
+_POT_ROI_STREAMS = frozenset({"rgb", "color"})
 _PREVIEW_ARRAY_MAX_CELLS = 4096  # 32×24=768. 더 큰 배열은 미리보기에서 제외한다.
 _PREVIEW_MAX_STREAMS = 8
 #: 라이브 보기(record:false)에서 max_duration_sec이 없을 때의 상한 — 센서를 잡은 채 잊히지 않게(D-037)
@@ -46,6 +49,27 @@ LIVE_DEFAULT_MAX_DURATION_SEC = 600.0
 _PREVIEW_MAX_BYTES = 256 * 1024
 _PREVIEW_MAX_SIDE = 640
 _PREVIEW_DEPTH_MAX_MM = 4000
+
+
+def _sample_bgr(sample: Any) -> np.ndarray | None:
+    """컬러 이미지 샘플(JPEG·UYVY 바이트 또는 배열)을 원본 해상도 BGR로. 미리보기와 솥 ROI가 같이 쓴다."""
+    if cv2 is None:
+        return None
+    fmt = (sample.pixel_format or "").upper()
+    data = sample.data
+    if isinstance(data, (bytes, bytearray, memoryview)):
+        raw = np.frombuffer(data, dtype=np.uint8)
+        if fmt in {"MJPG", "JPEG"}:
+            return cv2.imdecode(raw, cv2.IMREAD_COLOR)
+        if fmt == "UYVY" and sample.width and sample.height:
+            return cv2.cvtColor(raw.reshape(sample.height, sample.width, 2), cv2.COLOR_YUV2BGR_UYVY)
+        return None
+    image = np.asarray(data)
+    if image.ndim == 3 and image.shape[2] == 3 and fmt in {"RGB", "RGB8"}:
+        return cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    if image.ndim == 3 and image.shape[2] == 4:
+        return cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+    return image
 
 
 def _preview_jpeg(sample: Any, depth_max_mm: int = _PREVIEW_DEPTH_MAX_MM) -> bytes | None:
@@ -71,20 +95,8 @@ def _preview_jpeg(sample: Any, depth_max_mm: int = _PREVIEW_DEPTH_MAX_MM) -> byt
             image = ir.astype(np.uint8)
         else:
             image = cv2.normalize(ir, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-    elif isinstance(data, (bytes, bytearray, memoryview)):
-        raw = np.frombuffer(data, dtype=np.uint8)
-        if fmt in {"MJPG", "JPEG"}:
-            image = cv2.imdecode(raw, cv2.IMREAD_COLOR)
-        elif fmt == "UYVY" and sample.width and sample.height:
-            image = cv2.cvtColor(raw.reshape(sample.height, sample.width, 2), cv2.COLOR_YUV2BGR_UYVY)
-        else:
-            return None
     else:
-        image = np.asarray(data)
-        if image.ndim == 3 and image.shape[2] == 3 and fmt in {"RGB", "RGB8"}:
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        elif image.ndim == 3 and image.shape[2] == 4:
-            image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+        image = _sample_bgr(sample)
     if image is None or image.ndim not in (2, 3) or image.size == 0:
         return None
     height, width = image.shape[:2]
@@ -187,6 +199,11 @@ class CaptureSession:
         self._preview_frames: dict[tuple[str, str], tuple[bytes, str, int]] = {}
         self._preview_arrays: dict[tuple[str, str], tuple[dict[str, Any], str, int]] = {}
         self._preview_last_attempt: dict[tuple[str, str], float] = {}
+        #: 솥 ROI 대상(설정된 sensor_id 중 컬러 스트림이 있는 것). 추적기는 start()에서 만든다.
+        self._pot_roi_targets = tuple(
+            s.sensor_id for s in sensors if s.sensor_id in settings.pot_roi_sensors
+            and any(spec.stream_id in _POT_ROI_STREAMS for spec in s.streams)) if cv2 is not None else ()
+        self.pot_roi: PotRoiTracker | None = None
 
     # ── 시작 ────────────────────────────────────────────────────────────────
     def start(self) -> None:
@@ -217,7 +234,19 @@ class CaptureSession:
             "trigger": {"mode": "free_run", "hardware_trigger": None,
                         "note": "하드웨어 트리거/플래시 미구현 — 프레임 대응 정보 없음"},
             "config_changes": [], "end_reason": None, "last_error": None,
+            "pot_roi": ({"method": "hough+ring_score v1", "sensors": list(self._pot_roi_targets),
+                         "interval_sec": self.settings.pot_roi_interval_sec,
+                         "min_score": self.settings.pot_roi_min_score,
+                         "file": "pot_roi.jsonl" if self.record else None}
+                        if self._pot_roi_targets else None),
         })
+        if self._pot_roi_targets:
+            self.pot_roi = PotRoiTracker(
+                self._pot_roi_targets, decode=_sample_bgr,
+                out_path=(self.store.dir / "pot_roi.jsonl") if self.record else None,
+                interval_sec=self.settings.pot_roi_interval_sec,
+                first_delay_sec=self.settings.pot_roi_first_delay_sec,
+                min_score=self.settings.pot_roi_min_score, on_event=self.store.append_event)
         self.store.append_event("info", "session.starting", f"세션 시작 요청 수신: {self.name}", config=self.config)
         t = threading.Thread(target=self._run_start, name=f"session-start:{self.session_id}", daemon=True)
         self._threads.append(t)
@@ -324,6 +353,8 @@ class CaptureSession:
                     self.phases[f"first_sample:{s.sensor_id}/{smp.stream_id}"] = smp.host.utc
                 if w.submit(smp):
                     self._update_preview(s.sensor_id, smp)
+                    if self.pot_roi is not None and smp.stream_id in _POT_ROI_STREAMS:
+                        self.pot_roi.offer(s.sensor_id, smp)
         try:
             s.close()
         except Exception as exc:
@@ -438,10 +469,18 @@ class CaptureSession:
             elif w.error and self._fail_reason is None:
                 self._fail_reason, self.last_error = "write_failed", w.error
         self.phases["files_closed"] = utcnow_iso()
+        pot_roi_meta = None
+        if self.pot_roi is not None:
+            self.pot_roi.stop()
+            pot_roi_meta = {**(self.store.meta().get("pot_roi") or {}), "summary": self.pot_roi.summary()}
         # 3) manifest
         files: list[dict[str, Any]] = []
         for w in self._writers.values():
             files.extend(w.manifest_entries())
+        roi_file = self.store.dir / "pot_roi.jsonl" if self.record and self.store.dir else None
+        if roi_file is not None and roi_file.is_file():
+            files.append({"path": "pot_roi.jsonl", "format": "jsonl", "role": "derived",
+                          "bytes": roi_file.stat().st_size, "status": "complete"})
         final = CaptureState.FAILED if self._fail_reason else CaptureState.STOPPED
         self.end_reason = self._fail_reason or "stopped"
         summary = self.summary()
@@ -458,7 +497,8 @@ class CaptureSession:
             try:
                 self.store.update(state=final.value, phases=dict(self.phases), end_reason=self.end_reason,
                                   last_error=self.last_error, stop_reason=self.stop_reason,
-                                  config_changes=self.config_changes, summary=summary)
+                                  config_changes=self.config_changes, summary=summary,
+                                  **({"pot_roi": pot_roi_meta} if pot_roi_meta is not None else {}))
                 self.store.append_event("info" if final is CaptureState.STOPPED else "error", f"session.{final.value}",
                                         ("저장 완료 — 파일 닫힘·manifest 기록" if self.record else "라이브 보기 종료(저장 없음)")
                                         if final is CaptureState.STOPPED
@@ -592,6 +632,13 @@ class CaptureSession:
             if not self._preview_enabled or self.state is not CaptureState.RUNNING or self._stop_event.is_set():
                 return None
             return self._preview_arrays.get((sensor_id, stream_id))
+
+    def pot_roi_status(self) -> dict[str, Any] | None:
+        """솥 ROI 최신 검출(센서별). 대상이 없으면 None."""
+        return self.pot_roi.latest() if self.pot_roi is not None else None
+
+    def pot_roi_redetect(self, sensor_id: str | None = None) -> list[str]:
+        return self.pot_roi.request_now(sensor_id) if self.pot_roi is not None and not self._stop_event.is_set() else []
 
     # ── 실험 중 설정 변경 ───────────────────────────────────────────────────
     def apply_config_change(self, sensor_id: str, changes: dict[str, Any]) -> dict[str, Any]:

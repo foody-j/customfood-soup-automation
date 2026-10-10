@@ -283,6 +283,8 @@ Pi와의 연결은 관리 경로일 뿐 수집의 전제가 아니다(플랜 §4
 | `POST /api/v1/capture/config` | 실험 중 설정 변경 `{session_id?, sensor_id, changes}` → `{applied, before, after}` 또는 `{accepted:false, message}`. 변경 시각·전후 값이 세션 기록에 남는다 |
 | `GET /api/v1/capture/preview/{sensor_id}/{stream_id}?session_id=` | `config.preview.enabled=true`로 시작한 활성 세션의 최근 축소 JPEG. `max_fps` 기본 1, 상한 2. `config.preview.depth_max_mm`(기본 4000, 100~65535)로 깊이 의사색 범위를 정한다 — 작업 거리 0.5 m에서는 1000~1500 권장. 아직 프레임이 없거나 종료되면 404. `Cache-Control: no-store`, 세션 ID·수신 UTC·시퀀스 응답 헤더 포함. 원본 파일·세션 저장을 대신하지 않는다 |
 | `GET /api/v1/capture/preview_array/{sensor_id}/{stream_id}?session_id=` | 그림이 아닌 스트림의 최신 미리보기(JSON). 열화상 `temp_array`는 0.1 ℃ 정수 배열(`rows`·`cols`·`deci`·`min/max/mean`), PT100 같은 스칼라 스트림은 `{kind:"scalar", valid, value, invalid_reason}`(fault 샘플도 표시). 규칙은 JPEG 미리보기와 같다 |
+| `GET /api/v1/capture/pot_roi?session_id=` | 활성 세션의 솥 원 검출(2026-10-10). `sensors.<sensor_id>`에 `last`(마지막 시도)·`last_found`(마지막 성공)·`tried`·`found`. 원은 원본 화소 `cx`·`cy`·`r`, 비율 `norm`, 외접 사각형 비율 `bbox_ratio`, `score`(테두리 일치 0~1). 세션 없음·대상 카메라 없음 404. 녹화 세션은 `pot_roi.jsonl`과 session.json `pot_roi.summary`(중앙값 원)에도 남는다 |
+| `POST /api/v1/capture/pot_roi/redetect?sensor_id=` | 다음 프레임에서 바로 다시 찾기 → `{accepted, sensors}`. 솥을 옮긴 뒤 확인용 |
 
 Jetson 구현: `jetson/collector/` (README 참고). Pi 쪽 클라이언트
 `pi-server/app/jetson/http_client.py`는 `SOUP_JETSON_MODE=http`로 바꾸면 그대로 붙는다
