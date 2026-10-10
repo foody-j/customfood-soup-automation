@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 
@@ -387,6 +388,14 @@ MARK_VALUES: dict[MarkKind, dict[str, str]] = {
     MarkKind.LID: {"on": "덮음", "off": "엶"},
 }
 
+#: 조리 정답 사건 — 데이터셋 라벨이 되므로 **세션에만** 붙인다(세션 없으면 거절).
+DONENESS_MARK_KINDS = frozenset({
+    MarkKind.BOIL_START, MarkKind.TASTE, MarkKind.DONE_START,
+    MarkKind.DONE_END, MarkKind.OVERCOOKED, MarkKind.LID,
+})
+#: 사후 입력 시각이 Pi 현재보다 이만큼 넘게 뒤면 거절(시계 오차·입력 지연 여유).
+MARK_FUTURE_TOLERANCE_SEC = 60
+
 
 class MarkRequest(BaseModel):
     """실험 중 사건 입력.
@@ -399,8 +408,26 @@ class MarkRequest(BaseModel):
     #: 판정·상태 값. `taste`·`lid`는 필수, 그 밖의 종류는 받지 않는다(`MARK_VALUES`).
     value: str | None = Field(default=None, max_length=40)
     text: str | None = Field(default=None, max_length=1000)
-    occurred_at: str | None = None  # UTC ISO8601. 비우면 입력 시각과 같다고 본다
+    #: 실제 발생 시각(시간대 포함 ISO8601). 받으면 UTC `...Z`(밀리초)로 정규화한다. 비우면 입력 시각과 같다고 본다.
+    occurred_at: str | None = None
     session_id: str | None = None   # 비우면 현재 활성 세션에 붙인다
+
+    @field_validator("occurred_at")
+    @classmethod
+    def _normalize_occurred_at(cls, value: str | None) -> str | None:
+        """시간대 없는 값·해석 불가 값은 거절하고, 미래 시각(1분 초과)도 거절한다. 세션 시작 이전 검사는 저장 시점에 한다."""
+        if value is None or value == "":
+            return None
+        try:
+            parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError(f"occurred_at을 시각으로 읽을 수 없음: {value!r}") from exc
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise ValueError("occurred_at에 시간대가 없음 — UTC면 끝에 Z, 아니면 +09:00처럼 붙여야 함")
+        now = datetime.now(timezone.utc)
+        if (parsed - now).total_seconds() > MARK_FUTURE_TOLERANCE_SEC:
+            raise ValueError(f"occurred_at이 미래 시각임({value}) — Pi 현재보다 {MARK_FUTURE_TOLERANCE_SEC}초 넘게 뒤")
+        return parsed.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
     @model_validator(mode="after")
     def _check_value(self) -> "MarkRequest":

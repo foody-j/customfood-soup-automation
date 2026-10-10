@@ -28,6 +28,7 @@ from .db import Database
 from .identity import Identity
 from .jetson.base import JetsonClient, JetsonError, JetsonUnreachable
 from .models import (
+    DONENESS_MARK_KINDS,
     MARK_LABELS,
     MARK_VALUES,
     CaptureState,
@@ -73,6 +74,10 @@ class CaptureUnavailable(Exception):
 
 class SessionNotFound(Exception):
     """→ 404."""
+
+
+class MarkInvalid(Exception):
+    """사건 입력값이 세션과 맞지 않음(예: 세션 시작 이전 시각) → 422."""
 
 
 class CaptureService:
@@ -343,9 +348,23 @@ class CaptureService:
         따로 남긴다(둘이 같다고 가정하지 않는다).
         """
         session_id = req.session_id
+        row: dict[str, Any] | None = None
         if session_id is None:
-            active = self._db.active_session()
-            session_id = active["session_id"] if active else None
+            row = self._db.active_session()
+            session_id = row["session_id"] if row else None
+        else:
+            row = self._db.get_session(session_id)
+            if row is None and req.kind in DONENESS_MARK_KINDS:
+                raise SessionNotFound(f"세션 없음: {session_id}")
+        if session_id is None and req.kind in DONENESS_MARK_KINDS:
+            raise CaptureConflict(
+                f"조리 정답 사건({req.kind.value})은 세션에만 붙일 수 있습니다 — 진행 중인 세션이 없습니다"
+            )
+        if req.occurred_at and row is not None and row.get("started_at") and req.occurred_at < row["started_at"]:
+            # 둘 다 UTC `...Z`(밀리초) 문자열이라 사전순 비교 = 시각 비교
+            raise MarkInvalid(
+                f"발생 시각({req.occurred_at})이 세션 시작({row['started_at']})보다 이릅니다 — 시각을 확인하세요"
+            )
         label = MARK_LABELS[req.kind]
         if req.value is not None:
             label = f"{label}({MARK_VALUES[req.kind][req.value]})"
